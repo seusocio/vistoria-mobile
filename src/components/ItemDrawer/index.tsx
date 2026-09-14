@@ -154,6 +154,7 @@ export function ItemDrawer({
                 {activeAttachments.map((attachment) => (
                   <PhotoThumb
                     key={attachment.id}
+                    uri={attachment.url}
                     onRemove={() => onRemoveAttachment(attachment.id)}
                   />
                 ))}

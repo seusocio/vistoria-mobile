@@ -1,9 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { AsyncStorageApplicationRepository } from './async-storage-application-repository'
-import { AsyncStorageChecklistRepository } from './async-storage-checklist-repository'
-import { AsyncStorageTagRepository } from './async-storage-tag-repository'
+import { ConvexApplicationRepository, ConvexChecklistRepository, ConvexTagRepository } from '@/infra/convex'
 import { STORAGE_KEYS } from './keys'
 
+export * from './migrate-to-convex'
 export * from './async-storage-application-repository'
 export * from './async-storage-checklist-repository'
 export * from './async-storage-tag-repository'
@@ -11,14 +10,12 @@ export * from './keys'
 export * from './local-collection'
 
 /**
- * Single instance of each repository, backed by AsyncStorage.
- * Swapping to a real backend later means writing new classes that
- * implement the same domain/repositories interfaces and wiring them
- * here instead - services and screens stay untouched.
+ * Convex is the source of truth for all shared domain data. The AsyncStorage
+ * repositories remain exported for offline migration and isolated tests.
  */
-export const tagRepository = new AsyncStorageTagRepository()
-export const checklistRepository = new AsyncStorageChecklistRepository()
-export const applicationRepository = new AsyncStorageApplicationRepository()
+export const tagRepository = new ConvexTagRepository()
+export const checklistRepository = new ConvexChecklistRepository()
+export const applicationRepository = new ConvexApplicationRepository()
 
 export async function clearAllData(): Promise<void> {
   await AsyncStorage.multiRemove([

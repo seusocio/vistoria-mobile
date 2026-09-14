@@ -3,4 +3,5 @@ export const STORAGE_KEYS = {
   CHECKLISTS: '@vistoria/checklists',
   APPLICATIONS: '@vistoria/applications',
   SEEDED: '@vistoria/seeded',
+  CONVEX_MIGRATED: '@vistoria/convex-migrated',
 } as const

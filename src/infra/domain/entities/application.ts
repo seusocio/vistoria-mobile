@@ -4,6 +4,11 @@ export interface Attachment {
   position: number
   createdAt: string
   deletedAt: string | null
+  storageId?: string
+  url?: string
+  mimeType?: string
+  width?: number
+  height?: number
 }
 
 export type SuggestionSource = 'transcript' | 'previous_application'

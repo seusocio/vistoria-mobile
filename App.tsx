@@ -4,9 +4,11 @@ import {
   Lato_700Bold,
   useFonts,
 } from '@expo-google-fonts/lato'
+import { ConvexProvider } from 'convex/react'
 import * as SplashScreen from 'expo-splash-screen'
 import { useEffect, useState } from 'react'
-import { seedDemoDataIfNeeded } from '@/infra/data/seed'
+import { convexClient } from '@/infra/convex'
+import { migrateLocalDataToConvex } from '@/infra/storage'
 import { Routes } from '@/routes'
 
 SplashScreen.preventAutoHideAsync()
@@ -16,21 +18,25 @@ export default function App() {
     Lato_400Regular,
     Lato_700Bold,
   })
-  const [seeded, setSeeded] = useState(false)
+  const [dataReady, setDataReady] = useState(false)
 
   useEffect(() => {
-    seedDemoDataIfNeeded().finally(() => setSeeded(true))
+    migrateLocalDataToConvex().finally(() => setDataReady(true))
   }, [])
 
   useEffect(() => {
-    if (fontsLoaded && seeded) {
+    if (fontsLoaded && dataReady) {
       SplashScreen.hideAsync()
     }
-  }, [fontsLoaded, seeded])
+  }, [fontsLoaded, dataReady])
 
-  if (!fontsLoaded || !seeded) {
+  if (!fontsLoaded || !dataReady) {
     return null
   }
 
-  return <Routes />
+  return (
+    <ConvexProvider client={convexClient}>
+      <Routes />
+    </ConvexProvider>
+  )
 }

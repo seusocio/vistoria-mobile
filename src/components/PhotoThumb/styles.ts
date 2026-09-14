@@ -13,6 +13,11 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  image: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 9,
+  },
   removeButton: {
     position: 'absolute',
     top: -6,

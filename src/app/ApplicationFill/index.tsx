@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Alert, Pressable, Text, View } from 'react-native'
 import {
   Badge,
   ConfirmBottomSheet,
@@ -38,6 +38,7 @@ import {
   updateApplicationItem,
   updateApplicationTags,
 } from '@/infra/services'
+import { pickPhoto, PhotoSource, uploadImage } from '@/infra/convex'
 import { StackRoutesProps } from '@/routes/types'
 import { colors } from '@/styles'
 import { formatBrDate, shiftDateIso } from '@/utils/date'
@@ -111,20 +112,57 @@ export function ApplicationFill({
     )
   }
 
-  async function handleAddPhoto(itemId: string) {
-    await refresh(() =>
-      addAttachment(application!, itemId, `Foto ${Date.now()}`),
-    )
+  async function attachPhoto(
+    source: PhotoSource,
+    target: { itemId?: string },
+  ) {
+    try {
+      const asset = await pickPhoto(source)
+      if (!asset) return
+      const storageId = await uploadImage(asset.uri, asset.mimeType)
+      const input = {
+        name: asset.fileName ?? `Foto ${Date.now()}`,
+        storageId,
+        mimeType: asset.mimeType,
+        width: asset.width,
+        height: asset.height,
+      }
+      await refresh(() =>
+        target.itemId
+          ? addAttachment(application!, target.itemId, input)
+          : addApplicationAttachment(application!, input),
+      )
+    } catch (error) {
+      setApplicationError(
+        error instanceof Error ? error.message : 'Não foi possível adicionar a foto',
+      )
+    }
+  }
+
+  function choosePhoto(target: { itemId?: string }) {
+    Alert.alert('Adicionar foto', 'Escolha a origem da imagem.', [
+      {
+        text: 'Câmera',
+        onPress: () => void attachPhoto('camera', target),
+      },
+      {
+        text: 'Biblioteca',
+        onPress: () => void attachPhoto('library', target),
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ])
+  }
+
+  function handleAddPhoto(itemId: string) {
+    choosePhoto({ itemId })
+  }
+
+  function handleAddApplicationPhoto() {
+    choosePhoto({})
   }
 
   async function handleRemoveAttachment(itemId: string, attachmentId: string) {
     await refresh(() => removeAttachment(application!, itemId, attachmentId))
-  }
-
-  async function handleAddApplicationPhoto() {
-    await refresh(() =>
-      addApplicationAttachment(application!, `Foto ${Date.now()}`),
-    )
   }
 
   async function handleRemoveApplicationAttachment(attachmentId: string) {
@@ -342,6 +380,7 @@ export function ApplicationFill({
             .map((attachment) => (
               <PhotoThumb
                 key={attachment.id}
+                uri={attachment.url}
                 onRemove={() =>
                   handleRemoveApplicationAttachment(attachment.id)
                 }

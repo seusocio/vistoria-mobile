@@ -1,3 +1,4 @@
+import { Image } from 'expo-image'
 import { useState } from 'react'
 import { Pressable, View } from 'react-native'
 import { colors } from '@/styles'
@@ -6,16 +7,26 @@ import { Icon } from '../Icon'
 import { styles } from './styles'
 
 export interface PhotoThumbProps {
+  uri?: string
   onRemove?: () => void
 }
 
 /** Component/PhotoThumb */
-export function PhotoThumb({ onRemove }: PhotoThumbProps) {
+export function PhotoThumb({ uri, onRemove }: PhotoThumbProps) {
   const [confirming, setConfirming] = useState(false)
 
   return (
     <View style={styles.container}>
-      <Icon name="camera" size={20} color={colors.gray[400]} />
+      {uri ? (
+        <Image
+          source={uri}
+          style={styles.image}
+          contentFit="cover"
+          accessibilityLabel="Foto anexada"
+        />
+      ) : (
+        <Icon name="camera" size={20} color={colors.gray[400]} />
+      )}
       {onRemove && (
         <Pressable
           style={({ pressed }) => [

@@ -24,6 +24,13 @@
     "plugins": [
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permita o acesso às fotos para anexar imagens às vistorias.",
+          "cameraPermission": "Permita o acesso à câmera para fotografar a vistoria."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#ffffff",

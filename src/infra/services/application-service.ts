@@ -247,22 +247,38 @@ export async function addApplicationItem(
   )
 }
 
+export interface AttachmentInput {
+  name: string
+  storageId: string
+  mimeType?: string
+  width?: number
+  height?: number
+}
+
+function createAttachment(input: AttachmentInput, position: number, now: string): Attachment {
+  return {
+    id: generateId('attachment_'),
+    name: input.name,
+    position,
+    createdAt: now,
+    deletedAt: null,
+    storageId: input.storageId,
+    mimeType: input.mimeType,
+    width: input.width,
+    height: input.height,
+  }
+}
+
 export async function addAttachment(
   application: Application,
   itemId: string,
-  name: string,
+  input: AttachmentInput,
   repo: ApplicationRepository = applicationRepository,
 ): Promise<Application> {
   const now = new Date().toISOString()
   const items = application.items.map((item) => {
     if (item.id !== itemId) return item
-    const attachment: Attachment = {
-      id: generateId('attachment_'),
-      name,
-      position: item.attachments.length,
-      createdAt: now,
-      deletedAt: null,
-    }
+    const attachment = createAttachment(input, item.attachments.length, now)
     return {
       ...item,
       attachments: [...item.attachments, attachment],
@@ -293,19 +309,14 @@ export async function removeAttachment(
   })
   return repo.save(touchApplication({ ...application, items }))
 }
+
 export async function addApplicationAttachment(
   application: Application,
-  name: string,
+  input: AttachmentInput,
   repo: ApplicationRepository = applicationRepository,
 ): Promise<Application> {
   const now = new Date().toISOString()
-  const attachment: Attachment = {
-    id: generateId('attachment_'),
-    name,
-    position: application.attachments.length,
-    createdAt: now,
-    deletedAt: null,
-  }
+  const attachment = createAttachment(input, application.attachments.length, now)
   return repo.save(
     touchApplication({
       ...application,
