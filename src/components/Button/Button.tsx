@@ -7,7 +7,7 @@ import { ButtonProps, IconButtonProps } from './types'
 function Button({ title, variant = 'primary', icon, ...props }: ButtonProps) {
   return (
     <Root variant={variant} {...props}>
-      {icon && <Icon name={icon} />}
+      {icon ? <Icon name={icon} /> : null}
       <Title>{title}</Title>
     </Root>
   )

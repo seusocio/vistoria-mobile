@@ -1,11 +1,7 @@
-export type RootStackParamList = {
-  home: undefined
-  quoteForm: undefined
-  quoteDetails: undefined
-}
+import { StackRoutesList } from '@/routes/types'
 
 declare global {
   namespace ReactNavigation {
-    interface RootParamList extends RootStackParamList {}
+    interface RootParamList extends StackRoutesList {}
   }
 }

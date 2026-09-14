@@ -5,6 +5,7 @@ export const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.white,
     borderRadius: 10,
+    borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.gray[200],
   },
@@ -18,7 +19,6 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   title: {
-    ...textStyles.textXs,
-    color: colors.gray[500],
+    ...textStyles.metaLabel,
   },
 })

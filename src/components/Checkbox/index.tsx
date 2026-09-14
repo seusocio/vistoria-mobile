@@ -1,4 +1,4 @@
-import { Text, TouchableOpacity, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import { colors } from '@/styles'
 import { Icon } from '../Icon'
 import { styles } from './styles'
@@ -16,10 +16,9 @@ export function Checkbox({
   }
 
   return (
-    <TouchableOpacity
-      style={styles.container}
+    <Pressable
+      style={({ pressed }) => [styles.container, pressed && { opacity: 0.7 }]}
       disabled={disabled}
-      activeOpacity={0.7}
       onPress={handleToggle}
       {...props}
     >
@@ -29,6 +28,6 @@ export function Checkbox({
       <Text style={[styles.label, disabled && styles.labelDisabled]}>
         {label}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   )
 }

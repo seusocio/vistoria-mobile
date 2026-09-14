@@ -1,9 +1,9 @@
-import { TouchableOpacityProps } from 'react-native'
+import { PressableProps } from 'react-native'
 import { IconName } from '../../Icon'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger'
 
-export interface BaseButtonProps extends TouchableOpacityProps {
+export interface BaseButtonProps extends PressableProps {
   variant?: ButtonVariant
 }
 

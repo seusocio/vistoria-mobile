@@ -1,31 +1,30 @@
 import { StyleSheet, ViewStyle } from 'react-native'
-import { colors, textStyles, typography } from '@/styles'
+import { colors, textStyles } from '@/styles'
 
 const baseInputStyle: ViewStyle = {
   flexDirection: 'row',
   alignItems: 'center',
   borderWidth: 1,
   borderRadius: 999,
-  paddingHorizontal: 16,
+  borderCurve: 'continuous',
+  paddingHorizontal: 14,
   height: 48,
   gap: 8,
 }
 
 export const styles = StyleSheet.create({
-  // Base input container
   container: {
     ...baseInputStyle,
     backgroundColor: colors.gray[100],
-    borderColor: colors.gray[300],
+    borderColor: colors.gray[200],
   },
 
-  // Variant Styles
   empty: {
-    borderColor: colors.gray[300],
+    borderColor: colors.gray[200],
   },
 
   filled: {
-    borderColor: colors.purple.base,
+    borderColor: colors.blue.base,
   },
 
   danger: {
@@ -33,15 +32,16 @@ export const styles = StyleSheet.create({
   },
 
   percentage: {
-    borderColor: colors.gray[300],
+    borderColor: colors.gray[200],
   },
 
   textarea: {
     height: 'auto',
     minHeight: 80,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 20,
+    borderCurve: 'continuous',
   },
 
   currency: {},
@@ -50,18 +50,16 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
 
-  // State Styles
   focus: {
-    borderColor: colors.purple.base,
+    borderColor: colors.blue.base,
   },
 
-  // Icon styles for each variant and state
   emptyNestedComponentColor: {
     color: colors.gray[600],
   },
 
   emptyFocusNestedComponentColor: {
-    color: colors.purple.base,
+    color: colors.blue.base,
   },
 
   filledNestedComponentColor: {
@@ -69,7 +67,7 @@ export const styles = StyleSheet.create({
   },
 
   filledFocusNestedComponentColor: {
-    color: colors.purple.base,
+    color: colors.blue.base,
   },
 
   dangerNestedComponentColor: {
@@ -85,69 +83,59 @@ export const styles = StyleSheet.create({
   },
 
   percentageFocusNestedComponentColor: {
-    color: colors.purple.base,
+    color: colors.blue.base,
   },
 
   quantityNestedComponentColor: {
-    color: colors.purple.base,
+    color: colors.blue.base,
   },
 
   quantityFocusNestedComponentColor: {
-    color: colors.purple.base,
+    color: colors.blue.base,
   },
 
-  // Text input styles
   textInput: {
     flex: 1,
-    ...textStyles.textMd,
-    color: colors.gray[700],
+    ...textStyles.inputValue,
     padding: 0,
-    lineHeight: textStyles.textMd.fontSize * 1.2,
+    lineHeight: textStyles.inputValue.fontSize * 1.2,
     textAlignVertical: 'center',
   },
 
-  // Percentage variant - centered text
   percentageTextInput: {
     flex: 1,
-    ...textStyles.textMd,
-    lineHeight: textStyles.textMd.fontSize * 1.2,
-    color: colors.gray[700],
+    ...textStyles.inputValue,
+    lineHeight: textStyles.inputValue.fontSize * 1.2,
     padding: 0,
     textAlign: 'center',
   },
 
-  // Currency variant - text input style
   currencyTextInput: {
     flex: 1,
-    ...textStyles.textMd,
-    color: colors.gray[700],
+    ...textStyles.inputValue,
     padding: 0,
     backgroundColor: 'transparent',
     borderWidth: 0,
     margin: 0,
-    lineHeight: textStyles.textMd.fontSize * 1.2,
+    lineHeight: textStyles.inputValue.fontSize * 1.2,
     textAlignVertical: 'center',
   },
 
-  // Textarea variant
   textareaInput: {
     flex: 1,
-    ...textStyles.textMd,
-    color: colors.gray[700],
+    ...textStyles.inputValue,
     padding: 0,
     textAlignVertical: 'top',
   },
 
   prefixText: {
-    fontFamily: typography.fontFamily.bold,
-    ...typography.text.md,
+    ...textStyles.inputValue,
   },
 
   placeholderText: {
-    color: colors.gray[500],
+    color: colors.gray[400],
   },
 
-  // Quantity input styles
   quantityContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -162,8 +150,7 @@ export const styles = StyleSheet.create({
   },
 
   quantityText: {
-    ...textStyles.textMd,
-    color: colors.gray[700],
+    ...textStyles.inputValue,
     padding: 0,
     textAlign: 'center',
   },

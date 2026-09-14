@@ -4,8 +4,8 @@ import {
   Modal,
   ModalProps,
   Platform,
+  Pressable,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native'
 import { colors } from '@/styles'
@@ -39,27 +39,26 @@ export function ModalComponent({
       {...props}
     >
       <View style={styles.overlay}>
-        <TouchableOpacity
-          style={styles.overlayTouchable}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+        <Pressable style={styles.overlayTouchable} onPress={onClose} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.container}
         >
           {(title || showCloseButton) && (
             <View style={styles.header}>
-              {title && <Text style={styles.headerTitle}>{title}</Text>}
+              {title ? <Text style={styles.headerTitle}>{title}</Text> : null}
               {showCloseButton && (
-                <TouchableOpacity onPress={onClose}>
+                <Pressable
+                  style={({ pressed }) => pressed && { opacity: 0.5 }}
+                  onPress={onClose}
+                >
                   <Icon name="multiply" size={24} color={colors.gray[600]} />
-                </TouchableOpacity>
+                </Pressable>
               )}
             </View>
           )}
           <View style={styles.content}>{children}</View>
-          {footer && <View style={styles.footer}>{footer}</View>}
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
         </KeyboardAvoidingView>
       </View>
     </Modal>

@@ -1,9 +1,9 @@
 import {
   NativeSyntheticEvent,
+  Pressable,
   TargetedEvent,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native'
 import { useInputContext } from '../hooks/InputContext'
@@ -71,20 +71,28 @@ export function Field({
   if (finalVariant === 'quantity') {
     return (
       <View style={[styles.quantityContainer, disabled && styles.disabled]}>
-        <TouchableOpacity
-          style={[styles.quantityButton, disabled && styles.disabledButton]}
+        <Pressable
+          style={({ pressed }) => [
+            styles.quantityButton,
+            disabled && styles.disabledButton,
+            pressed && { opacity: 0.7 },
+          ]}
           onPress={handleDecrement}
           disabled={
             disabled || (typeof value === 'number' ? value <= (min || 1) : true)
           }
         >
           <Icon name="minus" size={20} />
-        </TouchableOpacity>
+        </Pressable>
         <Text style={[styles.quantityText, disabled && styles.disabledText]}>
           {typeof value === 'number' ? value : 1}
         </Text>
-        <TouchableOpacity
-          style={[styles.quantityButton, disabled && styles.disabledButton]}
+        <Pressable
+          style={({ pressed }) => [
+            styles.quantityButton,
+            disabled && styles.disabledButton,
+            pressed && { opacity: 0.7 },
+          ]}
           onPress={handleIncrement}
           disabled={
             disabled ||
@@ -92,7 +100,7 @@ export function Field({
           }
         >
           <Icon name="plus" size={20} />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     )
   }

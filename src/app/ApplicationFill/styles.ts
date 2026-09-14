@@ -1,0 +1,185 @@
+import { StyleSheet } from 'react-native'
+import { colors, textStyles } from '@/styles'
+
+export const styles = StyleSheet.create({
+  footerActions: {
+    gap: 10,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+  },
+  deleteButtonText: {
+    ...textStyles.buttonLabel,
+    color: colors.danger.base,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  headerActions: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderCurve: 'continuous',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editAppButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressCol: {
+    gap: 8,
+  },
+  progressText: {
+    ...textStyles.bodyStrong,
+  },
+  gallerySection: {
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    borderCurve: 'continuous',
+    backgroundColor: colors.gray[100],
+  },
+  galleryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  galleryTitle: {
+    ...textStyles.bodyStrong,
+  },
+  gallerySubtitle: {
+    ...textStyles.metaLabel,
+  },
+  galleryReference: {
+    ...textStyles.metaLabel,
+    color: colors.blue.base,
+  },
+  galleryPhotosRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  addPhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  addPhotoButtonText: {
+    ...textStyles.badgeLabel,
+    color: colors.blue.base,
+  },
+  itemsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  itemsTitle: {
+    ...textStyles.sectionTitle,
+  },
+  addItemButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  addItemButtonText: {
+    ...textStyles.badgeLabel,
+    color: colors.blue.base,
+  },
+  itemsList: {
+    gap: 12,
+  },
+  completeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.blue.base,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    paddingVertical: 13,
+  },
+  completeButtonText: {
+    ...textStyles.buttonLabel,
+    color: colors.white,
+  },
+
+  modalField: {
+    gap: 8,
+  },
+  modalFieldLabel: {
+    ...textStyles.fieldLabel,
+  },
+  dateStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.gray[100],
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  dateStepperButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderCurve: 'continuous',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateStepperValueWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dateStepperValue: {
+    ...textStyles.inputValue,
+  },
+  modalError: {
+    ...textStyles.body,
+    color: colors.danger.base,
+  },
+  saveAppButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.blue.base,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    paddingVertical: 13,
+  },
+  saveAppButtonText: {
+    ...textStyles.buttonLabel,
+    color: colors.white,
+  },
+})

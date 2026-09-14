@@ -1,4 +1,4 @@
-import { Text, TouchableOpacity, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import { styles } from './styles'
 import { RadioProps } from './types'
 
@@ -15,10 +15,9 @@ export function Radio({
   }
 
   return (
-    <TouchableOpacity
-      style={styles.container}
+    <Pressable
+      style={({ pressed }) => [styles.container, pressed && { opacity: 0.7 }]}
       onPress={handlePress}
-      activeOpacity={0.7}
       disabled={disabled}
       {...props}
     >
@@ -32,6 +31,6 @@ export function Radio({
       ) : (
         label
       )}
-    </TouchableOpacity>
+    </Pressable>
   )
 }

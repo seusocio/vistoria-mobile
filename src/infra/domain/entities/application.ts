@@ -1,0 +1,53 @@
+export interface Attachment {
+  id: string
+  name: string
+  position: number
+  createdAt: string
+  deletedAt: string | null
+}
+
+export type SuggestionSource = 'transcript' | 'previous_application'
+
+export interface ApplicationItem {
+  id: string
+  position: number
+  title: string
+  description: string
+  /** label of the chosen ResponseOption, empty when unanswered */
+  answer: string
+  /** moment the current answer was set, null while unanswered; distinct from updatedAt which also changes on note/tag/attachment edits */
+  answeredAt: string | null
+  note: string
+  quantity: number | null
+  attachments: Attachment[]
+  /** tags of the catalog global, e.g. responsible for this specific item */
+  tagsIds: string[]
+  /** true while an answer/note came from a voice or previous-visit suggestion */
+  suggested: boolean
+  suggestionSource: SuggestionSource | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+}
+
+export type ApplicationStatus = 'draft' | 'completed'
+
+export interface Application {
+  id: string
+  checklistId: string
+  /** tags of the catalog global (tower, unit, responsible, ...); at least 1 required */
+  tagsIds: string[]
+  date: string
+  status: ApplicationStatus
+  items: ApplicationItem[]
+  /** attachments belonging to the visit itself, separate from item attachments */
+  attachments: Attachment[]
+  /** points to the previous visit gallery when a new visit was repeated */
+  gallerySourceApplicationId: string | null
+  /** latest voice transcript for this visit, when any */
+  transcript: string | null
+  createdAt: string
+  updatedAt: string
+  completedAt: string | null
+  deletedAt: string | null
+}

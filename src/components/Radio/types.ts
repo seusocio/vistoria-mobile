@@ -1,6 +1,6 @@
-import { TouchableOpacityProps } from 'react-native'
+import { PressableProps } from 'react-native'
 
-export interface RadioProps extends TouchableOpacityProps {
+export interface RadioProps extends PressableProps {
   label: string | React.ReactNode
   selected?: boolean
   onSelect?: () => void

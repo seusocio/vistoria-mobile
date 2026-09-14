@@ -1,32 +1,28 @@
-import {
-  createNativeStackNavigator,
-  NativeStackScreenProps,
-} from '@react-navigation/native-stack'
+import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { ApplicationFill } from '@/app/ApplicationFill'
+import { ApplicationNew } from '@/app/ApplicationNew'
+import { ChecklistDetail } from '@/app/ChecklistDetail'
+import { ChecklistEdit } from '@/app/ChecklistEdit'
+import { ChecklistNew } from '@/app/ChecklistNew'
+import { TabRoutes } from './TabRoutes'
+import { StackRoutesList } from './types'
 
-import { Home } from '@/app/Home'
-import { QuoteDetails } from '@/app/QuoteDetails'
-import { QuoteForm } from '@/app/QuoteForm'
-
-export type StackRoutesList = {
-  home: undefined
-  quoteForm: undefined | { quoteId: string }
-  quoteDetails: { quoteId: string }
-}
-
-export type StackRoutesProps<T extends keyof StackRoutesList> =
-  NativeStackScreenProps<StackRoutesList, T>
+export type { StackRoutesList, StackRoutesProps, TabRoutesList, TabRoutesProps } from './types'
 
 const Stack = createNativeStackNavigator<StackRoutesList>()
 
 export function StackRoutes() {
   return (
     <Stack.Navigator
-      initialRouteName="home"
+      initialRouteName="tabs"
       screenOptions={{ headerShown: false }}
     >
-      <Stack.Screen name="home" component={Home} />
-      <Stack.Screen name="quoteForm" component={QuoteForm} />
-      <Stack.Screen name="quoteDetails" component={QuoteDetails} />
+      <Stack.Screen name="tabs" component={TabRoutes} />
+      <Stack.Screen name="checklistNew" component={ChecklistNew} />
+      <Stack.Screen name="checklistDetail" component={ChecklistDetail} />
+      <Stack.Screen name="checklistEdit" component={ChecklistEdit} />
+      <Stack.Screen name="applicationNew" component={ApplicationNew} />
+      <Stack.Screen name="applicationFill" component={ApplicationFill} />
     </Stack.Navigator>
   )
 }

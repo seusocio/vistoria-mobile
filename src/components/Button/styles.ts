@@ -4,63 +4,61 @@ import { colors, textStyles } from '@/styles'
 const baseSecondaryStyle = {
   backgroundColor: colors.gray[100],
   borderWidth: 1,
-  borderColor: colors.gray[300],
+  borderColor: colors.gray[200],
 }
 
 export const styles = StyleSheet.create({
-  // Base button container
+  // Base button container - Component/Button/Primary & Outline
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 13,
     borderRadius: 999,
+    borderCurve: 'continuous',
     gap: 8,
   },
 
-  // Primary variant
   primary: {
-    backgroundColor: colors.purple.base,
+    backgroundColor: colors.blue.base,
   },
 
-  // Secondary variant
   secondary: baseSecondaryStyle,
 
-  // Danger variant
-  danger: baseSecondaryStyle,
+  danger: {
+    ...baseSecondaryStyle,
+    borderColor: colors.danger.base,
+  },
 
-  // Text styles for each variant
   primaryText: {
-    ...textStyles.titleMd,
+    ...textStyles.buttonLabel,
     color: colors.white,
   },
 
   secondaryText: {
-    ...textStyles.titleMd,
-    color: colors.purple.base,
+    ...textStyles.buttonLabel,
+    color: colors.blue.base,
   },
 
   dangerText: {
-    ...textStyles.titleMd,
+    ...textStyles.buttonLabel,
     color: colors.danger.base,
   },
 
-  // Icon styles for each variant
   primaryIconColor: {
     color: colors.white,
   },
 
   secondaryIconColor: {
-    color: colors.purple.base,
+    color: colors.blue.base,
   },
 
   dangerIconColor: {
     color: colors.danger.base,
   },
 
-  // Icon-only button styles
   iconOnly: {
     width: 48,
     height: 48,

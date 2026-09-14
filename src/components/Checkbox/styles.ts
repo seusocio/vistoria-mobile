@@ -11,18 +11,18 @@ export const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 6,
+    borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.gray[400],
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxChecked: {
-    backgroundColor: colors.purple.base,
-    borderColor: colors.purple.base,
+    backgroundColor: colors.blue.base,
+    borderColor: colors.blue.base,
   },
   label: {
-    ...textStyles.textMd,
-    color: colors.gray[600],
+    ...textStyles.body,
     flex: 1,
   },
   labelDisabled: {

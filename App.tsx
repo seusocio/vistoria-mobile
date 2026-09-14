@@ -1,16 +1,13 @@
+import 'react-native-reanimated'
 import {
   Lato_400Regular,
   Lato_700Bold,
   useFonts,
 } from '@expo-google-fonts/lato'
 import * as SplashScreen from 'expo-splash-screen'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { seedDemoDataIfNeeded } from '@/infra/data/seed'
 import { Routes } from '@/routes'
-
-// Import storage utils for development
-if (__DEV__) {
-  import('@/utils/storageUtils')
-}
 
 SplashScreen.preventAutoHideAsync()
 
@@ -19,14 +16,19 @@ export default function App() {
     Lato_400Regular,
     Lato_700Bold,
   })
+  const [seeded, setSeeded] = useState(false)
 
   useEffect(() => {
-    if (fontsLoaded) {
+    seedDemoDataIfNeeded().finally(() => setSeeded(true))
+  }, [])
+
+  useEffect(() => {
+    if (fontsLoaded && seeded) {
       SplashScreen.hideAsync()
     }
-  }, [fontsLoaded])
+  }, [fontsLoaded, seeded])
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !seeded) {
     return null
   }
 

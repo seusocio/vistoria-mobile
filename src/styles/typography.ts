@@ -1,70 +1,16 @@
 /**
- * Typography tokens for the application
- * Based on the Lato font family design system
+ * Typography tokens, using the Lato font family from the original design
+ * system. The old system only ever used two weights (regular/bold), so every
+ * tier collapses to one of those two instead of introducing a heavier Black
+ * weight the original design never had.
  */
 
-export const typography = {
-  // Font Family
-  fontFamily: {
-    regular: 'Lato_400Regular',
-    bold: 'Lato_700Bold',
-  },
-
-  // Font Sizes and Line Heights
-  title: {
-    lg: {
-      fontSize: 18,
-      lineHeight: 25.2, // 18 * 1.4
-      fontWeight: '700' as const,
-    },
-    md: {
-      fontSize: 16,
-      lineHeight: 22.4, // 16 * 1.4
-      fontWeight: '700' as const,
-    },
-    sm: {
-      fontSize: 14,
-      lineHeight: 19.6, // 14 * 1.4
-      fontWeight: '700' as const,
-    },
-    xs: {
-      fontSize: 12,
-      lineHeight: 16.8, // 12 * 1.4
-      fontWeight: '700' as const,
-    },
-  },
-
-  text: {
-    md: {
-      fontSize: 16,
-      lineHeight: 22.4, // 16 * 1.4
-      fontWeight: '400' as const,
-    },
-    sm: {
-      fontSize: 14,
-      lineHeight: 19.6, // 14 * 1.4
-      fontWeight: '400' as const,
-    },
-    xs: {
-      fontSize: 12,
-      lineHeight: 16.8, // 12 * 1.4
-      fontWeight: '400' as const,
-    },
-  },
+export const fontFamily = {
+  regular: 'Lato_400Regular',
+  medium: 'Lato_400Regular',
+  semiBold: 'Lato_700Bold',
+  bold: 'Lato_700Bold',
+  extraBold: 'Lato_700Bold',
 } as const
 
-export const createTextStyle = (
-  variant: keyof typeof typography.title | keyof typeof typography.text,
-) => {
-  if (variant in typography.title) {
-    return {
-      fontFamily: typography.fontFamily.bold,
-      ...typography.title[variant as keyof typeof typography.title],
-    }
-  }
-
-  return {
-    fontFamily: typography.fontFamily.regular,
-    ...typography.text[variant as keyof typeof typography.text],
-  }
-}
+export type FontWeightToken = keyof typeof fontFamily

@@ -1,5 +1,5 @@
 import React from 'react'
-import { TouchableOpacity } from 'react-native'
+import { Pressable } from 'react-native'
 import { ButtonContext } from '../hooks/ButtonContext'
 import { styles } from '../styles'
 import { ButtonRootProps } from '../types'
@@ -19,15 +19,19 @@ function Root({ children, variant = 'primary', ...props }: ButtonRootProps) {
     ...(isIconOnly && styles.iconOnly),
   }
 
+  const pressedOpacity = variant === 'primary' ? 0.7 : 0.2
+
   return (
     <ButtonContext.Provider value={{ variant }}>
-      <TouchableOpacity
-        style={containerStyle}
-        activeOpacity={variant === 'primary' ? 0.7 : 0.2}
+      <Pressable
+        style={({ pressed }) => [
+          containerStyle,
+          pressed && { opacity: pressedOpacity },
+        ]}
         {...props}
       >
         {children}
-      </TouchableOpacity>
+      </Pressable>
     </ButtonContext.Provider>
   )
 }

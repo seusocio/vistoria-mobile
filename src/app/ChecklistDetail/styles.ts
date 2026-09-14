@@ -1,0 +1,86 @@
+import { StyleSheet } from 'react-native'
+import { colors, textStyles } from '@/styles'
+
+export const styles = StyleSheet.create({
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderCurve: 'continuous',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleCol: {
+    gap: 8,
+  },
+  title: {
+    ...textStyles.screenTitle,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  newAppButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.blue.base,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    paddingVertical: 13,
+  },
+  newAppButtonText: {
+    ...textStyles.buttonLabel,
+    color: colors.white,
+  },
+  sectionTitle: {
+    ...textStyles.sectionTitle,
+  },
+  list: {
+    gap: 10,
+  },
+  emptyState: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    padding: 24,
+  },
+  emptyText: {
+    ...textStyles.body,
+    textAlign: 'center',
+  },
+  batchHelpText: {
+    ...textStyles.body,
+    color: colors.gray[600],
+  },
+  batchError: {
+    ...textStyles.body,
+    color: colors.danger.base,
+  },
+  saveTagsButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    borderRadius: 12,
+    backgroundColor: colors.blue.base,
+  },
+  saveTagsButtonText: {
+    ...textStyles.buttonLabel,
+    color: colors.white,
+  },
+})

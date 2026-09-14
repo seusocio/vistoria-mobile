@@ -14,6 +14,7 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.gray[100],
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderCurve: 'continuous',
     overflow: 'hidden',
   },
   header: {
@@ -26,12 +27,12 @@ export const styles = StyleSheet.create({
     borderBottomColor: colors.gray[200],
   },
   headerTitle: {
-    ...textStyles.titleSm,
-    color: colors.gray[700],
+    ...textStyles.drawerTitle,
   },
   content: {
     padding: 20,
     paddingBottom: 32,
+    gap: 18,
   },
   footer: {
     paddingTop: 20,

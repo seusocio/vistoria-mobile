@@ -89,8 +89,8 @@ function Input({
       onBlur={onBlur}
       {...props}
     >
-      {icon && <Icon name={icon} />}
-      {prefix && <Prefix>{prefix}</Prefix>}
+      {icon ? <Icon name={icon} /> : null}
+      {prefix ? <Prefix>{prefix}</Prefix> : null}
       <Field
         placeholder={placeholder}
         value={value}
@@ -101,7 +101,7 @@ function Input({
         step={step}
         disabled={disabled}
       />
-      {suffix && <Suffix>{suffix}</Suffix>}
+      {suffix ? <Suffix>{suffix}</Suffix> : null}
       {variant === 'percentage' && <Suffix>%</Suffix>}
     </Root>
   )

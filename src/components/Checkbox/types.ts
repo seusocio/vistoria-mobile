@@ -1,6 +1,6 @@
-import { TouchableOpacityProps } from 'react-native'
+import { PressableProps } from 'react-native'
 
-export interface CheckboxProps extends TouchableOpacityProps {
+export interface CheckboxProps extends PressableProps {
   label: string | React.ReactNode
   checked?: boolean
   onToggle?: () => void

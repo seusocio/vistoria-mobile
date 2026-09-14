@@ -1,44 +1,48 @@
 /**
- * Color tokens for the application
- * Based on the design system color palette
+ * Color tokens for the application.
+ * Extracted directly from the Pencil design source (.pen components):
+ * Button/Primary, TagChip, Badge/Draft, Badge/Completed, Answer/Toggle
+ * variants, Metric, ChecklistCard, ApplicationRow, ItemCard, ItemDrawer.
  */
 
 export const colors = {
-  // Principal Colors
-  purple: {
-    light: '#DFDAF2',
+  // Brand color reverted to the old purple palette per design feedback
+  blue: {
     base: '#6A46EB',
+    tint: '#DFDAF2',
   },
 
   white: '#FFFFFF',
 
-  // Base Colors (Gray Scale)
-  gray: {
-    100: '#FAFAFA',
-    200: '#F0F0F0',
-    300: '#E6E5E5',
-    400: '#A1A2A1',
-    500: '#676767',
-    600: '#4A4A4A',
-    700: '#0F0F0F',
+  ink: {
+    base: '#12151C',
   },
 
-  // Feedback Colors
-  danger: {
-    light: '#FFD6D6',
-    base: '#DB4D4D',
-    dark: '#9E4949',
+  gray: {
+    // background
+    100: '#F5F6F8',
+    // borders
+    200: '#E7E9ED',
+    // muted icons/text
+    400: '#9AA1AC',
+    // secondary text
+    600: '#6B7280',
+    700: '#12151C',
   },
 
   success: {
-    light: '#BFF7BE',
-    base: '#4BB84A',
-    dark: '#30752F',
+    base: '#1C9A5B',
+    tint: '#E7F6EE',
   },
 
-  info: {
-    light: '#CEEFFF',
-    base: '#2AA1D9',
-    dark: '#1D7096',
+  danger: {
+    base: '#D8433D',
+    light: '#FBE9E8',
+    dark: '#9E4949',
+  },
+
+  warning: {
+    base: '#C17A12',
+    tint: '#FBF1E1',
   },
 } as const
