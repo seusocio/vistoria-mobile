@@ -1,13 +1,16 @@
 {
-  "extends": ["@arthurrios/biome-config/react"],
-  "linter": {
-    "rules": {
-      "style": {
-        "noNonNullAssertion": "off"
-      },
-      "correctness": {
-        "noUnusedVariables": "off"
-      }
-    }
-  }
+	"files": {
+		"includes": ["**", "!dist", "!.expo", "!convex/_generated"]
+	},
+	"linter": {
+		"rules": {
+			"style": {
+				"noNonNullAssertion": "off",
+				"useImportType": "off"
+			},
+			"correctness": {
+				"noUnusedVariables": "off"
+			}
+		}
+	}
 }

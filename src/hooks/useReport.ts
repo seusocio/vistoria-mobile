@@ -1,35 +1,28 @@
-import { useFocusEffect } from '@react-navigation/native'
-import { useCallback, useMemo, useState } from 'react'
+import { useQuery } from 'convex/react'
+import { useMemo } from 'react'
+import { normalizeApplication } from '@/infra/convex'
 import { Application } from '@/infra/domain/entities'
-import {
-  DateRange,
-  listAllApplications,
-  queryApplicationsByTags,
-} from '@/infra/services'
+import { DateRange, queryApplicationsByTags } from '@/infra/services'
+import { api } from '../../convex/_generated/api'
 
 export function useReport(
   selectedTagIds: string[],
   dateRange: DateRange | null = null,
 ) {
-  const [applications, setApplications] = useState<Application[]>([])
-  const [loading, setLoading] = useState(true)
+  const applicationsData = useQuery(api.applications.listAll) as
+    | Application[]
+    | undefined
 
-  const load = useCallback(async () => {
-    const data = await listAllApplications()
-    setApplications(data)
-  }, [])
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true)
-      load().finally(() => setLoading(false))
-    }, [load]),
+  const applications = useMemo(
+    () => (applicationsData ?? []).map(normalizeApplication),
+    [applicationsData],
   )
+  const loading = applicationsData === undefined
 
   const result = useMemo(() => {
     if (selectedTagIds.length === 0) return null
     return queryApplicationsByTags(applications, selectedTagIds, dateRange)
   }, [applications, selectedTagIds, dateRange])
 
-  return { result, loading, reload: load }
+  return { result, loading }
 }

@@ -11,8 +11,59 @@ export const styles = StyleSheet.create({
   },
   loading: {
     flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    gap: 20,
+  },
+  skeletonBlock: {
+    backgroundColor: colors.gray[100],
+    borderRadius: 10,
+  },
+  skeletonIntro: {
+    gap: 8,
+  },
+  skeletonTitle: {
+    width: '46%',
+    height: 20,
+  },
+  skeletonSubtitle: {
+    width: '72%',
+    height: 14,
+  },
+  skeletonFeature: {
+    width: '100%',
+    height: 112,
+    borderRadius: 16,
+  },
+  skeletonList: {
+    gap: 12,
+  },
+  skeletonCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    backgroundColor: colors.white,
+  },
+  skeletonIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+  },
+  skeletonCardBody: {
+    flex: 1,
+    gap: 8,
+  },
+  skeletonCardTitle: {
+    width: '72%',
+    height: 16,
+  },
+  skeletonCardSubtitle: {
+    width: '48%',
+    height: 12,
   },
   content: {
     paddingHorizontal: 20,
@@ -54,8 +105,6 @@ export const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
     backgroundColor: colors.white,
   },
   backButton: {

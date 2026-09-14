@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import {
+  BottomSheetFooter,
+  type BottomSheetFooterProps,
+  BottomSheetView,
+} from '@gorhom/bottom-sheet'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
 import {
+  AppBottomSheet,
   Badge,
   ConfirmBottomSheet,
+  DatePickerField,
   Input,
   ItemCard,
   ItemDrawer,
-  ModalComponent,
   PhotoThumb,
   ProgressBar,
   Screen,
@@ -19,6 +25,14 @@ import { VoiceState } from '@/components/VoiceCard'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { useApplicationFill } from '@/hooks/useApplicationFill'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
+import {
+  PhotoSource,
+  PickedPhoto,
+  pickPhotos,
+  uploadImage,
+} from '@/infra/convex'
+import type { AttachmentInput } from '@/infra/services'
 import {
   acceptSuggestion,
   addApplicationAttachment,
@@ -28,21 +42,27 @@ import {
   generateSuggestions,
   getDerivedState,
   getProgress,
+  prepareTranscriber,
   rejectSuggestion,
   removeApplication,
   removeApplicationAttachment,
   removeAttachment,
   setTranscript,
-  simulateStopRecording,
+  transcribeAudio,
   updateApplicationDate,
   updateApplicationItem,
   updateApplicationTags,
 } from '@/infra/services'
-import { pickPhoto, PhotoSource, uploadImage } from '@/infra/convex'
 import { StackRoutesProps } from '@/routes/types'
 import { colors } from '@/styles'
-import { formatBrDate, shiftDateIso } from '@/utils/date'
 import { styles } from './styles'
+
+interface PendingUpload {
+  id: string
+  uri: string
+  itemId?: string
+  progress: number
+}
 
 const DERIVED_STATE_LABEL = {
   not_started: 'Não iniciada',
@@ -58,9 +78,9 @@ export function ApplicationFill({
   const { checklist, application, setApplication, loading } =
     useApplicationFill(checklistId, applicationId)
   const tagsCatalog = useTagsCatalog()
+  const { startRecording, stopRecording } = useVoiceRecorder()
 
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
-  const [voiceExpanded, setVoiceExpanded] = useState(false)
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [editingApplication, setEditingApplication] = useState(false)
@@ -74,11 +94,24 @@ export function ApplicationFill({
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] =
     useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([])
+  const latestApplication = useRef(application)
+  const uploadQueue = useRef<Promise<void>>(Promise.resolve())
   useEffect(() => {
-    if (!FEATURE_FLAG.suggestion || !application) return
-    setVoiceState(application.transcript ? 'ready' : 'idle')
-    setVoiceExpanded(Boolean(application.transcript))
-  }, [application?.id, application?.transcript])
+    latestApplication.current = application
+  }, [application])
+  const currentApplicationId = application?.id
+  const currentTranscript = application?.transcript
+  useEffect(() => {
+    if (!FEATURE_FLAG.voice || !currentApplicationId) return
+    setVoiceState(currentTranscript ? 'ready' : 'idle')
+  }, [currentApplicationId, currentTranscript])
+  useEffect(() => {
+    // Warm up the WhisperKit model (downloads on first run) so stopping a
+    // recording doesn't stall while the model loads. Errors surface later on
+    // the actual transcription attempt.
+    if (FEATURE_FLAG.voice) void prepareTranscriber()
+  }, [])
 
   const progress = useMemo(
     () => (application ? getProgress(application) : { answered: 0, total: 0 }),
@@ -96,7 +129,7 @@ export function ApplicationFill({
         onBack={() => navigation.goBack()}
         title="Preenchimento"
       >
-        <></>
+        {null}
       </Screen>
     )
   }
@@ -112,42 +145,79 @@ export function ApplicationFill({
     )
   }
 
-  async function attachPhoto(
-    source: PhotoSource,
-    target: { itemId?: string },
-  ) {
+  function enqueueAttachment(input: AttachmentInput, itemId?: string) {
+    uploadQueue.current = uploadQueue.current.then(async () => {
+      const base = latestApplication.current
+      if (!base) return
+      const updated = itemId
+        ? await addAttachment(base, itemId, input)
+        : await addApplicationAttachment(base, input)
+      latestApplication.current = updated
+      setApplication(updated)
+    })
+    return uploadQueue.current
+  }
+
+  async function uploadAsset(asset: PickedPhoto, target: { itemId?: string }) {
+    const uploadId = `upload_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    setPendingUploads((prev) => [
+      ...prev,
+      { id: uploadId, uri: asset.uri, itemId: target.itemId, progress: 0 },
+    ])
     try {
-      const asset = await pickPhoto(source)
-      if (!asset) return
-      const storageId = await uploadImage(asset.uri, asset.mimeType)
-      const input = {
-        name: asset.fileName ?? `Foto ${Date.now()}`,
-        storageId,
-        mimeType: asset.mimeType,
-        width: asset.width,
-        height: asset.height,
-      }
-      await refresh(() =>
-        target.itemId
-          ? addAttachment(application!, target.itemId, input)
-          : addApplicationAttachment(application!, input),
+      const storageId = await uploadImage(
+        asset.uri,
+        asset.mimeType,
+        (fraction) =>
+          setPendingUploads((prev) =>
+            prev.map((upload) =>
+              upload.id === uploadId
+                ? { ...upload, progress: fraction }
+                : upload,
+            ),
+          ),
+      )
+      await enqueueAttachment(
+        {
+          name: asset.fileName ?? `Foto ${Date.now()}`,
+          storageId,
+          mimeType: asset.mimeType,
+          width: asset.width,
+          height: asset.height,
+        },
+        target.itemId,
       )
     } catch (error) {
       setApplicationError(
-        error instanceof Error ? error.message : 'Não foi possível adicionar a foto',
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível adicionar a foto',
+      )
+    } finally {
+      setPendingUploads((prev) =>
+        prev.filter((upload) => upload.id !== uploadId),
       )
     }
+  }
+
+  async function attachPhotos(
+    source: PhotoSource,
+    target: { itemId?: string },
+  ) {
+    const assets = await pickPhotos(source)
+    if (assets.length === 0) return
+    await Promise.all(assets.map((asset) => uploadAsset(asset, target)))
   }
 
   function choosePhoto(target: { itemId?: string }) {
     Alert.alert('Adicionar foto', 'Escolha a origem da imagem.', [
       {
         text: 'Câmera',
-        onPress: () => void attachPhoto('camera', target),
+        onPress: () => void attachPhotos('camera', target),
       },
       {
         text: 'Biblioteca',
-        onPress: () => void attachPhoto('library', target),
+        onPress: () => void attachPhotos('library', target),
       },
       { text: 'Cancelar', style: 'cancel' },
     ])
@@ -169,13 +239,37 @@ export function ApplicationFill({
     await refresh(() => removeApplicationAttachment(application!, attachmentId))
   }
 
+  async function handleStartRecording() {
+    if (!FEATURE_FLAG.voice) return
+    try {
+      await startRecording()
+      setVoiceState('recording')
+    } catch (error) {
+      setApplicationError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível iniciar a gravação',
+      )
+    }
+  }
+
   async function handleStopRecording() {
-    if (!FEATURE_FLAG.suggestion) return
+    if (!FEATURE_FLAG.voice) return
     setVoiceState('processing')
-    const transcript = await simulateStopRecording()
-    await refresh(() => setTranscript(application!, transcript))
-    setVoiceState('ready')
-    setVoiceExpanded(true)
+    try {
+      const uri = await stopRecording()
+      if (!uri) throw new Error('Gravação vazia')
+      const transcript = await transcribeAudio(uri)
+      await refresh(() => setTranscript(application!, transcript))
+      setVoiceState('ready')
+    } catch (error) {
+      setApplicationError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível transcrever a gravação',
+      )
+      setVoiceState(application?.transcript ? 'ready' : 'idle')
+    }
   }
 
   async function handleGenerateSuggestions() {
@@ -277,6 +371,39 @@ export function ApplicationFill({
   const editingItemIndex = editingItem
     ? application.items.indexOf(editingItem)
     : -1
+  function renderEditApplicationFooter(props: BottomSheetFooterProps) {
+    return (
+      <BottomSheetFooter {...props} style={styles.sheetFooter}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.saveAppButton,
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={handleSaveApplication}
+        >
+          <Icon name="check" size={16} color={colors.white} />
+          <Text style={styles.saveAppButtonText}>Salvar</Text>
+        </Pressable>
+      </BottomSheetFooter>
+    )
+  }
+
+  function renderAddItemFooter(props: BottomSheetFooterProps) {
+    return (
+      <BottomSheetFooter {...props} style={styles.sheetFooter}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.saveAppButton,
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={handleSaveNewItem}
+        >
+          <Icon name="check" size={16} color={colors.white} />
+          <Text style={styles.saveAppButtonText}>Adicionar</Text>
+        </Pressable>
+      </BottomSheetFooter>
+    )
+  }
 
   return (
     <Screen
@@ -306,7 +433,6 @@ export function ApplicationFill({
       }
       footer={
         <View style={styles.footerActions}>
-          a
           <Pressable
             style={({ pressed }) => [
               styles.completeButton,
@@ -386,16 +512,24 @@ export function ApplicationFill({
                 }
               />
             ))}
+          {pendingUploads
+            .filter((upload) => !upload.itemId)
+            .map((upload) => (
+              <PhotoThumb
+                key={upload.id}
+                uri={upload.uri}
+                uploading
+                progress={upload.progress}
+              />
+            ))}
         </View>
       </View>
 
-      {FEATURE_FLAG.suggestion && (
+      {FEATURE_FLAG.voice && (
         <VoiceCard
           state={voiceState}
           transcript={application.transcript}
-          expanded={voiceExpanded}
-          onToggleExpanded={() => setVoiceExpanded((prev) => !prev)}
-          onStart={() => setVoiceState('recording')}
+          onStart={handleStartRecording}
           onStop={handleStopRecording}
           onGenerateSuggestions={handleGenerateSuggestions}
           generatingSuggestions={generatingSuggestions}
@@ -486,6 +620,13 @@ export function ApplicationFill({
             })
           }
           attachments={editingItem.attachments}
+          pendingPhotos={pendingUploads
+            .filter((upload) => upload.itemId === editingItem.id)
+            .map((upload) => ({
+              id: upload.id,
+              uri: upload.uri,
+              progress: upload.progress,
+            }))}
           onAddPhoto={() => handleAddPhoto(editingItem.id)}
           onRemoveAttachment={(attachmentId) =>
             handleRemoveAttachment(editingItem.id, attachmentId)
@@ -503,110 +644,67 @@ export function ApplicationFill({
         />
       )}
 
-      <ModalComponent
+      <AppBottomSheet
         visible={editingApplication}
         onClose={() => setEditingApplication(false)}
-        title="Editar aplicação"
-        footer={
-          <Pressable
-            style={({ pressed }) => [
-              styles.saveAppButton,
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={handleSaveApplication}
-          >
-            <Icon name="check" size={16} color={colors.white} />
-            <Text style={styles.saveAppButtonText}>Salvar</Text>
-          </Pressable>
-        }
+        snapPoints={['95%']}
+        footerComponent={renderEditApplicationFooter}
       >
-        <View style={styles.modalField}>
-          <Text style={styles.modalFieldLabel}>Tags da aplicação</Text>
-          <TagMultiSelect
-            selectedIds={draftTagsIds}
-            availableTags={tagsCatalog.activeTags}
-            allTagsById={tagsCatalog.tagsById}
-            onChange={setDraftTagsIds}
-            onCreateTag={tagsCatalog.createTag}
-          />
-        </View>
-
-        <View style={styles.modalField}>
-          <Text style={styles.modalFieldLabel}>Data da visita</Text>
-          <View style={styles.dateStepper}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.dateStepperButton,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => setDraftDate((prev) => shiftDateIso(prev, -1))}
-              accessibilityLabel="Dia anterior"
-            >
-              <Icon name="chevron-left" size={16} color={colors.ink.base} />
-            </Pressable>
-            <View style={styles.dateStepperValueWrap}>
-              <Icon name="calendar" size={16} color={colors.gray[400]} />
-              <Text style={styles.dateStepperValue}>
-                {formatBrDate(draftDate)}
-              </Text>
-            </View>
-            <Pressable
-              style={({ pressed }) => [
-                styles.dateStepperButton,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => setDraftDate((prev) => shiftDateIso(prev, 1))}
-              accessibilityLabel="Próximo dia"
-            >
-              <Icon name="chevron-right" size={16} color={colors.ink.base} />
-            </Pressable>
+        <BottomSheetView style={styles.sheetContent}>
+          <View style={styles.modalField}>
+            <Text style={styles.modalFieldLabel}>Tags da aplicação</Text>
+            <TagMultiSelect
+              selectedIds={draftTagsIds}
+              availableTags={tagsCatalog.activeTags}
+              allTagsById={tagsCatalog.tagsById}
+              onChange={setDraftTagsIds}
+              onCreateTag={tagsCatalog.createTag}
+            />
           </View>
-        </View>
 
-        {applicationError && (
-          <Text style={styles.modalError}>{applicationError}</Text>
-        )}
-      </ModalComponent>
+          <View style={styles.modalField}>
+            <Text style={styles.modalFieldLabel}>Data da visita</Text>
+            <DatePickerField value={draftDate} onChange={setDraftDate} />
+          </View>
 
-      <ModalComponent
+          {applicationError ? (
+            <Text style={styles.modalError}>{applicationError}</Text>
+          ) : null}
+        </BottomSheetView>
+      </AppBottomSheet>
+
+      <AppBottomSheet
         visible={addingItem}
         onClose={() => setAddingItem(false)}
-        title="Adicionar item"
-        footer={
-          <Pressable
-            style={({ pressed }) => [
-              styles.saveAppButton,
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={handleSaveNewItem}
-          >
-            <Icon name="check" size={16} color={colors.white} />
-            <Text style={styles.saveAppButtonText}>Adicionar</Text>
-          </Pressable>
-        }
+        snapPoints={['95%']}
+        footerComponent={renderAddItemFooter}
       >
-        <View style={styles.modalField}>
-          <Text style={styles.modalFieldLabel}>Título do item</Text>
-          <Input
-            placeholder="Ex.: Base de shaft 5"
-            value={newItemTitle}
-            onChangeValue={(value) => setNewItemTitle(String(value))}
-          />
-        </View>
+        <BottomSheetView style={styles.sheetContent}>
+          <View style={styles.modalField}>
+            <Text style={styles.modalFieldLabel}>Título do item</Text>
+            <Input
+              placeholder="Ex.: Base de shaft 5"
+              value={newItemTitle}
+              onChangeValue={(value) => setNewItemTitle(String(value))}
+            />
+          </View>
 
-        <View style={styles.modalField}>
-          <Text style={styles.modalFieldLabel}>Tags do item</Text>
-          <TagMultiSelect
-            selectedIds={newItemTagsIds}
-            availableTags={tagsCatalog.activeTags}
-            allTagsById={tagsCatalog.tagsById}
-            onChange={setNewItemTagsIds}
-            onCreateTag={tagsCatalog.createTag}
-          />
-        </View>
+          <View style={styles.modalField}>
+            <Text style={styles.modalFieldLabel}>Tags do item</Text>
+            <TagMultiSelect
+              selectedIds={newItemTagsIds}
+              availableTags={tagsCatalog.activeTags}
+              allTagsById={tagsCatalog.tagsById}
+              onChange={setNewItemTagsIds}
+              onCreateTag={tagsCatalog.createTag}
+            />
+          </View>
 
-        {newItemError && <Text style={styles.modalError}>{newItemError}</Text>}
-      </ModalComponent>
+          {newItemError ? (
+            <Text style={styles.modalError}>{newItemError}</Text>
+          ) : null}
+        </BottomSheetView>
+      </AppBottomSheet>
       <ConfirmBottomSheet
         visible={deleteConfirmationVisible}
         title="Excluir aplicação"

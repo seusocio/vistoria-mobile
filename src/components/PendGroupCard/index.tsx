@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Text, View } from 'react-native'
 import { colors } from '@/styles'
 import { Icon } from '../Icon'
@@ -11,7 +12,7 @@ export interface PendGroupCardProps {
 }
 
 /** Component/PendGroupCard */
-export function PendGroupCard({
+export const PendGroupCard = memo(function PendGroupCard({
   tagLabels,
   dateLabel,
   itemTitles,
@@ -39,4 +40,4 @@ export function PendGroupCard({
       </View>
     </View>
   )
-}
+})

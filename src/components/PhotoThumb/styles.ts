@@ -18,6 +18,23 @@ export const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 9,
   },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 9,
+    backgroundColor: 'rgba(17,24,39,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadingProgress: {
+    position: 'absolute',
+    left: 6,
+    right: 6,
+    bottom: 6,
+  },
   removeButton: {
     position: 'absolute',
     top: -6,

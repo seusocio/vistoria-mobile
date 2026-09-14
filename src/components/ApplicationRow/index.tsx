@@ -1,5 +1,5 @@
 import { AnimatePresence, MotiView } from 'moti'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { colors } from '@/styles'
 import { BadgeTone } from '../Badge'
@@ -24,7 +24,7 @@ export interface ApplicationRowProps {
 }
 
 /** Component/ApplicationRow */
-export function ApplicationRow({
+export const ApplicationRow = memo(function ApplicationRow({
   tagLabels,
   latestStatusLabel,
   latestStatusTone,
@@ -193,4 +193,4 @@ export function ApplicationRow({
       </AnimatePresence>
     </View>
   )
-}
+})

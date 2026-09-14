@@ -1,6 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import {
+  ConvexApplicationRepository,
+  ConvexChecklistRepository,
+  ConvexTagRepository,
+} from '@/infra/convex'
 import { Application, Checklist, Tag } from '@/infra/domain/entities'
-import { ConvexApplicationRepository, ConvexChecklistRepository, ConvexTagRepository } from '@/infra/convex'
 import { STORAGE_KEYS } from './keys'
 import { readCollection } from './local-collection'
 
@@ -17,9 +21,13 @@ export async function migrateLocalDataToConvex(): Promise<void> {
     readCollection<Application>(STORAGE_KEYS.APPLICATIONS),
   ])
 
-  for (const tag of tags) await tagRepository.create(tag)
-  for (const checklist of checklists) await checklistRepository.save(checklist)
-  for (const application of applications) await applicationRepository.save(application)
+  await Promise.all(tags.map((tag) => tagRepository.create(tag)))
+  await Promise.all(
+    checklists.map((checklist) => checklistRepository.save(checklist)),
+  )
+  await Promise.all(
+    applications.map((application) => applicationRepository.save(application)),
+  )
 
   await AsyncStorage.setItem(STORAGE_KEYS.CONVEX_MIGRATED, '1')
 }

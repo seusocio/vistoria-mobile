@@ -1,18 +1,43 @@
+import { Platform } from 'react-native'
 import { Application, Checklist } from '@/infra/domain/entities'
 
+let transcriberLoad: Promise<boolean> | null = null
+
 /**
- * Mock implementation of the recording/transcription/suggestion pipeline.
- * There is no real speech backend yet (frontend-only phase) - swap these
- * functions for real API calls once one exists, keeping the same shape so
- * ApplicationFill doesn't need to change.
+ * Loads the on-device WhisperKit model once. iOS-only; resolves false elsewhere.
+ * whisper-kit-expo is imported dynamically so the native module is never
+ * touched on Android/web, where it does not exist. A failed load (e.g. the
+ * model could not be downloaded) is NOT cached, so a later call retries.
  */
+export async function prepareTranscriber(): Promise<boolean> {
+  if (Platform.OS !== 'ios') return false
+  if (transcriberLoad) return transcriberLoad
+  // Platform-specific: whisper-kit-expo has no Android/web native module and
+  // throws at eval time, so a static import cannot work off iOS.
+  const { loadTranscriber } = await import('whisper-kit-expo')
+  const load = loadTranscriber()
+  transcriberLoad = load
+  const ready = await load
+  // Do not cache a failed load: the native side leaves the pipe uninitialized,
+  // and calling transcribe() then hangs forever waiting for it.
+  if (!ready) transcriberLoad = null
+  return ready
+}
 
-const CANNED_TRANSCRIPT =
-  'Vistoria realizada com o cliente presente. A pintura da sala está bem conservada e a esquadria do quarto precisa de ajuste. A fechadura da porta principal está funcionando normalmente.'
-
-export async function simulateStopRecording(): Promise<string> {
-  await new Promise((resolve) => setTimeout(resolve, 1400))
-  return CANNED_TRANSCRIPT
+/** Transcribes a recorded audio file (wav/mp3/m4a/flac) on-device. iOS-only. */
+export async function transcribeAudio(uri: string): Promise<string> {
+  if (Platform.OS !== 'ios') {
+    throw new Error('A transcrição por voz está disponível apenas no iOS.')
+  }
+  const ready = await prepareTranscriber()
+  if (!ready) {
+    throw new Error(
+      'Não foi possível carregar o modelo de transcrição. Verifique a conexão e tente novamente.',
+    )
+  }
+  // Platform-specific: iOS-only native module; static import breaks Android/web.
+  const { transcribe } = await import('whisper-kit-expo')
+  return transcribe(uri)
 }
 
 export interface VoiceSuggestion {

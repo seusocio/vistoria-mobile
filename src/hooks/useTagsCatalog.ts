@@ -1,37 +1,26 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useQuery } from 'convex/react'
+import { useCallback, useMemo } from 'react'
 import { Tag } from '@/infra/domain/entities'
-import {
-  findOrCreateTagByLabel,
-  listActiveTags,
-  listAllTagsById,
-  resolveTagLabels,
-} from '@/infra/services'
+import { findOrCreateTagByLabel, resolveTagLabels } from '@/infra/services'
+import { api } from '../../convex/_generated/api'
+
+const EMPTY_TAGS: Tag[] = []
 
 export function useTagsCatalog() {
-  const [activeTags, setActiveTags] = useState<Tag[]>([])
-  const [tagsById, setTagsById] = useState<Map<string, Tag>>(new Map())
-  const [loading, setLoading] = useState(true)
+  const activeTagsData = useQuery(api.tags.list) as Tag[] | undefined
+  const allTagsData = useQuery(api.tags.listAll) as Tag[] | undefined
 
-  const refresh = useCallback(async () => {
-    const [active, byId] = await Promise.all([
-      listActiveTags(),
-      listAllTagsById(),
-    ])
-    setActiveTags(active)
-    setTagsById(byId)
-  }, [])
+  const activeTags = activeTagsData ?? EMPTY_TAGS
+  const tagsById = useMemo(
+    () => new Map((allTagsData ?? []).map((tag) => [tag.id, tag])),
+    [allTagsData],
+  )
+  const loading = activeTagsData === undefined || allTagsData === undefined
 
-  useEffect(() => {
-    refresh().finally(() => setLoading(false))
-  }, [refresh])
-
+  // Convex reactively refreshes the queries above once the mutation lands.
   const createTag = useCallback(
-    async (label: string) => {
-      const tag = await findOrCreateTagByLabel(label)
-      await refresh()
-      return tag
-    },
-    [refresh],
+    (label: string) => findOrCreateTagByLabel(label),
+    [],
   )
 
   const resolveLabels = useCallback(
@@ -39,5 +28,5 @@ export function useTagsCatalog() {
     [tagsById],
   )
 
-  return { activeTags, tagsById, loading, refresh, createTag, resolveLabels }
+  return { activeTags, tagsById, loading, createTag, resolveLabels }
 }

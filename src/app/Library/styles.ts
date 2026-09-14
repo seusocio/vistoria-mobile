@@ -2,6 +2,15 @@ import { StyleSheet } from 'react-native'
 import { colors, textStyles } from '@/styles'
 
 export const styles = StyleSheet.create({
+  listContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 32,
+    gap: 10,
+  },
+  listHeader: {
+    gap: 20,
+  },
   metricsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -20,6 +29,9 @@ export const styles = StyleSheet.create({
   ctaButtonText: {
     ...textStyles.buttonLabel,
     color: colors.white,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   filterRow: {
     flexDirection: 'row',
@@ -49,9 +61,6 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     ...textStyles.sectionTitle,
   },
-  list: {
-    gap: 10,
-  },
   emptyState: {
     backgroundColor: colors.white,
     borderRadius: 16,
@@ -63,5 +72,16 @@ export const styles = StyleSheet.create({
   emptyText: {
     ...textStyles.body,
     textAlign: 'center',
+  },
+  clearFiltersButton: {
+    alignSelf: 'center',
+    marginTop: 16,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  clearFiltersText: {
+    ...textStyles.bodyStrong,
+    color: colors.blue.base,
   },
 })

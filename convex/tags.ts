@@ -1,11 +1,13 @@
-import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import { mutation, query } from './_generated/server'
 
 export const list = query({
   args: {},
-  handler: async (ctx) => {
-    return (await ctx.db.query('tags').collect()).filter((tag) => !tag.deletedAt)
-  },
+  handler: async (ctx) =>
+    ctx.db
+      .query('tags')
+      .filter((q) => q.eq(q.field('deletedAt'), null))
+      .collect(),
 })
 
 export const listAll = query({
@@ -16,7 +18,10 @@ export const listAll = query({
 export const findById = query({
   args: { id: v.string() },
   handler: async (ctx, { id }) =>
-    (await ctx.db.query('tags').withIndex('by_external_id', (q) => q.eq('id', id)).first()) ?? null,
+    (await ctx.db
+      .query('tags')
+      .withIndex('by_external_id', (q) => q.eq('id', id))
+      .first()) ?? null,
 })
 
 export const findByNormalizedLabel = query({
@@ -24,7 +29,9 @@ export const findByNormalizedLabel = query({
   handler: async (ctx, { normalizedLabel }) => {
     const tag = await ctx.db
       .query('tags')
-      .withIndex('by_normalized_label', (q) => q.eq('normalizedLabel', normalizedLabel))
+      .withIndex('by_normalized_label', (q) =>
+        q.eq('normalizedLabel', normalizedLabel),
+      )
       .first()
     return tag && !tag.deletedAt ? tag : null
   },
@@ -41,7 +48,9 @@ export const create = mutation({
 
     const existingByLabel = await ctx.db
       .query('tags')
-      .withIndex('by_normalized_label', (q) => q.eq('normalizedLabel', entity.normalizedLabel))
+      .withIndex('by_normalized_label', (q) =>
+        q.eq('normalizedLabel', entity.normalizedLabel),
+      )
       .first()
     if (existingByLabel && !existingByLabel.deletedAt) return existingByLabel
 
@@ -53,7 +62,10 @@ export const create = mutation({
 export const softDelete = mutation({
   args: { id: v.string(), deletedAt: v.string() },
   handler: async (ctx, { id, deletedAt }) => {
-    const tag = await ctx.db.query('tags').withIndex('by_external_id', (q) => q.eq('id', id)).first()
+    const tag = await ctx.db
+      .query('tags')
+      .withIndex('by_external_id', (q) => q.eq('id', id))
+      .first()
     if (tag) await ctx.db.patch(tag._id, { deletedAt })
   },
 })

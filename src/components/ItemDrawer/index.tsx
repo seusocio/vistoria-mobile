@@ -1,13 +1,13 @@
 import {
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
+  BottomSheetFooter,
+  type BottomSheetFooterProps,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+} from '@gorhom/bottom-sheet'
+import { Pressable, Text, View } from 'react-native'
 import { Attachment, Tag } from '@/infra/domain/entities'
 import { colors } from '@/styles'
+import { AppBottomSheet } from '../AppBottomSheet'
 import { Icon } from '../Icon'
 import { AddPhotoButton, PhotoThumb } from '../PhotoThumb'
 import { Stepper } from '../Stepper'
@@ -30,12 +30,13 @@ export interface ItemDrawerProps {
   quantity: number | null
   onQuantityChange: (quantity: number | null) => void
   attachments: Attachment[]
+  pendingPhotos?: { id: string; uri: string; progress: number }[]
   onAddPhoto: () => void
   onRemoveAttachment: (attachmentId: string) => void
   onSave: () => void
 }
 
-/** Component/ItemDrawer, shown as an overlay (Screen/PreenchimentoComDrawer) */
+/** Component/ItemDrawer, shown as a gorhom bottom sheet (Screen/PreenchimentoComDrawer) */
 export function ItemDrawer({
   visible,
   onClose,
@@ -52,6 +53,7 @@ export function ItemDrawer({
   quantity,
   onQuantityChange,
   attachments,
+  pendingPhotos = [],
   onAddPhoto,
   onRemoveAttachment,
   onSave,
@@ -60,123 +62,126 @@ export function ItemDrawer({
     (attachment) => !attachment.deletedAt,
   )
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <View style={styles.backdrop}>
-        <Pressable style={styles.backdropTouchable} onPress={onClose} />
-        <View style={styles.sheet}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.content}
-          >
-            <View style={styles.handleRow}>
-              <View style={styles.handle} />
-            </View>
+  function renderFooter(props: BottomSheetFooterProps) {
+    return (
+      <BottomSheetFooter {...props} style={styles.footer}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.saveButton,
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={onSave}
+        >
+          <Icon name="check" size={18} color={colors.white} />
+          <Text style={styles.saveButtonText}>Salvar e fechar</Text>
+        </Pressable>
+      </BottomSheetFooter>
+    )
+  }
 
-            <View style={styles.header}>
-              <View style={styles.titleCol}>
-                <Text style={styles.eyebrow}>
-                  Item {itemIndex} de {itemsTotal}
-                </Text>
-                <Text style={styles.title}>{title}</Text>
-              </View>
+  return (
+    <AppBottomSheet
+      visible={visible}
+      onClose={onClose}
+      snapPoints={['59%']}
+      footerComponent={renderFooter}
+    >
+      <BottomSheetScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
+        <View style={styles.header}>
+          <View style={styles.titleCol}>
+            <Text style={styles.eyebrow}>
+              Item {itemIndex} de {itemsTotal}
+            </Text>
+            <Text style={styles.title}>{title}</Text>
+          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.closeButton,
+              pressed && { opacity: 0.7 },
+            ]}
+            onPress={onClose}
+            accessibilityLabel="Fechar"
+          >
+            <Icon name="multiply" size={16} color={colors.ink.base} />
+          </Pressable>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Tags do item</Text>
+          <TagMultiSelect
+            selectedIds={tagsIds}
+            availableTags={availableTags}
+            allTagsById={allTagsById}
+            onChange={onChangeTags}
+            onCreateTag={onCreateTag}
+            variant="muted"
+          />
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Observação (opcional)</Text>
+          <BottomSheetTextInput
+            value={note}
+            onChangeText={onNoteChange}
+            placeholder="Adicionar observação..."
+            placeholderTextColor={colors.gray[400]}
+            style={styles.noteBox}
+            multiline
+          />
+        </View>
+
+        <View style={styles.qtyRow}>
+          <Text style={styles.qtyLabel}>Quantidade</Text>
+          {quantity === null ? (
+            <Pressable
+              style={({ pressed }) => pressed && { opacity: 0.7 }}
+              onPress={() => onQuantityChange(0)}
+            >
+              <Text style={styles.addQuantity}>+ Adicionar</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.qtyStepperRow}>
+              <Stepper value={quantity} onChange={onQuantityChange} />
               <Pressable
-                style={({ pressed }) => [
-                  styles.closeButton,
-                  pressed && { opacity: 0.7 },
-                ]}
-                onPress={onClose}
-                accessibilityLabel="Fechar"
+                style={({ pressed }) => pressed && { opacity: 0.7 }}
+                onPress={() => onQuantityChange(null)}
               >
-                <Icon name="multiply" size={16} color={colors.ink.base} />
+                <Icon name="trash-2" size={16} color={colors.gray[400]} />
               </Pressable>
             </View>
+          )}
+        </View>
 
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Tags do item</Text>
-              <TagMultiSelect
-                selectedIds={tagsIds}
-                availableTags={availableTags}
-                allTagsById={allTagsById}
-                onChange={onChangeTags}
-                onCreateTag={onCreateTag}
-                variant="muted"
+        <View style={styles.field}>
+          <View style={styles.photosHeader}>
+            <Text style={styles.qtyLabel}>Fotos</Text>
+            <Text style={styles.photosCount}>
+              {activeAttachments.length} anexadas
+            </Text>
+          </View>
+          <View style={styles.photosRow}>
+            {activeAttachments.map((attachment) => (
+              <PhotoThumb
+                key={attachment.id}
+                uri={attachment.url}
+                onRemove={() => onRemoveAttachment(attachment.id)}
               />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Observação (opcional)</Text>
-              <TextInput
-                value={note}
-                onChangeText={onNoteChange}
-                placeholder="Adicionar observação..."
-                placeholderTextColor={colors.gray[400]}
-                style={styles.noteBox}
-                multiline
+            ))}
+            {pendingPhotos.map((pending) => (
+              <PhotoThumb
+                key={pending.id}
+                uri={pending.uri}
+                uploading
+                progress={pending.progress}
               />
-            </View>
-
-            <View style={styles.qtyRow}>
-              <Text style={styles.qtyLabel}>Quantidade</Text>
-              {quantity === null ? (
-                <Pressable
-                  style={({ pressed }) => pressed && { opacity: 0.7 }}
-                  onPress={() => onQuantityChange(0)}
-                >
-                  <Text style={styles.addQuantity}>+ Adicionar</Text>
-                </Pressable>
-              ) : (
-                <View style={styles.qtyStepperRow}>
-                  <Stepper value={quantity} onChange={onQuantityChange} />
-                  <Pressable
-                    style={({ pressed }) => pressed && { opacity: 0.7 }}
-                    onPress={() => onQuantityChange(null)}
-                  >
-                    <Icon name="trash-2" size={16} color={colors.gray[400]} />
-                  </Pressable>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.field}>
-              <View style={styles.photosHeader}>
-                <Text style={styles.qtyLabel}>Fotos</Text>
-                <Text style={styles.photosCount}>
-                  {activeAttachments.length} anexadas
-                </Text>
-              </View>
-              <View style={styles.photosRow}>
-                {activeAttachments.map((attachment) => (
-                  <PhotoThumb
-                    key={attachment.id}
-                    uri={attachment.url}
-                    onRemove={() => onRemoveAttachment(attachment.id)}
-                  />
-                ))}
-                <AddPhotoButton onPress={onAddPhoto} />
-              </View>
-            </View>
-          </ScrollView>
-
-          <View style={styles.footer}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.saveButton,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={onSave}
-            >
-              <Icon name="check" size={18} color={colors.white} />
-              <Text style={styles.saveButtonText}>Salvar e fechar</Text>
-            </Pressable>
+            ))}
+            <AddPhotoButton onPress={onAddPhoto} />
           </View>
         </View>
-      </View>
-    </Modal>
+      </BottomSheetScrollView>
+    </AppBottomSheet>
   )
 }

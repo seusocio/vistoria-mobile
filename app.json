@@ -8,7 +8,10 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.arthurrios.orcamento-de-servicos"
+      "bundleIdentifier": "com.arthurrios.orcamento-de-servicos",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -38,7 +41,21 @@
           "resizeMode": "contain"
         }
       ],
-      "expo-status-bar"
-    ]
+      "expo-status-bar",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Permita o acesso ao microfone para gravar e transcrever a vistoria por voz."
+        }
+      ],
+      "./plugins/withWhisperKit"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9ba06b21-f94d-4edd-9da1-f8ca1c6d2b17"
+      }
+    },
+    "owner": "alyson.vilela"
   }
 }

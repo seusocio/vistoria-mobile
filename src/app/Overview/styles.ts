@@ -36,21 +36,13 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  dateStepper: {
+  dateField: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.gray[100],
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    borderRadius: 12,
-    borderCurve: 'continuous',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    gap: 6,
   },
-  dateStepperValue: {
-    ...textStyles.inputValue,
+  dateFieldLabel: {
+    ...textStyles.metaLabel,
+    color: colors.gray[600],
   },
   statsRow: {
     flexDirection: 'row',

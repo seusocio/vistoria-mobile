@@ -1,25 +1,37 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useQuery } from 'convex/react'
+import { useEffect, useRef, useState } from 'react'
+import { normalizeApplication } from '@/infra/convex'
 import { Application, Checklist } from '@/infra/domain/entities'
-import { getApplication, getChecklist } from '@/infra/services'
+import { api } from '../../convex/_generated/api'
 
 export function useApplicationFill(checklistId: string, applicationId: string) {
-  const [checklist, setChecklist] = useState<Checklist | null>(null)
-  const [application, setApplication] = useState<Application | null>(null)
-  const [loading, setLoading] = useState(true)
+  const checklistData = useQuery(api.checklists.findById, {
+    id: checklistId,
+  }) as Checklist | null | undefined
+  const applicationData = useQuery(api.applications.findById, {
+    id: applicationId,
+  }) as Application | null | undefined
 
-  const load = useCallback(async () => {
-    const [checklistData, applicationData] = await Promise.all([
-      getChecklist(checklistId),
-      getApplication(applicationId),
-    ])
-    setChecklist(checklistData)
-    setApplication(applicationData)
-  }, [checklistId, applicationId])
+  // Local editing buffer: screen mutates the application and persists it.
+  // Seed once from the reactive query so live re-emits never clobber edits.
+  const [application, setApplication] = useState<Application | null>(null)
+  const seededId = useRef<string | null>(null)
 
   useEffect(() => {
-    setLoading(true)
-    load().finally(() => setLoading(false))
-  }, [load])
+    if (seededId.current === applicationId || applicationData === undefined) {
+      return
+    }
+    seededId.current = applicationId
+    setApplication(
+      applicationData ? normalizeApplication(applicationData) : null,
+    )
+  }, [applicationId, applicationData])
 
-  return { checklist, application, setApplication, loading, reload: load }
+  const checklist = checklistData ?? null
+  const loading =
+    checklistData === undefined ||
+    applicationData === undefined ||
+    seededId.current !== applicationId
+
+  return { checklist, application, setApplication, loading }
 }

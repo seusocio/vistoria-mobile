@@ -13,17 +13,23 @@ export class ConvexTagRepository implements TagRepository {
   }
 
   async findById(id: string): Promise<Tag | null> {
-    return castConvex<Tag | null>(await convexClient.query(api.tags.findById, { id }))
+    return castConvex<Tag | null>(
+      await convexClient.query(api.tags.findById, { id }),
+    )
   }
 
   async findByNormalizedLabel(normalizedLabel: string): Promise<Tag | null> {
     return castConvex<Tag | null>(
-      await convexClient.query(api.tags.findByNormalizedLabel, { normalizedLabel }),
+      await convexClient.query(api.tags.findByNormalizedLabel, {
+        normalizedLabel,
+      }),
     )
   }
 
   async create(tag: Tag): Promise<Tag> {
-    const created = await convexClient.mutation(api.tags.create, { entity: tag })
+    const created = await convexClient.mutation(api.tags.create, {
+      entity: tag,
+    })
     return castConvex<Tag>(created)
   }
 

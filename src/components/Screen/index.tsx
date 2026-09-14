@@ -1,18 +1,57 @@
+import { MotiView } from 'moti'
 import { ReactNode } from 'react'
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
+  StyleProp,
   Text,
   View,
+  ViewStyle,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '@/styles'
 import { Icon } from '../Icon'
 import { styles } from './styles'
 
+function SkeletonBlock({ style }: { style?: StyleProp<ViewStyle> }) {
+  return (
+    <MotiView
+      accessibilityElementsHidden
+      from={{ opacity: 0.45 }}
+      animate={{ opacity: 0.9 }}
+      transition={{ type: 'timing', duration: 700, loop: true }}
+      style={[styles.skeletonBlock, style]}
+    />
+  )
+}
+
+function ScreenSkeleton() {
+  return (
+    <View style={styles.loading} accessibilityLabel="Carregando">
+      <View style={styles.skeletonIntro}>
+        <SkeletonBlock style={styles.skeletonTitle} />
+        <SkeletonBlock style={styles.skeletonSubtitle} />
+      </View>
+      <SkeletonBlock style={styles.skeletonFeature} />
+      <View style={styles.skeletonList}>
+        {[0, 1, 2, 3, 4].map((item) => (
+          <View key={item} style={styles.skeletonCard}>
+            <SkeletonBlock style={styles.skeletonIcon} />
+            <View style={styles.skeletonCardBody}>
+              <SkeletonBlock style={styles.skeletonCardTitle} />
+              <SkeletonBlock style={styles.skeletonCardSubtitle} />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  )
+}
+
 export interface ScreenProps {
-  children: ReactNode
+  children?: ReactNode
+  /** Optional virtualized content that replaces the default ScrollView. */
+  content?: ReactNode
   loading?: boolean
   /** top = Screen/Biblioteca & Screen/Overview big title; nested = back button + small nav title */
   variant?: 'top' | 'nested'
@@ -28,6 +67,7 @@ export interface ScreenProps {
 
 export function Screen({
   children,
+  content,
   loading = false,
   variant = 'top',
   title,
@@ -83,14 +123,16 @@ export function Screen({
         {headerExtra}
 
         {loading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator size="large" color={colors.blue.base} />
-          </View>
+          <ScreenSkeleton />
+        ) : content ? (
+          content
         ) : (
           <ScrollView
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            contentInsetAdjustmentBehavior="automatic"
+            automaticallyAdjustKeyboardInsets
           >
             {children}
           </ScrollView>

@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "mobile-development": {
+      "source": "samhvw8/dot-claude",
+      "sourceType": "github",
+      "skillPath": "skills/mobile-development/SKILL.md",
+      "computedHash": "e5310a0678b6dd0f3df0e7dad41f7b9ef71420fee8eee2c6ea095010216a1d25"
+    },
     "react-native-patterns": {
       "source": "affaan-m/ecc",
       "sourceType": "github",

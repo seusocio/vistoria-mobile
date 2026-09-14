@@ -1,28 +1,23 @@
-import { useFocusEffect } from '@react-navigation/native'
-import { useCallback, useState } from 'react'
+import { useQuery } from 'convex/react'
+import { useMemo } from 'react'
+import { normalizeApplication } from '@/infra/convex'
 import { Application, Checklist } from '@/infra/domain/entities'
-import { getChecklist, listApplicationsByChecklist } from '@/infra/services'
+import { api } from '../../convex/_generated/api'
 
 export function useChecklistDetail(checklistId: string) {
-  const [checklist, setChecklist] = useState<Checklist | null>(null)
-  const [applications, setApplications] = useState<Application[]>([])
-  const [loading, setLoading] = useState(true)
+  const checklistData = useQuery(api.checklists.findById, {
+    id: checklistId,
+  }) as Checklist | null | undefined
+  const applicationsData = useQuery(api.applications.listByChecklistId, {
+    checklistId,
+  }) as Application[] | undefined
 
-  const load = useCallback(async () => {
-    const [checklistData, applicationsData] = await Promise.all([
-      getChecklist(checklistId),
-      listApplicationsByChecklist(checklistId),
-    ])
-    setChecklist(checklistData)
-    setApplications(applicationsData)
-  }, [checklistId])
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true)
-      load().finally(() => setLoading(false))
-    }, [load]),
+  const checklist = checklistData ?? null
+  const applications = useMemo(
+    () => (applicationsData ?? []).map(normalizeApplication),
+    [applicationsData],
   )
+  const loading = checklistData === undefined || applicationsData === undefined
 
-  return { checklist, applications, loading, reload: load }
+  return { checklist, applications, loading }
 }

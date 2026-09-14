@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, Text, View } from 'react-native'
+import { useCallback, useMemo, useState } from 'react'
+import { FlatList, Pressable, ScrollView, Text, View } from 'react-native'
 import { ChecklistCard, Metric, Screen, SearchBar, TagChip } from '@/components'
 import { Icon } from '@/components/Icon'
 import { useChecklistLibrary } from '@/hooks/useChecklistLibrary'
@@ -20,6 +20,12 @@ export function Library({ navigation }: TabRoutesProps<'home'>) {
 
   const [search, setSearch] = useState('')
   const [activeTagId, setActiveTagId] = useState<string | null>(null)
+  const hasFilters = search.trim().length > 0 || activeTagId !== null
+
+  const clearFilters = useCallback(() => {
+    setSearch('')
+    setActiveTagId(null)
+  }, [])
 
   const filterTags = useMemo(() => {
     const ids = new Set<string>()
@@ -45,105 +51,169 @@ export function Library({ navigation }: TabRoutesProps<'home'>) {
     })
   }, [checklists, search, activeTagId, resolveLabels])
 
+  const applicationStatsByChecklist = useMemo(() => {
+    const stats = new Map<string, { applications: number; completed: number }>()
+    for (const application of applications) {
+      const current = stats.get(application.checklistId) ?? {
+        applications: 0,
+        completed: 0,
+      }
+      current.applications += 1
+      if (application.status === 'completed') current.completed += 1
+      stats.set(application.checklistId, current)
+    }
+    return stats
+  }, [applications])
+
+  const renderChecklist = useCallback(
+    ({ item }: { item: (typeof checklists)[number] }) => {
+      const stats = applicationStatsByChecklist.get(item.id) ?? {
+        applications: 0,
+        completed: 0,
+      }
+      return (
+        <ChecklistCard
+          title={item.title}
+          itemsCount={item.items.length}
+          tagLabels={resolveLabels(item.tagsIds)}
+          applicationsCount={stats.applications}
+          completedCount={stats.completed}
+          onPress={() =>
+            navigation.navigate('checklistDetail', { checklistId: item.id })
+          }
+        />
+      )
+    },
+    [applicationStatsByChecklist, navigation, resolveLabels],
+  )
+
+  const listHeader = useMemo(
+    () => (
+      <View style={styles.listHeader}>
+        <View style={styles.metricsRow}>
+          <Metric label="Modelos" value={String(checklists.length)} />
+          <Metric label="Aplicações" value={String(applicationsCount)} />
+          <Metric label="Concluídas" value={String(completedCount)} />
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [styles.ctaButton, pressed && styles.pressed]}
+          onPress={() => navigation.navigate('checklistNew')}
+          accessibilityRole="button"
+          accessibilityLabel="Criar novo checklist"
+        >
+          <Icon name="play" size={18} color={colors.white} />
+          <Text style={styles.ctaButtonText}>Criar novo checklist</Text>
+        </Pressable>
+
+        <SearchBar value={search} onChangeText={setSearch} />
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
+          <Pressable
+            style={({ pressed }) => pressed && styles.pressed}
+            onPress={() => setActiveTagId(null)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: activeTagId === null }}
+          >
+            <View
+              style={[
+                styles.allChip,
+                activeTagId === null && styles.allChipActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.allChipText,
+                  activeTagId === null && styles.allChipTextActive,
+                ]}
+              >
+                Todos
+              </Text>
+            </View>
+          </Pressable>
+          {filterTags.map((tag) => (
+            <Pressable
+              key={tag.id}
+              style={({ pressed }) => pressed && styles.pressed}
+              onPress={() => setActiveTagId(tag.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Filtrar por ${tag.label}`}
+              accessibilityState={{ selected: activeTagId === tag.id }}
+            >
+              <TagChip
+                label={tag.label}
+                tone={activeTagId === tag.id ? 'primary' : 'neutral'}
+              />
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        <Text style={styles.sectionTitle}>Modelos</Text>
+      </View>
+    ),
+    [
+      activeTagId,
+      applicationsCount,
+      checklists.length,
+      completedCount,
+      filterTags,
+      navigation,
+      search,
+    ],
+  )
+
+  const listEmpty = useMemo(
+    () => (
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyText}>
+          {checklists.length === 0
+            ? 'Nenhum checklist ainda. Crie o primeiro para começar.'
+            : 'Nenhum checklist encontrado para estes filtros.'}
+        </Text>
+        {hasFilters ? (
+          <Pressable
+            onPress={clearFilters}
+            style={({ pressed }) => [
+              styles.clearFiltersButton,
+              pressed && styles.pressed,
+            ]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.clearFiltersText}>Limpar filtros</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    ),
+    [checklists.length, clearFilters, hasFilters],
+  )
+
   return (
     <Screen
       loading={loading}
       variant="top"
       title="Checklists"
       subtitle="Biblioteca de modelos de vistoria"
-    >
-      <View style={styles.metricsRow}>
-        <Metric label="Modelos" value={String(checklists.length)} />
-        <Metric label="Aplicações" value={String(applicationsCount)} />
-        <Metric label="Concluídas" value={String(completedCount)} />
-      </View>
-
-      <Pressable
-        style={({ pressed }) => [styles.ctaButton, pressed && { opacity: 0.7 }]}
-        onPress={() => navigation.navigate('checklistNew')}
-      >
-        <Icon name="play" size={18} color={colors.white} />
-        <Text style={styles.ctaButtonText}>Continuar ou iniciar vistoria</Text>
-      </Pressable>
-
-      <SearchBar value={search} onChangeText={setSearch} />
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
-        <Pressable
-          style={({ pressed }) => pressed && { opacity: 0.7 }}
-          onPress={() => setActiveTagId(null)}
-        >
-          <View
-            style={[
-              styles.allChip,
-              activeTagId === null && styles.allChipActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.allChipText,
-                activeTagId === null && styles.allChipTextActive,
-              ]}
-            >
-              Todos
-            </Text>
-          </View>
-        </Pressable>
-        {filterTags.map((tag) => (
-          <Pressable
-            key={tag.id}
-            style={({ pressed }) => pressed && { opacity: 0.7 }}
-            onPress={() => setActiveTagId(tag.id)}
-          >
-            <TagChip
-              label={tag.label}
-              tone={activeTagId === tag.id ? 'primary' : 'neutral'}
-            />
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      <Text style={styles.sectionTitle}>Modelos</Text>
-
-      {filteredChecklists.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>
-            {checklists.length === 0
-              ? 'Nenhum checklist ainda. Crie o primeiro para começar.'
-              : 'Nenhum checklist encontrado para esta busca.'}
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.list}>
-          {filteredChecklists.map((checklist) => {
-            const checklistApplications = applications.filter(
-              (application) => application.checklistId === checklist.id,
-            )
-            return (
-              <ChecklistCard
-                key={checklist.id}
-                title={checklist.title}
-                itemsCount={checklist.items.length}
-                tagLabels={resolveLabels(checklist.tagsIds)}
-                applicationsCount={checklistApplications.length}
-                completedCount={
-                  checklistApplications.filter((a) => a.status === 'completed')
-                    .length
-                }
-                onPress={() =>
-                  navigation.navigate('checklistDetail', {
-                    checklistId: checklist.id,
-                  })
-                }
-              />
-            )
-          })}
-        </View>
-      )}
-    </Screen>
+      content={
+        <FlatList
+          data={filteredChecklists}
+          renderItem={renderChecklist}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={listEmpty}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentInsetAdjustmentBehavior="automatic"
+        />
+      }
+    />
   )
 }

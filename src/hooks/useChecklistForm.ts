@@ -26,13 +26,10 @@ function itemFromChecklist(item: ChecklistItem): ChecklistFormItemState {
   }
 }
 
-function emptyItem(): ChecklistFormItemState {
-  return {
-    key: generateId('formitem_'),
-    title: '',
-    description: '',
-    tagsIds: [],
-  }
+export interface ChecklistItemValues {
+  title: string
+  description: string
+  tagsIds: string[]
 }
 
 export interface ApplyTemplateInput {
@@ -49,9 +46,7 @@ export function useChecklistForm(initial?: Checklist) {
     initial?.options ?? DEFAULT_RESPONSE_OPTIONS,
   )
   const [items, setItems] = useState<ChecklistFormItemState[]>(
-    initial && initial.items.length > 0
-      ? initial.items.map(itemFromChecklist)
-      : [emptyItem()],
+    initial ? initial.items.map(itemFromChecklist) : [],
   )
 
   function addOption() {
@@ -71,8 +66,10 @@ export function useChecklistForm(initial?: Checklist) {
     setOptions((prev) => prev.filter((_, i) => i !== index))
   }
 
-  function addItem() {
-    setItems((prev) => [...prev, emptyItem()])
+  function addItem(values: ChecklistItemValues) {
+    const key = generateId('formitem_')
+    setItems((prev) => [...prev, { key, ...values }])
+    return key
   }
   function updateItem(key: string, patch: Partial<ChecklistFormItemState>) {
     setItems((prev) =>
@@ -80,9 +77,7 @@ export function useChecklistForm(initial?: Checklist) {
     )
   }
   function removeItem(key: string) {
-    setItems((prev) =>
-      prev.length > 1 ? prev.filter((item) => item.key !== key) : prev,
-    )
+    setItems((prev) => prev.filter((item) => item.key !== key))
   }
 
   function applyTemplate(template: ApplyTemplateInput) {

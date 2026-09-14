@@ -44,7 +44,7 @@ export function ModalComponent({
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.container}
         >
-          {(title || showCloseButton) && (
+          {(title !== undefined || showCloseButton) && (
             <View style={styles.header}>
               {title ? <Text style={styles.headerTitle}>{title}</Text> : null}
               {showCloseButton && (

@@ -20,4 +20,12 @@ export const styles = StyleSheet.create({
     color: colors.ink.base,
     padding: 0,
   },
+  clearButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: -12,
+    marginRight: -10,
+  },
 })

@@ -1,18 +1,26 @@
 import { Image } from 'expo-image'
 import { useState } from 'react'
-import { Pressable, View } from 'react-native'
+import { ActivityIndicator, Pressable, View } from 'react-native'
 import { colors } from '@/styles'
 import { ConfirmBottomSheet } from '../ConfirmBottomSheet'
 import { Icon } from '../Icon'
+import { ProgressBar } from '../ProgressBar'
 import { styles } from './styles'
 
 export interface PhotoThumbProps {
   uri?: string
   onRemove?: () => void
+  uploading?: boolean
+  progress?: number
 }
 
 /** Component/PhotoThumb */
-export function PhotoThumb({ uri, onRemove }: PhotoThumbProps) {
+export function PhotoThumb({
+  uri,
+  onRemove,
+  uploading = false,
+  progress = 0,
+}: PhotoThumbProps) {
   const [confirming, setConfirming] = useState(false)
 
   return (
@@ -27,7 +35,15 @@ export function PhotoThumb({ uri, onRemove }: PhotoThumbProps) {
       ) : (
         <Icon name="camera" size={20} color={colors.gray[400]} />
       )}
-      {onRemove && (
+      {uploading && (
+        <View style={styles.uploadingOverlay}>
+          <ActivityIndicator size="small" color={colors.white} />
+          <View style={styles.uploadingProgress}>
+            <ProgressBar progress={progress} />
+          </View>
+        </View>
+      )}
+      {onRemove && !uploading && (
         <Pressable
           style={({ pressed }) => [
             styles.removeButton,

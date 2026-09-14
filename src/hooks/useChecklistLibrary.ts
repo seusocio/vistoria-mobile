@@ -1,28 +1,24 @@
-import { useFocusEffect } from '@react-navigation/native'
-import { useCallback, useState } from 'react'
+import { useQuery } from 'convex/react'
+import { normalizeApplication } from '@/infra/convex'
 import { Application, Checklist } from '@/infra/domain/entities'
-import { listAllApplications, listChecklists } from '@/infra/services'
+import { api } from '../../convex/_generated/api'
+
+const EMPTY_CHECKLISTS: Checklist[] = []
+const EMPTY_APPLICATIONS: Application[] = []
 
 export function useChecklistLibrary() {
-  const [checklists, setChecklists] = useState<Checklist[]>([])
-  const [applications, setApplications] = useState<Application[]>([])
-  const [loading, setLoading] = useState(true)
+  const checklistsData = useQuery(api.checklists.list) as
+    | Checklist[]
+    | undefined
+  const applicationsData = useQuery(api.applications.listAll) as
+    | Application[]
+    | undefined
 
-  const load = useCallback(async () => {
-    const [checklistsList, applicationsList] = await Promise.all([
-      listChecklists(),
-      listAllApplications(),
-    ])
-    setChecklists(checklistsList)
-    setApplications(applicationsList)
-  }, [])
-
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true)
-      load().finally(() => setLoading(false))
-    }, [load]),
+  const checklists = checklistsData ?? EMPTY_CHECKLISTS
+  const applications = (applicationsData ?? EMPTY_APPLICATIONS).map(
+    normalizeApplication,
   )
+  const loading = checklistsData === undefined || applicationsData === undefined
 
   return {
     checklists,
@@ -31,6 +27,5 @@ export function useChecklistLibrary() {
     applicationsCount: applications.length,
     completedCount: applications.filter((app) => app.status === 'completed')
       .length,
-    reload: load,
   }
 }

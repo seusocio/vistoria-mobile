@@ -1,6 +1,8 @@
-import { ReactNode } from 'react'
+import type { BottomSheetFooterProps } from '@gorhom/bottom-sheet'
+import { BottomSheetFooter, BottomSheetView } from '@gorhom/bottom-sheet'
+import type { ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { ModalComponent } from '../Modal'
+import { AppBottomSheet } from '../AppBottomSheet'
 import { styles } from './styles'
 
 export interface ConfirmBottomSheetProps {
@@ -24,13 +26,9 @@ export function ConfirmBottomSheet({
   onCancel,
   onConfirm,
 }: ConfirmBottomSheetProps) {
-  return (
-    <ModalComponent
-      visible={visible}
-      onClose={onCancel}
-      title={title}
-      showCloseButton={false}
-      footer={
+  function renderFooter(props: BottomSheetFooterProps) {
+    return (
+      <BottomSheetFooter {...props} style={styles.footer}>
         <View style={styles.actions}>
           <Pressable
             style={({ pressed }) => [
@@ -57,12 +55,27 @@ export function ConfirmBottomSheet({
             </Text>
           </Pressable>
         </View>
-      }
+      </BottomSheetFooter>
+    )
+  }
+
+  return (
+    <AppBottomSheet
+      visible={visible}
+      onClose={onCancel}
+      dismissible={!confirming}
+      snapPoints={['26%']}
+      footerComponent={renderFooter}
     >
-      <Text style={styles.message}>{message}</Text>
-      <View style={styles.warning}>
-        <Text style={styles.warningText}>Esta ação não pode ser desfeita.</Text>
-      </View>
-    </ModalComponent>
+      <BottomSheetView style={styles.content}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.message}>{message}</Text>
+        <View style={styles.warning}>
+          <Text style={styles.warningText}>
+            Esta ação não pode ser desfeita.
+          </Text>
+        </View>
+      </BottomSheetView>
+    </AppBottomSheet>
   )
 }

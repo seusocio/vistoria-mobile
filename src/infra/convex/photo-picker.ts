@@ -2,7 +2,9 @@ import * as ImagePicker from 'expo-image-picker'
 
 export type PhotoSource = 'camera' | 'library'
 
-export async function pickPhoto(source: PhotoSource): Promise<ImagePicker.ImagePickerAsset | null> {
+export type PickedPhoto = ImagePicker.ImagePickerAsset
+
+export async function pickPhotos(source: PhotoSource): Promise<PickedPhoto[]> {
   const result =
     source === 'camera'
       ? await ImagePicker.launchCameraAsync({
@@ -14,7 +16,9 @@ export async function pickPhoto(source: PhotoSource): Promise<ImagePicker.ImageP
           mediaTypes: ['images'],
           quality: 0.85,
           allowsEditing: false,
+          allowsMultipleSelection: true,
+          selectionLimit: 0,
         })
 
-  return result.canceled ? null : (result.assets[0] ?? null)
+  return result.canceled ? [] : result.assets
 }

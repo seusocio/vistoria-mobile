@@ -5,7 +5,9 @@ import { castConvex, convexClient } from './client'
 
 export class ConvexChecklistRepository implements ChecklistRepository {
   async list(): Promise<Checklist[]> {
-    return castConvex<Checklist[]>(await convexClient.query(api.checklists.list, {}))
+    return castConvex<Checklist[]>(
+      await convexClient.query(api.checklists.list, {}),
+    )
   }
 
   async findById(id: string): Promise<Checklist | null> {

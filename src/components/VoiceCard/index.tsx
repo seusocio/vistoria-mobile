@@ -1,3 +1,4 @@
+import { AnimatePresence, MotiView } from 'moti'
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { colors } from '@/styles'
@@ -9,8 +10,6 @@ export type VoiceState = 'idle' | 'recording' | 'processing' | 'ready'
 export interface VoiceCardProps {
   state: VoiceState
   transcript: string | null
-  expanded: boolean
-  onToggleExpanded: () => void
   onStart: () => void
   onStop: () => void
   onGenerateSuggestions: () => void
@@ -35,14 +34,13 @@ const SUB: Record<VoiceState, string> = {
 export function VoiceCard({
   state,
   transcript,
-  expanded,
-  onToggleExpanded,
   onStart,
   onStop,
   onGenerateSuggestions,
   generatingSuggestions = false,
 }: VoiceCardProps) {
-  if (!FEATURE_FLAG.suggestion) return null
+  if (!FEATURE_FLAG.voice) return null
+
   return (
     <View style={styles.container}>
       <View style={styles.top}>
@@ -97,55 +95,58 @@ export function VoiceCard({
 
       {state === 'ready' && (
         <>
-          <Text
-            style={styles.transcript}
-            numberOfLines={expanded ? undefined : 2}
+          <AnimatePresence>
+            <MotiView
+              key={transcript ?? 'transcript'}
+              from={{ opacity: 0, translateY: -8 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              exit={{ opacity: 0, translateY: -8 }}
+              transition={{ type: 'timing', duration: 180 }}
+            >
+              <Text style={styles.transcript}>"{transcript}"</Text>
+            </MotiView>
+          </AnimatePresence>
+          <Pressable
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && { opacity: 0.7 },
+            ]}
+            onPress={onStart}
+            accessibilityRole="button"
+            accessibilityLabel="Gravar novamente"
           >
-            "{transcript}"
-          </Text>
-          <View style={styles.actions}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.outlineButton,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={onToggleExpanded}
-              accessibilityRole="button"
-              accessibilityLabel={expanded ? 'Ver menos' : 'Ver mais'}
-            >
-              <Icon
-                name={expanded ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color={colors.ink.base}
-              />
-              <Text style={styles.outlineButtonText}>
-                {expanded ? 'Ver menos' : 'Ver mais'}
-              </Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={onGenerateSuggestions}
-              disabled={generatingSuggestions}
-              accessibilityRole="button"
-              accessibilityLabel="Gerar sugestões"
-              accessibilityState={{
-                disabled: generatingSuggestions,
-                busy: generatingSuggestions,
-              }}
-            >
-              {generatingSuggestions ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <>
-                  <Icon name="mic" size={15} color={colors.white} />
-                  <Text style={styles.primaryButtonText}>Gerar sugestões</Text>
-                </>
-              )}
-            </Pressable>
-          </View>
+            <Icon name="mic" size={16} color={colors.white} />
+            <Text style={styles.primaryButtonText}>Gravar novamente</Text>
+          </Pressable>
+          {FEATURE_FLAG.suggestion && (
+            <View style={styles.actions}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && { opacity: 0.7 },
+                ]}
+                onPress={onGenerateSuggestions}
+                disabled={generatingSuggestions}
+                accessibilityRole="button"
+                accessibilityLabel="Gerar sugestões"
+                accessibilityState={{
+                  disabled: generatingSuggestions,
+                  busy: generatingSuggestions,
+                }}
+              >
+                {generatingSuggestions ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <>
+                    <Icon name="mic" size={15} color={colors.white} />
+                    <Text style={styles.primaryButtonText}>
+                      Gerar sugestões
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          )}
         </>
       )}
     </View>

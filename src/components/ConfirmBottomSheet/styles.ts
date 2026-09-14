@@ -2,6 +2,21 @@ import { StyleSheet } from 'react-native'
 import { colors, textStyles } from '@/styles'
 
 export const styles = StyleSheet.create({
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 32,
+    gap: 16,
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    backgroundColor: colors.white,
+  },
+  title: {
+    ...textStyles.drawerTitle,
+  },
   actions: {
     flexDirection: 'row',
     gap: 10,

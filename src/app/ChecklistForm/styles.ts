@@ -99,7 +99,7 @@ export const styles = StyleSheet.create({
   itemsList: {
     gap: 8,
   },
-  itemRow: {
+  itemCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
@@ -118,24 +118,31 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.gray[100],
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 1,
   },
   itemNumText: {
     ...textStyles.badgeLabel,
     color: colors.gray[600],
   },
-  itemCol: {
+  itemCardBody: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
-  itemTitleInput: {
+  itemCardTitle: {
     ...textStyles.fieldLabel,
     fontSize: 13,
     color: colors.ink.base,
-    padding: 0,
   },
-  itemDescriptionInput: {
+  itemCardPlaceholder: {
+    color: colors.gray[400],
+  },
+  itemCardDescription: {
     ...textStyles.body,
-    padding: 0,
+  },
+  itemCardTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   addItemButton: {
     flexDirection: 'row',
@@ -157,5 +164,52 @@ export const styles = StyleSheet.create({
   error: {
     ...textStyles.body,
     color: colors.danger.base,
+  },
+
+  sheetContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+    gap: 16,
+  },
+  sheetTitle: {
+    ...textStyles.sectionTitle,
+  },
+  sheetField: {
+    gap: 8,
+  },
+  sheetInput: {
+    ...textStyles.inputValue,
+    backgroundColor: colors.gray[100],
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  sheetTextarea: {
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  sheetFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 18,
+    backgroundColor: colors.white,
+  },
+  sheetSaveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.blue.base,
+    borderRadius: 12,
+    borderCurve: 'continuous',
+    paddingVertical: 13,
+  },
+  sheetSaveButtonText: {
+    ...textStyles.buttonLabel,
+    color: colors.white,
   },
 })

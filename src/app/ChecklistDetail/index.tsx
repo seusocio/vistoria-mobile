@@ -1,11 +1,16 @@
+import {
+  BottomSheetFooter,
+  type BottomSheetFooterProps,
+  BottomSheetView,
+} from '@gorhom/bottom-sheet'
 import { useMemo, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import {
+  AppBottomSheet,
   ApplicationRow,
   ApplicationRowEntry,
   ConfirmBottomSheet,
   Metric,
-  ModalComponent,
   Screen,
   TagChip,
   TagMultiSelect,
@@ -31,8 +36,7 @@ export function ChecklistDetail({
   route,
 }: StackRoutesProps<'checklistDetail'>) {
   const { checklistId } = route.params
-  const { checklist, applications, loading, reload } =
-    useChecklistDetail(checklistId)
+  const { checklist, applications, loading } = useChecklistDetail(checklistId)
   const { resolveLabels, activeTags, tagsById, createTag } = useTagsCatalog()
 
   const groups = useMemo(
@@ -92,11 +96,29 @@ export function ChecklistDetail({
       for (const application of editingGroup.applications) {
         await updateApplicationTags(application, draftGroupTags)
       }
-      await reload()
       setEditingGroup(null)
     } finally {
       setSavingBatch(false)
     }
+  }
+  function renderBatchFooter(props: BottomSheetFooterProps) {
+    return (
+      <BottomSheetFooter {...props} style={styles.batchFooter}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.saveTagsButton,
+            pressed && { opacity: 0.7 },
+            savingBatch && { opacity: 0.55 },
+          ]}
+          onPress={handleSaveBatchEdit}
+          disabled={savingBatch}
+        >
+          <Text style={styles.saveTagsButtonText}>
+            {savingBatch ? 'Salvando...' : 'Aplicar às aplicações'}
+          </Text>
+        </Pressable>
+      </BottomSheetFooter>
+    )
   }
 
   async function handleRepeat(groupApplications: typeof applications) {
@@ -240,41 +262,29 @@ export function ChecklistDetail({
           )}
         </>
       )}
-      <ModalComponent
+      <AppBottomSheet
         visible={Boolean(editingGroup)}
         onClose={() => setEditingGroup(null)}
-        title="Editar tags das aplicações"
-        footer={
-          <Pressable
-            style={({ pressed }) => [
-              styles.saveTagsButton,
-              pressed && { opacity: 0.7 },
-              savingBatch && { opacity: 0.55 },
-            ]}
-            onPress={handleSaveBatchEdit}
-            disabled={savingBatch}
-          >
-            <Text style={styles.saveTagsButtonText}>
-              {savingBatch ? 'Salvando...' : 'Aplicar às aplicações'}
-            </Text>
-          </Pressable>
-        }
+        snapPoints={['95%']}
+        footerComponent={renderBatchFooter}
       >
-        <Text style={styles.batchHelpText}>
-          As tags selecionadas serão aplicadas a todas as aplicações deste
-          grupo.
-        </Text>
-        <TagMultiSelect
-          selectedIds={draftGroupTags}
-          availableTags={activeTags}
-          allTagsById={tagsById}
-          onChange={setDraftGroupTags}
-          onCreateTag={createTag}
-        />
-        {batchError ? (
-          <Text style={styles.batchError}>{batchError}</Text>
-        ) : null}
-      </ModalComponent>
+        <BottomSheetView style={styles.batchContent}>
+          <Text style={styles.batchHelpText}>
+            As tags selecionadas serão aplicadas a todas as aplicações deste
+            grupo.
+          </Text>
+          <TagMultiSelect
+            selectedIds={draftGroupTags}
+            availableTags={activeTags}
+            allTagsById={tagsById}
+            onChange={setDraftGroupTags}
+            onCreateTag={createTag}
+          />
+          {batchError ? (
+            <Text style={styles.batchError}>{batchError}</Text>
+          ) : null}
+        </BottomSheetView>
+      </AppBottomSheet>
       <ConfirmBottomSheet
         visible={deleteConfirmationVisible}
         title="Excluir checklist"

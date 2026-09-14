@@ -4,9 +4,12 @@ import {
   DEFAULT_RESPONSE_OPTIONS,
   ResponseOption,
 } from '@/infra/domain/entities'
-import { ChecklistRepository } from '@/infra/domain/repositories'
+import {
+  ApplicationRepository,
+  ChecklistRepository,
+} from '@/infra/domain/repositories'
 import { generateId } from '@/infra/id'
-import { checklistRepository } from '@/infra/storage'
+import { applicationRepository, checklistRepository } from '@/infra/storage'
 
 export interface ChecklistItemInput {
   id?: string
@@ -163,6 +166,11 @@ export async function duplicateChecklist(
 export async function softDeleteChecklist(
   id: string,
   repo: ChecklistRepository = checklistRepository,
+  applicationRepo: ApplicationRepository = applicationRepository,
 ): Promise<void> {
+  const applications = await applicationRepo.listByChecklistId(id)
+  await Promise.all(
+    applications.map((application) => applicationRepo.softDelete(application.id)),
+  )
   await repo.softDelete(id)
 }

@@ -22,6 +22,9 @@ export const styles = StyleSheet.create({
   },
   content: {
     gap: 18,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 40,
   },
   handleRow: {
     alignItems: 'center',
@@ -110,9 +113,10 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   footer: {
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 18,
+    backgroundColor: colors.white,
   },
   saveButton: {
     flexDirection: 'row',

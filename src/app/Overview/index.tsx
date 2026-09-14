@@ -1,15 +1,18 @@
 import { useMemo, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Metric, PendGroupCard, Screen, TagMultiSelect } from '@/components'
-import { Icon } from '@/components/Icon'
+import {
+  DatePickerField,
+  Metric,
+  PendGroupCard,
+  Screen,
+  TagMultiSelect,
+} from '@/components'
 import { metricValueColors } from '@/components/Metric'
 import { useReport } from '@/hooks/useReport'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { DateRange } from '@/infra/services'
-import { colors } from '@/styles'
 import {
   endOfDayIso,
-  formatBrDate,
   formatBrDateShort,
   shiftDateIso,
   startOfDayIso,
@@ -120,39 +123,13 @@ export function Overview() {
 
         {preset === 'custom' && (
           <View style={styles.customRangeRow}>
-            <View style={styles.dateStepper}>
-              <Pressable
-                onPress={() => setCustomFrom((prev) => shiftDateIso(prev, -1))}
-                accessibilityLabel="Dia anterior (De)"
-              >
-                <Icon name="chevron-left" size={16} color={colors.ink.base} />
-              </Pressable>
-              <Text style={styles.dateStepperValue}>
-                {formatBrDate(customFrom)}
-              </Text>
-              <Pressable
-                onPress={() => setCustomFrom((prev) => shiftDateIso(prev, 1))}
-                accessibilityLabel="Próximo dia (De)"
-              >
-                <Icon name="chevron-right" size={16} color={colors.ink.base} />
-              </Pressable>
+            <View style={styles.dateField}>
+              <Text style={styles.dateFieldLabel}>De</Text>
+              <DatePickerField value={customFrom} onChange={setCustomFrom} />
             </View>
-            <View style={styles.dateStepper}>
-              <Pressable
-                onPress={() => setCustomTo((prev) => shiftDateIso(prev, -1))}
-                accessibilityLabel="Dia anterior (Até)"
-              >
-                <Icon name="chevron-left" size={16} color={colors.ink.base} />
-              </Pressable>
-              <Text style={styles.dateStepperValue}>
-                {formatBrDate(customTo)}
-              </Text>
-              <Pressable
-                onPress={() => setCustomTo((prev) => shiftDateIso(prev, 1))}
-                accessibilityLabel="Próximo dia (Até)"
-              >
-                <Icon name="chevron-right" size={16} color={colors.ink.base} />
-              </Pressable>
+            <View style={styles.dateField}>
+              <Text style={styles.dateFieldLabel}>Até</Text>
+              <DatePickerField value={customTo} onChange={setCustomTo} />
             </View>
           </View>
         )}

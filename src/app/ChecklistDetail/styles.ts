@@ -64,9 +64,23 @@ export const styles = StyleSheet.create({
     ...textStyles.body,
     textAlign: 'center',
   },
+  batchContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+    gap: 16,
+  },
   batchHelpText: {
     ...textStyles.body,
     color: colors.gray[600],
+  },
+  batchFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[200],
+    backgroundColor: colors.white,
   },
   batchError: {
     ...textStyles.body,

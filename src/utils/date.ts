@@ -1,15 +1,17 @@
+const LONG_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: 'long',
+  year: 'numeric',
+})
+
+const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR')
+
 export function formatBrDate(iso: string): string {
-  const date = new Date(iso)
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  })
+  return LONG_DATE_FORMATTER.format(new Date(iso))
 }
 
 export function formatBrDateShort(iso: string): string {
-  const date = new Date(iso)
-  return date.toLocaleDateString('pt-BR')
+  return SHORT_DATE_FORMATTER.format(new Date(iso))
 }
 
 export function todayIso(): string {

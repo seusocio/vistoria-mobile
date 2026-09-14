@@ -17,7 +17,7 @@ async function tagsFor(labels: string[]): Promise<string[]> {
 }
 
 async function answerItems(
-  applicationId: string,
+  _applicationId: string,
   application: Awaited<ReturnType<typeof createApplication>>,
   answers: Array<{ index: number; answer: string; note?: string }>,
 ) {

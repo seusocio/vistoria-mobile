@@ -59,22 +59,4 @@ export const styles = StyleSheet.create({
     ...textStyles.buttonLabel,
     color: colors.white,
   },
-  outlineButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    borderRadius: 12,
-    borderCurve: 'continuous',
-    paddingVertical: 13,
-    paddingHorizontal: 20,
-  },
-  outlineButtonText: {
-    ...textStyles.buttonLabel,
-    color: colors.ink.base,
-  },
 })

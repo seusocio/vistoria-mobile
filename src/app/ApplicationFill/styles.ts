@@ -34,8 +34,6 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     borderCurve: 'continuous',
     backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -127,6 +125,18 @@ export const styles = StyleSheet.create({
     color: colors.white,
   },
 
+  sheetContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+    gap: 18,
+  },
+  sheetFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 18,
+    backgroundColor: colors.white,
+  },
   modalField: {
     gap: 8,
   },

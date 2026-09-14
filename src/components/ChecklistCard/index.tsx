@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { colors } from '@/styles'
 import { Icon } from '../Icon'
@@ -14,7 +15,7 @@ export interface ChecklistCardProps {
 }
 
 /** Component/ChecklistCard */
-export function ChecklistCard({
+export const ChecklistCard = memo(function ChecklistCard({
   title,
   itemsCount,
   tagLabels,
@@ -26,6 +27,8 @@ export function ChecklistCard({
     <Pressable
       style={({ pressed }) => [styles.container, pressed && { opacity: 0.85 }]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${itemsCount} itens, ${applicationsCount} aplicações, ${completedCount} concluídas`}
     >
       <View style={styles.topRow}>
         <Text style={styles.title} numberOfLines={1}>
@@ -54,4 +57,4 @@ export function ChecklistCard({
       </View>
     </Pressable>
   )
-}
+})

@@ -1,11 +1,19 @@
-import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
-import type { Doc, Id } from './_generated/dataModel'
 import { v } from 'convex/values'
+import type { Doc, Id } from './_generated/dataModel'
+import {
+  type MutationCtx,
+  mutation,
+  type QueryCtx,
+  query,
+} from './_generated/server'
 
 type ApplicationDocument = Doc<'applications'>
 type PersistedAttachment = ApplicationDocument['attachments'][number]
 type AttachmentWithUrl = PersistedAttachment & { url?: string }
-type ApplicationWithUrls = Omit<ApplicationDocument, 'attachments' | 'items'> & {
+type ApplicationWithUrls = Omit<
+  ApplicationDocument,
+  'attachments' | 'items'
+> & {
   attachments: AttachmentWithUrl[]
   items: Array<
     Omit<ApplicationDocument['items'][number], 'attachments'> & {
@@ -16,7 +24,8 @@ type ApplicationWithUrls = Omit<ApplicationDocument, 'attachments' | 'items'> & 
 type StorageContext = QueryCtx | MutationCtx
 
 function withoutImageUrls(entity: ApplicationWithUrls): ApplicationDocument {
-  const cleanAttachment = ({ url: _url, ...attachment }: AttachmentWithUrl) => attachment
+  const cleanAttachment = ({ url: _url, ...attachment }: AttachmentWithUrl) =>
+    attachment
   return {
     ...entity,
     attachments: entity.attachments.map(cleanAttachment),
@@ -57,11 +66,10 @@ export const listByChecklistId = query({
     const applications = await ctx.db
       .query('applications')
       .withIndex('by_checklist_id', (q) => q.eq('checklistId', checklistId))
+      .filter((q) => q.eq(q.field('deletedAt'), null))
       .collect()
     return Promise.all(
-      applications
-        .filter((application) => !application.deletedAt)
-        .map((application) => withImageUrls(ctx, application)),
+      applications.map((application) => withImageUrls(ctx, application)),
     )
   },
 })
@@ -69,11 +77,12 @@ export const listByChecklistId = query({
 export const listAll = query({
   args: {},
   handler: async (ctx) => {
-    const applications = await ctx.db.query('applications').collect()
+    const applications = await ctx.db
+      .query('applications')
+      .filter((q) => q.eq(q.field('deletedAt'), null))
+      .collect()
     return Promise.all(
-      applications
-        .filter((application) => !application.deletedAt)
-        .map((application) => withImageUrls(ctx, application)),
+      applications.map((application) => withImageUrls(ctx, application)),
     )
   },
 })
@@ -85,7 +94,9 @@ export const findById = query({
       .query('applications')
       .withIndex('by_external_id', (q) => q.eq('id', id))
       .first()
-    return application ? withImageUrls(ctx, application) : null
+    return application && !application.deletedAt
+      ? withImageUrls(ctx, application)
+      : null
   },
 })
 

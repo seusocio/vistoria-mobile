@@ -1,8 +1,23 @@
+import {
+  BottomSheetFooter,
+  type BottomSheetFooterProps,
+  BottomSheetTextInput,
+  BottomSheetView,
+} from '@gorhom/bottom-sheet'
 import { useState } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
-import { ConfirmBottomSheet, Input, TagMultiSelect } from '@/components'
+import {
+  AppBottomSheet,
+  ConfirmBottomSheet,
+  Input,
+  TagChip,
+  TagMultiSelect,
+} from '@/components'
 import { Icon, IconName } from '@/components/Icon'
-import { ChecklistFormApi } from '@/hooks/useChecklistForm'
+import {
+  ChecklistFormApi,
+  ChecklistFormItemState,
+} from '@/hooks/useChecklistForm'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { ChecklistTemplate } from '@/infra/data/templates'
 import { ResponseSemantic } from '@/infra/domain/entities'
@@ -38,22 +53,83 @@ export interface ChecklistFormViewProps {
   tagsCatalog: ReturnType<typeof useTagsCatalog>
   templates?: ChecklistTemplate[]
   selectedTemplateId?: string | null
+  loadingTemplateId?: string | null
   onSelectTemplate?: (template: ChecklistTemplate) => void
   error?: string | null
 }
-
 export function ChecklistFormView({
   form,
   tagsCatalog,
   templates,
   selectedTemplateId,
+  loadingTemplateId,
   onSelectTemplate,
   error,
 }: ChecklistFormViewProps) {
-  const { activeTags, tagsById, createTag } = tagsCatalog
+  const { activeTags, tagsById, createTag, resolveLabels } = tagsCatalog
   const [pendingDelete, setPendingDelete] = useState<
     { type: 'option'; index: number } | { type: 'item'; key: string } | null
   >(null)
+  const [itemSheet, setItemSheet] = useState<
+    { mode: 'new' } | { mode: 'edit'; key: string } | null
+  >(null)
+  const [draftTitle, setDraftTitle] = useState('')
+  const [draftDescription, setDraftDescription] = useState('')
+  const [draftTagsIds, setDraftTagsIds] = useState<string[]>([])
+  const [itemError, setItemError] = useState<string | null>(null)
+
+  function openAddItem() {
+    setDraftTitle('')
+    setDraftDescription('')
+    setDraftTagsIds([])
+    setItemError(null)
+    setItemSheet({ mode: 'new' })
+  }
+
+  function openEditItem(item: ChecklistFormItemState) {
+    setDraftTitle(item.title)
+    setDraftDescription(item.description)
+    setDraftTagsIds(item.tagsIds)
+    setItemError(null)
+    setItemSheet({ mode: 'edit', key: item.key })
+  }
+
+  function handleSaveItem() {
+    if (!draftTitle.trim()) {
+      setItemError('Informe um título para o item')
+      return
+    }
+    const values = {
+      title: draftTitle.trim(),
+      description: draftDescription.trim(),
+      tagsIds: draftTagsIds,
+    }
+    if (itemSheet?.mode === 'edit') {
+      form.updateItem(itemSheet.key, values)
+    } else {
+      form.addItem(values)
+    }
+    setItemSheet(null)
+  }
+
+  function renderItemSheetFooter(props: BottomSheetFooterProps) {
+    return (
+      <BottomSheetFooter {...props} style={styles.sheetFooter}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.sheetSaveButton,
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={handleSaveItem}
+        >
+          <Icon name="check" size={16} color={colors.white} />
+          <Text style={styles.sheetSaveButtonText}>
+            {itemSheet?.mode === 'edit' ? 'Salvar' : 'Adicionar'}
+          </Text>
+        </Pressable>
+      </BottomSheetFooter>
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -72,6 +148,13 @@ export function ChecklistFormView({
                     pressed && { opacity: 0.7 },
                   ]}
                   onPress={() => onSelectTemplate?.(template)}
+                  disabled={Boolean(loadingTemplateId)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Aplicar modelo ${template.title}`}
+                  accessibilityState={{
+                    selected: isSelected,
+                    disabled: Boolean(loadingTemplateId),
+                  }}
                 >
                   <Icon
                     name={TEMPLATE_ICON[template.id] ?? 'clipboard-check'}
@@ -84,7 +167,9 @@ export function ChecklistFormView({
                       isSelected && styles.templateLabelSelected,
                     ]}
                   >
-                    {template.title}
+                    {loadingTemplateId === template.id
+                      ? 'Aplicando...'
+                      : template.title}
                   </Text>
                 </Pressable>
               )
@@ -171,62 +256,70 @@ export function ChecklistFormView({
           <Text style={styles.fieldLabel}>Itens do checklist</Text>
           <Text style={styles.itemsCount}>{form.items.length} itens</Text>
         </View>
-        <View style={styles.itemsList}>
-          {form.items.map((item, index) => (
-            <View key={item.key} style={styles.itemRow}>
-              <View style={styles.itemNum}>
-                <Text style={styles.itemNumText}>{index + 1}</Text>
-              </View>
-              <View style={styles.itemCol}>
-                <TextInput
-                  style={styles.itemTitleInput}
-                  value={item.title}
-                  onChangeText={(value) =>
-                    form.updateItem(item.key, { title: value })
-                  }
-                  placeholder="Título do item"
-                  placeholderTextColor={colors.gray[400]}
-                />
-                <TextInput
-                  style={styles.itemDescriptionInput}
-                  value={item.description}
-                  onChangeText={(value) =>
-                    form.updateItem(item.key, { description: value })
-                  }
-                  placeholder="Descrição (opcional)"
-                  placeholderTextColor={colors.gray[400]}
-                  multiline
-                />
-                <TagMultiSelect
-                  selectedIds={item.tagsIds}
-                  availableTags={activeTags}
-                  allTagsById={tagsById}
-                  onChange={(ids) =>
-                    form.updateItem(item.key, { tagsIds: ids })
-                  }
-                  onCreateTag={createTag}
-                  placeholder="Responsável padrão (opcional)"
-                />
-              </View>
-              {form.items.length > 1 && (
+        {form.items.length > 0 && (
+          <View style={styles.itemsList}>
+            {form.items.map((item, index) => {
+              const labels = resolveLabels(item.tagsIds)
+              return (
                 <Pressable
-                  style={({ pressed }) => pressed && { opacity: 0.7 }}
-                  onPress={() =>
-                    setPendingDelete({ type: 'item', key: item.key })
-                  }
+                  key={item.key}
+                  style={({ pressed }) => [
+                    styles.itemCard,
+                    pressed && { opacity: 0.7 },
+                  ]}
+                  onPress={() => openEditItem(item)}
+                  accessibilityLabel={`Editar item ${index + 1}`}
                 >
-                  <Icon name="trash-2" size={16} color={colors.gray[400]} />
+                  <View style={styles.itemNum}>
+                    <Text style={styles.itemNumText}>{index + 1}</Text>
+                  </View>
+                  <View style={styles.itemCardBody}>
+                    <Text
+                      style={[
+                        styles.itemCardTitle,
+                        !item.title && styles.itemCardPlaceholder,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {item.title || 'Item sem título'}
+                    </Text>
+                    {item.description ? (
+                      <Text
+                        style={styles.itemCardDescription}
+                        numberOfLines={1}
+                      >
+                        {item.description}
+                      </Text>
+                    ) : null}
+                    {labels.length > 0 && (
+                      <View style={styles.itemCardTags}>
+                        {labels.map((label) => (
+                          <TagChip key={label} label={label} tone="neutral" />
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => pressed && { opacity: 0.7 }}
+                    hitSlop={8}
+                    onPress={() =>
+                      setPendingDelete({ type: 'item', key: item.key })
+                    }
+                    accessibilityLabel={`Remover item ${index + 1}`}
+                  >
+                    <Icon name="trash-2" size={16} color={colors.gray[400]} />
+                  </Pressable>
                 </Pressable>
-              )}
-            </View>
-          ))}
-        </View>
+              )
+            })}
+          </View>
+        )}
         <Pressable
           style={({ pressed }) => [
             styles.addItemButton,
             pressed && { opacity: 0.7 },
           ]}
-          onPress={form.addItem}
+          onPress={openAddItem}
         >
           <Icon name="plus" size={14} color={colors.ink.base} />
           <Text style={styles.addItemButtonText}>Adicionar item</Text>
@@ -254,6 +347,53 @@ export function ChecklistFormView({
           setPendingDelete(null)
         }}
       />
+      <AppBottomSheet
+        visible={Boolean(itemSheet)}
+        onClose={() => setItemSheet(null)}
+        snapPoints={['90%']}
+        footerComponent={renderItemSheetFooter}
+      >
+        <BottomSheetView style={styles.sheetContent}>
+          <Text style={styles.sheetTitle}>
+            {itemSheet?.mode === 'edit' ? 'Editar item' : 'Novo item'}
+          </Text>
+          <View style={styles.sheetField}>
+            <Text style={styles.fieldLabel}>Título do item</Text>
+            <BottomSheetTextInput
+              autoFocus
+              value={draftTitle}
+              onChangeText={setDraftTitle}
+              placeholder="Ex.: Pintura das paredes"
+              placeholderTextColor={colors.gray[400]}
+              style={styles.sheetInput}
+            />
+          </View>
+          <View style={styles.sheetField}>
+            <Text style={styles.fieldLabel}>Descrição (opcional)</Text>
+            <BottomSheetTextInput
+              value={draftDescription}
+              onChangeText={setDraftDescription}
+              placeholder="Detalhe o que deve ser verificado"
+              placeholderTextColor={colors.gray[400]}
+              style={[styles.sheetInput, styles.sheetTextarea]}
+              multiline
+            />
+          </View>
+          <View style={styles.sheetField}>
+            <Text style={styles.fieldLabel}>Tags do item</Text>
+            <TagMultiSelect
+              selectedIds={draftTagsIds}
+              availableTags={activeTags}
+              allTagsById={tagsById}
+              onChange={setDraftTagsIds}
+              onCreateTag={createTag}
+              placeholder="Responsável padrão (opcional)"
+              variant="muted"
+            />
+          </View>
+          {itemError ? <Text style={styles.error}>{itemError}</Text> : null}
+        </BottomSheetView>
+      </AppBottomSheet>
     </View>
   )
 }

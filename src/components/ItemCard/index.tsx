@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { ResponseOption } from '@/infra/domain/entities'
@@ -23,7 +24,7 @@ export interface ItemCardProps {
 }
 
 /** Component/ItemCard */
-export function ItemCard({
+export const ItemCard = memo(function ItemCard({
   title,
   tagLabel,
   hasNote,
@@ -61,12 +62,12 @@ export function ItemCard({
             {title}
           </Text>
           <View style={styles.metaRow}>
-            {tagLabel && (
+            {tagLabel ? (
               <View style={styles.metaItem}>
                 <Icon name="tag" size={10} color={colors.gray[400]} />
                 <Text style={styles.metaText}>{tagLabel}</Text>
               </View>
-            )}
+            ) : null}
             {hasNote && (
               <View style={styles.metaItem}>
                 <Icon
@@ -145,4 +146,4 @@ export function ItemCard({
       )}
     </View>
   )
-}
+})

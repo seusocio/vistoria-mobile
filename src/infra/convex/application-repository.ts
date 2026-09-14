@@ -3,7 +3,7 @@ import { ApplicationRepository } from '@/infra/domain/repositories'
 import { api } from '../../../convex/_generated/api'
 import { castConvex, convexClient } from './client'
 
-function normalize(application: Application): Application {
+export function normalizeApplication(application: Application): Application {
   return {
     ...application,
     attachments: application.attachments ?? [],
@@ -20,32 +20,34 @@ function normalize(application: Application): Application {
 export class ConvexApplicationRepository implements ApplicationRepository {
   async listByChecklistId(checklistId: string): Promise<Application[]> {
     const applications = castConvex<Application[]>(
-      await convexClient.query(api.applications.listByChecklistId, { checklistId }),
+      await convexClient.query(api.applications.listByChecklistId, {
+        checklistId,
+      }),
     )
-    return applications.map(normalize)
+    return applications.map(normalizeApplication)
   }
 
   async listAll(): Promise<Application[]> {
     const applications = castConvex<Application[]>(
       await convexClient.query(api.applications.listAll, {}),
     )
-    return applications.map(normalize)
+    return applications.map(normalizeApplication)
   }
 
   async findById(id: string): Promise<Application | null> {
     const application = castConvex<Application | null>(
       await convexClient.query(api.applications.findById, { id }),
     )
-    return application ? normalize(application) : null
+    return application ? normalizeApplication(application) : null
   }
 
   async save(application: Application): Promise<Application> {
-    const normalized = normalize(application)
+    const normalized = normalizeApplication(application)
     const saved = await convexClient.mutation(api.applications.save, {
       id: normalized.id,
       entity: normalized,
     })
-    return normalize(castConvex<Application>(saved))
+    return normalizeApplication(castConvex<Application>(saved))
   }
 
   async softDelete(id: string): Promise<void> {
