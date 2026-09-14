@@ -1,4 +1,5 @@
 import { ActivityIndicator, Pressable, Text, View } from 'react-native'
+import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { colors } from '@/styles'
 import { Icon } from '../Icon'
 import { styles } from './styles'
@@ -41,6 +42,7 @@ export function VoiceCard({
   onGenerateSuggestions,
   generatingSuggestions = false,
 }: VoiceCardProps) {
+  if (!FEATURE_FLAG.suggestion) return null
   return (
     <View style={styles.container}>
       <View style={styles.top}>

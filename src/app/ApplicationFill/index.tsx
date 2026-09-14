@@ -16,6 +16,7 @@ import {
 } from '@/components'
 import { Icon } from '@/components/Icon'
 import { VoiceState } from '@/components/VoiceCard'
+import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { useApplicationFill } from '@/hooks/useApplicationFill'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import {
@@ -73,7 +74,7 @@ export function ApplicationFill({
     useState(false)
   const [deleting, setDeleting] = useState(false)
   useEffect(() => {
-    if (!application) return
+    if (!FEATURE_FLAG.suggestion || !application) return
     setVoiceState(application.transcript ? 'ready' : 'idle')
     setVoiceExpanded(Boolean(application.transcript))
   }, [application?.id, application?.transcript])
@@ -131,6 +132,7 @@ export function ApplicationFill({
   }
 
   async function handleStopRecording() {
+    if (!FEATURE_FLAG.suggestion) return
     setVoiceState('processing')
     const transcript = await simulateStopRecording()
     await refresh(() => setTranscript(application!, transcript))
@@ -139,6 +141,7 @@ export function ApplicationFill({
   }
 
   async function handleGenerateSuggestions() {
+    if (!FEATURE_FLAG.suggestion) return
     setGeneratingSuggestions(true)
     try {
       const suggestions = await generateSuggestions(checklist!, application!)
@@ -158,10 +161,12 @@ export function ApplicationFill({
   }
 
   async function handleAcceptSuggestion(itemId: string) {
+    if (!FEATURE_FLAG.suggestion) return
     await refresh(() => acceptSuggestion(application!, itemId))
   }
 
   async function handleRejectSuggestion(itemId: string) {
+    if (!FEATURE_FLAG.suggestion) return
     await refresh(() => rejectSuggestion(application!, itemId))
   }
 
@@ -345,16 +350,18 @@ export function ApplicationFill({
         </View>
       </View>
 
-      <VoiceCard
-        state={voiceState}
-        transcript={application.transcript}
-        expanded={voiceExpanded}
-        onToggleExpanded={() => setVoiceExpanded((prev) => !prev)}
-        onStart={() => setVoiceState('recording')}
-        onStop={handleStopRecording}
-        onGenerateSuggestions={handleGenerateSuggestions}
-        generatingSuggestions={generatingSuggestions}
-      />
+      {FEATURE_FLAG.suggestion && (
+        <VoiceCard
+          state={voiceState}
+          transcript={application.transcript}
+          expanded={voiceExpanded}
+          onToggleExpanded={() => setVoiceExpanded((prev) => !prev)}
+          onStart={() => setVoiceState('recording')}
+          onStop={handleStopRecording}
+          onGenerateSuggestions={handleGenerateSuggestions}
+          generatingSuggestions={generatingSuggestions}
+        />
+      )}
 
       <View style={styles.itemsHeaderRow}>
         <Text style={styles.itemsTitle}>Itens do checklist</Text>
@@ -380,14 +387,24 @@ export function ApplicationFill({
             hasNote={Boolean(item.note)}
             photosCount={item.attachments.filter((a) => !a.deletedAt).length}
             quantity={item.quantity}
-            suggested={item.suggested}
-            suggestionSource={item.suggestionSource}
+            suggested={FEATURE_FLAG.suggestion && item.suggested}
+            suggestionSource={
+              FEATURE_FLAG.suggestion ? item.suggestionSource : null
+            }
             options={checklist.options}
             answer={item.answer}
             onAnswerChange={(answer) => handleAnswerChange(item.id, answer)}
             onOpenDrawer={() => setEditingItemId(item.id)}
-            onAcceptSuggestion={() => handleAcceptSuggestion(item.id)}
-            onRejectSuggestion={() => handleRejectSuggestion(item.id)}
+            onAcceptSuggestion={
+              FEATURE_FLAG.suggestion
+                ? () => handleAcceptSuggestion(item.id)
+                : undefined
+            }
+            onRejectSuggestion={
+              FEATURE_FLAG.suggestion
+                ? () => handleRejectSuggestion(item.id)
+                : undefined
+            }
           />
         ))}
       </View>

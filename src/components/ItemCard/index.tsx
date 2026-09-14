@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from 'react-native'
+import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { ResponseOption } from '@/infra/domain/entities'
 import { colors } from '@/styles'
 import { Icon } from '../Icon'
@@ -37,7 +38,9 @@ export function ItemCard({
   onAcceptSuggestion,
   onRejectSuggestion,
 }: ItemCardProps) {
-  const transcriptSuggestion = suggestionSource === 'transcript'
+  const suggestionEnabled = FEATURE_FLAG.suggestion && suggested
+  const transcriptSuggestion =
+    suggestionEnabled && suggestionSource === 'transcript'
 
   return (
     <View
@@ -49,7 +52,7 @@ export function ItemCard({
       <View
         style={[
           styles.container,
-          suggested && styles.containerSuggested,
+          suggestionEnabled && styles.containerSuggested,
           transcriptSuggestion && styles.containerTranscriptSuggestion,
         ]}
       >
@@ -84,7 +87,6 @@ export function ItemCard({
                 <Text style={styles.metaText}>Qtd {quantity}</Text>
               </View>
             )}
-
           </View>
         </View>
 
