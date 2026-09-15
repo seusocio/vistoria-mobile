@@ -123,9 +123,7 @@ export function TagMultiSelect({
           accessibilityRole="button"
           accessibilityLabel="Concluir seleção de tags"
         >
-          <Text style={styles.doneButtonText}>
-            Concluído ({draftIds.length})
-          </Text>
+          <Text style={styles.doneButtonText}>Concluído</Text>
         </Pressable>
       </BottomSheetFooter>
     )
@@ -141,23 +139,20 @@ export function TagMultiSelect({
         ]}
       >
         <View style={styles.rowContent}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.rowTapArea,
-              pressed && styles.pressed,
-            ]}
-            onPress={openSheet}
-            accessibilityRole="button"
-            accessibilityLabel={placeholder}
-            accessibilityHint="Abre a seleção de tags"
-          >
-            <Text style={styles.rowLabel}>Tags</Text>
-            {selectedLabels.length === 0 ? (
-              <Text style={styles.rowValueEmpty}>
-                Nenhuma tag selecionada
-              </Text>
-            ) : null}
-          </Pressable>
+          {selectedLabels.length === 0 ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.rowTapArea,
+                pressed && styles.pressed,
+              ]}
+              onPress={openSheet}
+              accessibilityRole="button"
+              accessibilityLabel={placeholder}
+              accessibilityHint="Abre a seleção de tags"
+            >
+              <Text style={styles.rowValueEmpty}>{placeholder}</Text>
+            </Pressable>
+          ) : null}
           {selectedLabels.length > 0 ? (
             <View style={styles.chips}>
               {selectedIds.map((id) => {
@@ -167,7 +162,7 @@ export function TagMultiSelect({
                   <TagChip
                     key={id}
                     label={label}
-                    tone="neutral"
+                    tone="primary"
                     onRemove={() => removeSelectedTag(id)}
                   />
                 ) : null
@@ -239,6 +234,7 @@ export function TagMultiSelect({
                   key={tag.id}
                   style={({ pressed }) => [
                     styles.option,
+                    selected && styles.optionSelected,
                     pressed && styles.pressed,
                   ]}
                   onPress={() => toggleTag(tag.id)}

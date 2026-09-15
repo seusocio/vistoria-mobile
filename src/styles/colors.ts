@@ -9,7 +9,7 @@ export const colors = {
   // Brand color reverted to the old purple palette per design feedback
   blue: {
     base: '#6A46EB',
-    tint: '#DFDAF2',
+    tint: 'rgb(223, 218, 242)',
   },
 
   white: '#FFFFFF',

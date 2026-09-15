@@ -1,14 +1,19 @@
 import { StyleSheet } from 'react-native'
-import { colors } from '@/styles'
+import { colors, radius } from '@/styles'
 
 export const styles = StyleSheet.create({
   background: {
     backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: colors.gray[200],
   },
   handleIndicator: {
-    backgroundColor: colors.gray[200],
-    width: 40,
+    backgroundColor: colors.gray[400],
+    width: 36,
+    height: 4,
+    borderRadius: radius.sm,
   },
 })

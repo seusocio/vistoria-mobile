@@ -111,7 +111,6 @@ export function Library({ navigation }: TabRoutesProps<'home'>) {
           accessibilityRole="button"
           accessibilityLabel="Criar novo checklist"
         >
-          <Icon name="play" size={18} color={colors.white} />
           <Text style={styles.ctaButtonText}>Criar novo checklist</Text>
         </Pressable>
 
@@ -130,7 +129,7 @@ export function Library({ navigation }: TabRoutesProps<'home'>) {
           >
             <Icon
               name="filter"
-              size={20}
+              size={19}
               color={activeTagId !== null ? colors.blue.base : colors.gray[600]}
             />
             {activeTagId !== null ? <View style={styles.filterBadge} /> : null}

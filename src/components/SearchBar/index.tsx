@@ -18,7 +18,7 @@ export function SearchBar({
 }: SearchBarProps) {
   return (
     <View style={styles.container} accessibilityRole="search">
-      <Icon name="search" size={18} color={colors.gray[400]} />
+      <Icon name="search" size={18} color={colors.gray[600]} />
       <SheetAwareTextInput
         value={value}
         onChangeText={onChangeText}
