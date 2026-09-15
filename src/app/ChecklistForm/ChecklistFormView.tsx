@@ -8,10 +8,10 @@ import { useState } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
 import {
   AppBottomSheet,
-  ConfirmBottomSheet,
   Input,
   TagChip,
   TagMultiSelect,
+  useUndoToast,
 } from '@/components'
 import { Icon, IconName } from '@/components/Icon'
 import {
@@ -68,9 +68,7 @@ export function ChecklistFormView({
   error,
 }: ChecklistFormViewProps) {
   const { activeTags, tagsById, createTag, resolveLabels } = tagsCatalog
-  const [pendingDelete, setPendingDelete] = useState<
-    { type: 'option'; index: number } | { type: 'item'; key: string } | null
-  >(null)
+  const { show } = useUndoToast()
   const [itemSheet, setItemSheet] = useState<
     { mode: 'new' } | { mode: 'edit'; key: string } | null
   >(null)
@@ -94,6 +92,26 @@ export function ChecklistFormView({
     setItemError(null)
     setItemSheet({ mode: 'edit', key: item.key })
   }
+  function removeOptionWithUndo(index: number) {
+    const snapshot = form.options
+    form.removeOption(index)
+    show({
+      message: 'Opção removida',
+      onCommit: () => {},
+      onUndo: () => form.setOptions(snapshot),
+    })
+  }
+
+  function removeItemWithUndo(key: string) {
+    const snapshot = form.items
+    form.removeItem(key)
+    show({
+      message: 'Item removido',
+      onCommit: () => {},
+      onUndo: () => form.setItems(snapshot),
+    })
+  }
+
 
   function handleSaveItem() {
     if (!draftTitle.trim()) {
@@ -233,7 +251,7 @@ export function ChecklistFormView({
               <Pressable
                 style={({ pressed }) => pressed && { opacity: 0.7 }}
                 hitSlop={12}
-                onPress={() => setPendingDelete({ type: 'option', index })}
+                onPress={() => removeOptionWithUndo(index)}
               >
                 <Icon name="multiply" size={12} color={colors.gray[400]} />
               </Pressable>
@@ -305,9 +323,7 @@ export function ChecklistFormView({
                   <Pressable
                     style={({ pressed }) => pressed && { opacity: 0.7 }}
                     hitSlop={14}
-                    onPress={() =>
-                      setPendingDelete({ type: 'item', key: item.key })
-                    }
+                    onPress={() => removeItemWithUndo(item.key)}
                     accessibilityLabel={`Remover item ${index + 1}`}
                   >
                     <Icon name="trash-2" size={16} color={colors.gray[400]} />
@@ -330,29 +346,6 @@ export function ChecklistFormView({
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <ConfirmBottomSheet
-        visible={Boolean(pendingDelete)}
-        title={
-          pendingDelete?.type === 'option' ? 'Remover opção' : 'Remover item'
-        }
-        message={
-          pendingDelete?.type === 'option'
-            ? 'Deseja remover esta opção de resposta?'
-            : 'Deseja remover este item do checklist?'
-        }
-        confirmLabel={
-          pendingDelete?.type === 'option' ? 'Remover opção' : 'Remover item'
-        }
-        onCancel={() => setPendingDelete(null)}
-        onConfirm={() => {
-          if (pendingDelete?.type === 'option') {
-            form.removeOption(pendingDelete.index)
-          } else if (pendingDelete?.type === 'item') {
-            form.removeItem(pendingDelete.key)
-          }
-          setPendingDelete(null)
-        }}
-      />
       <AppBottomSheet
         visible={Boolean(itemSheet)}
         onClose={() => setItemSheet(null)}

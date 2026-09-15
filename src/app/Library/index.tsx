@@ -1,6 +1,14 @@
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet'
 import { useCallback, useMemo, useState } from 'react'
-import { FlatList, Pressable, ScrollView, Text, View } from 'react-native'
-import { ChecklistCard, Metric, Screen, SearchBar, TagChip } from '@/components'
+import { FlatList, Pressable, Text, View } from 'react-native'
+import {
+  AppBottomSheet,
+  ChecklistCard,
+  Metric,
+  Screen,
+  SearchBar,
+  TagChip,
+} from '@/components'
 import { Icon } from '@/components/Icon'
 import { useChecklistLibrary } from '@/hooks/useChecklistLibrary'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
@@ -20,6 +28,7 @@ export function Library({ navigation }: TabRoutesProps<'home'>) {
 
   const [search, setSearch] = useState('')
   const [activeTagId, setActiveTagId] = useState<string | null>(null)
+  const [filterVisible, setFilterVisible] = useState(false)
   const hasFilters = search.trim().length > 0 || activeTagId !== null
 
   const clearFilters = useCallback(() => {
@@ -106,53 +115,87 @@ export function Library({ navigation }: TabRoutesProps<'home'>) {
           <Text style={styles.ctaButtonText}>Criar novo checklist</Text>
         </Pressable>
 
-        <SearchBar value={search} onChangeText={setSearch} />
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-        >
+        <View style={styles.searchRow}>
+          <SearchBar value={search} onChangeText={setSearch} />
           <Pressable
-            style={({ pressed }) => pressed && styles.pressed}
-            onPress={() => setActiveTagId(null)}
+            style={({ pressed }) => [
+              styles.filterButton,
+              activeTagId !== null && styles.filterButtonActive,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => setFilterVisible(true)}
             accessibilityRole="button"
-            accessibilityState={{ selected: activeTagId === null }}
+            accessibilityLabel="Filtrar checklists por tag"
+            accessibilityState={{ expanded: filterVisible }}
           >
-            <View
-              style={[
-                styles.allChip,
-                activeTagId === null && styles.allChipActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.allChipText,
-                  activeTagId === null && styles.allChipTextActive,
-                ]}
-              >
-                Todos
-              </Text>
-            </View>
+            <Icon
+              name="filter"
+              size={20}
+              color={activeTagId !== null ? colors.blue.base : colors.gray[600]}
+            />
+            {activeTagId !== null ? <View style={styles.filterBadge} /> : null}
           </Pressable>
-          {filterTags.map((tag) => (
-            <Pressable
-              key={tag.id}
-              style={({ pressed }) => pressed && styles.pressed}
-              onPress={() => setActiveTagId(tag.id)}
-              accessibilityRole="button"
-              accessibilityLabel={`Filtrar por ${tag.label}`}
-              accessibilityState={{ selected: activeTagId === tag.id }}
-            >
-              <TagChip
-                label={tag.label}
-                tone={activeTagId === tag.id ? 'primary' : 'neutral'}
-              />
-            </Pressable>
-          ))}
-        </ScrollView>
+        </View>
 
         <Text style={styles.sectionTitle}>Modelos</Text>
+        <AppBottomSheet
+          visible={filterVisible}
+          onClose={() => setFilterVisible(false)}
+          snapPoints={['50%']}
+        >
+          <BottomSheetScrollView
+            contentContainerStyle={styles.filterSheet}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={styles.filterSheetTitle}>Filtrar modelos</Text>
+            <Text style={styles.filterSheetSubtitle}>
+              Mostrando checklists que usam a tag escolhida
+            </Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.filterOption,
+                activeTagId === null && styles.filterOptionActive,
+                pressed && styles.pressed,
+              ]}
+              onPress={() => {
+                setActiveTagId(null)
+                setFilterVisible(false)
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: activeTagId === null }}
+            >
+              <Text style={styles.filterOptionText}>Todos</Text>
+              {activeTagId === null ? (
+                <Icon name="check" size={18} color={colors.blue.base} />
+              ) : null}
+            </Pressable>
+            {filterTags.map((tag) => (
+              <Pressable
+                key={tag.id}
+                style={({ pressed }) => [
+                  styles.filterOption,
+                  activeTagId === tag.id && styles.filterOptionActive,
+                  pressed && styles.pressed,
+                ]}
+                onPress={() => {
+                  setActiveTagId(tag.id)
+                  setFilterVisible(false)
+                }}
+                accessibilityRole="radio"
+                accessibilityLabel={`Filtrar por ${tag.label}`}
+                accessibilityState={{ selected: activeTagId === tag.id }}
+              >
+                <TagChip
+                  label={tag.label}
+                  tone={activeTagId === tag.id ? 'primary' : 'neutral'}
+                />
+                {activeTagId === tag.id ? (
+                  <Icon name="check" size={18} color={colors.blue.base} />
+                ) : null}
+              </Pressable>
+            ))}
+          </BottomSheetScrollView>
+        </AppBottomSheet>
       </View>
     ),
     [
@@ -161,6 +204,7 @@ export function Library({ navigation }: TabRoutesProps<'home'>) {
       checklists.length,
       completedCount,
       filterTags,
+      filterVisible,
       navigation,
       search,
     ],

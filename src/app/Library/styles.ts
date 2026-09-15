@@ -1,73 +1,105 @@
 import { StyleSheet } from 'react-native'
-import { colors, textStyles } from '@/styles'
+import { colors, radius, space, textStyles, touch } from '@/styles'
 
 export const styles = StyleSheet.create({
   listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 32,
-    gap: 10,
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+    paddingBottom: space.xxl,
+    gap: space.sm,
   },
   listHeader: {
-    gap: 20,
+    gap: space.lg,
   },
   metricsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: space.sm,
   },
   ctaButton: {
+    minHeight: touch.min,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: space.sm,
     backgroundColor: colors.blue.base,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderCurve: 'continuous',
-    paddingVertical: 13,
-    paddingHorizontal: 20,
+    paddingHorizontal: space.xl,
   },
   ctaButtonText: {
     ...textStyles.buttonLabel,
     color: colors.white,
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+  },
+  filterButton: {
+    minWidth: touch.min,
+    minHeight: touch.min,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    backgroundColor: colors.gray[100],
+    borderRadius: radius.md,
+  },
+  filterButtonActive: {
+    backgroundColor: colors.blue.tint,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: space.sm,
+    right: space.sm,
+    width: space.sm,
+    height: space.sm,
+    backgroundColor: colors.blue.base,
+    borderRadius: space.sm,
+  },
   pressed: {
     opacity: 0.7,
   },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingRight: 8,
+  filterSheet: {
+    gap: space.xs,
+    padding: space.lg,
+    paddingBottom: space.xxl,
   },
-  allChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderCurve: 'continuous',
-    backgroundColor: colors.gray[100],
-    borderWidth: 1,
-    borderColor: colors.gray[200],
+  filterSheetTitle: {
+    ...textStyles.sectionTitle,
+    color: colors.ink.base,
+    marginBottom: space.xs,
   },
-  allChipActive: {
-    backgroundColor: colors.blue.base,
-    borderColor: colors.blue.base,
-  },
-  allChipText: {
-    ...textStyles.badgeLabel,
+  filterSheetSubtitle: {
+    ...textStyles.body,
     color: colors.gray[600],
+    marginBottom: space.sm,
   },
-  allChipTextActive: {
-    color: colors.white,
+  filterOption: {
+    minHeight: touch.min,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.md,
+    paddingHorizontal: space.md,
+    borderRadius: radius.sm,
+  },
+  filterOptionActive: {
+    backgroundColor: colors.gray[100],
+  },
+  filterOptionText: {
+    ...textStyles.body,
+    color: colors.ink.base,
   },
   sectionTitle: {
     ...textStyles.sectionTitle,
   },
   emptyState: {
     backgroundColor: colors.white,
-    borderRadius: 16,
+    borderRadius: radius.lg,
     borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.gray[200],
-    padding: 24,
+    padding: space.xl,
   },
   emptyText: {
     ...textStyles.body,
@@ -75,10 +107,9 @@ export const styles = StyleSheet.create({
   },
   clearFiltersButton: {
     alignSelf: 'center',
-    marginTop: 16,
-    minHeight: 44,
+    minHeight: touch.min,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: space.lg,
   },
   clearFiltersText: {
     ...textStyles.bodyStrong,

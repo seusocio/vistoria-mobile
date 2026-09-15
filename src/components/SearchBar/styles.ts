@@ -1,31 +1,29 @@
 import { StyleSheet } from 'react-native'
-import { colors, textStyles } from '@/styles'
+import { colors, radius, space, textStyles, touch } from '@/styles'
 
 export const styles = StyleSheet.create({
   container: {
+    minHeight: touch.min,
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    gap: space.sm,
+    backgroundColor: colors.gray[100],
+    borderRadius: radius.sheet,
+    paddingHorizontal: space.md,
   },
   input: {
     flex: 1,
-    ...textStyles.inputPlaceholder,
+    ...textStyles.inputValue,
     color: colors.ink.base,
     padding: 0,
   },
   clearButton: {
-    minWidth: 44,
-    minHeight: 44,
+    minWidth: touch.min,
+    minHeight: touch.min,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: -12,
-    marginRight: -10,
+    marginVertical: -space.sm,
+    marginRight: -space.sm,
   },
 })

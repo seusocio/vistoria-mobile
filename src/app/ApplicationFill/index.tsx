@@ -19,6 +19,7 @@ import {
   TagChip,
   TagMultiSelect,
   VoiceCard,
+  useUndoToast,
 } from '@/components'
 import { Icon } from '@/components/Icon'
 import { VoiceState } from '@/components/VoiceCard'
@@ -80,6 +81,7 @@ export function ApplicationFill({
     useApplicationFill(checklistId, applicationId)
   const tagsCatalog = useTagsCatalog()
   const { startRecording, stopRecording } = useVoiceRecorder()
+  const { show: showUndo } = useUndoToast()
 
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false)
@@ -232,12 +234,84 @@ export function ApplicationFill({
     choosePhoto({})
   }
 
-  async function handleRemoveAttachment(itemId: string, attachmentId: string) {
-    await refresh(() => removeAttachment(application!, itemId, attachmentId))
+  function setItemAttachmentDeletedAt(
+    itemId: string,
+    attachmentId: string,
+    deletedAt: string | null,
+  ) {
+    setApplication((current) =>
+      current
+        ? {
+            ...current,
+            items: current.items.map((item) =>
+              item.id === itemId
+                ? {
+                    ...item,
+                    attachments: item.attachments.map((attachment) =>
+                      attachment.id === attachmentId
+                        ? { ...attachment, deletedAt }
+                        : attachment,
+                    ),
+                  }
+                : item,
+            ),
+          }
+        : current,
+    )
   }
 
-  async function handleRemoveApplicationAttachment(attachmentId: string) {
-    await refresh(() => removeApplicationAttachment(application!, attachmentId))
+  function setApplicationAttachmentDeletedAt(
+    attachmentId: string,
+    deletedAt: string | null,
+  ) {
+    setApplication((current) =>
+      current
+        ? {
+            ...current,
+            attachments: current.attachments.map((attachment) =>
+              attachment.id === attachmentId
+                ? { ...attachment, deletedAt }
+                : attachment,
+            ),
+          }
+        : current,
+    )
+  }
+
+  function handleRemoveAttachment(itemId: string, attachmentId: string) {
+    setItemAttachmentDeletedAt(itemId, attachmentId, new Date().toISOString())
+    showUndo({
+      message: 'Foto removida',
+      onCommit: () => {
+        const current = latestApplication.current
+        if (!current) return
+        void removeAttachment(current, itemId, attachmentId)
+          .then(setApplication)
+          .catch(() => {
+            setItemAttachmentDeletedAt(itemId, attachmentId, null)
+            setApplicationError('Não foi possível remover a foto')
+          })
+      },
+      onUndo: () => setItemAttachmentDeletedAt(itemId, attachmentId, null),
+    })
+  }
+
+  function handleRemoveApplicationAttachment(attachmentId: string) {
+    setApplicationAttachmentDeletedAt(attachmentId, new Date().toISOString())
+    showUndo({
+      message: 'Foto removida',
+      onCommit: () => {
+        const current = latestApplication.current
+        if (!current) return
+        void removeApplicationAttachment(current, attachmentId)
+          .then(setApplication)
+          .catch(() => {
+            setApplicationAttachmentDeletedAt(attachmentId, null)
+            setApplicationError('Não foi possível remover a foto')
+          })
+      },
+      onUndo: () => setApplicationAttachmentDeletedAt(attachmentId, null),
+    })
   }
 
   async function handleStartRecording() {

@@ -1,6 +1,7 @@
-import { Pressable, TextInput, View } from 'react-native'
+import { Pressable, View } from 'react-native'
 import { colors } from '@/styles'
 import { Icon } from '../Icon'
+import { SheetAwareTextInput } from '../SheetAwareTextInput'
 import { styles } from './styles'
 
 export interface SearchBarProps {
@@ -18,7 +19,7 @@ export function SearchBar({
   return (
     <View style={styles.container} accessibilityRole="search">
       <Icon name="search" size={18} color={colors.gray[400]} />
-      <TextInput
+      <SheetAwareTextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}

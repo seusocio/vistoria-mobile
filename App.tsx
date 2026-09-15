@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { UndoToastProvider } from "@/components";
 import { convexClient } from "@/infra/convex";
 import { migrateLocalDataToConvex } from "@/infra/storage";
 import { Routes } from "@/routes";
@@ -127,11 +128,13 @@ export default function App() {
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
 			<SafeAreaProvider>
-				<BottomSheetModalProvider>
-					<ConvexProvider client={convexClient}>
-						<Routes />
-					</ConvexProvider>
-				</BottomSheetModalProvider>
+				<UndoToastProvider>
+					<BottomSheetModalProvider>
+						<ConvexProvider client={convexClient}>
+							<Routes />
+						</ConvexProvider>
+					</BottomSheetModalProvider>
+				</UndoToastProvider>
 			</SafeAreaProvider>
 		</GestureHandlerRootView>
 	);

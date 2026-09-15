@@ -84,6 +84,7 @@ export function AppBottomSheet({
   return (
     <BottomSheetModal
       ref={sheetRef}
+      stackBehavior="push"
       snapPoints={snapPoints}
       enableDynamicSizing={snapPoints === undefined}
       maxDynamicContentSize={maxDynamicContentSize}

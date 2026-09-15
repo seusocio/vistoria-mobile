@@ -1,8 +1,6 @@
 import { Image } from 'expo-image'
-import { useState } from 'react'
 import { ActivityIndicator, Pressable, View } from 'react-native'
 import { colors } from '@/styles'
-import { ConfirmBottomSheet } from '../ConfirmBottomSheet'
 import { Icon } from '../Icon'
 import { ProgressBar } from '../ProgressBar'
 import { styles } from './styles'
@@ -21,7 +19,6 @@ export function PhotoThumb({
   uploading = false,
   progress = 0,
 }: PhotoThumbProps) {
-  const [confirming, setConfirming] = useState(false)
 
   return (
     <View style={styles.container}>
@@ -50,22 +47,12 @@ export function PhotoThumb({
             pressed && { opacity: 0.7 },
           ]}
           hitSlop={14}
-          onPress={() => setConfirming(true)}
+          onPress={onRemove}
           accessibilityLabel="Remover foto"
         >
           <Icon name="multiply" size={10} color={colors.white} />
         </Pressable>
       )}
-      <ConfirmBottomSheet
-        visible={confirming}
-        title="Remover foto"
-        message="Deseja remover esta foto?"
-        onCancel={() => setConfirming(false)}
-        onConfirm={() => {
-          setConfirming(false)
-          onRemove?.()
-        }}
-      />
     </View>
   )
 }
