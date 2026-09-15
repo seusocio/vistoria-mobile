@@ -1,4 +1,4 @@
-import { useQuery } from "convex/react";
+import { useQuery } from 'convex-helpers/react/cache'
 import { useState } from "react";
 import { Pressable, Text } from "react-native";
 import { Screen } from "@/components";

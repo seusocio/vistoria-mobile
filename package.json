@@ -10,7 +10,8 @@
 		"typecheck": "tsc --noEmit",
 		"lint": "biome lint App.tsx src convex/*.ts",
 		"format": "biome format --write App.tsx src convex/*.ts",
-		"generate-icons": "node scripts/generate-icons-adapted.js"
+		"generate-icons": "node scripts/generate-icons-adapted.js",
+		"convex:seed": "convex dev --once --run seed:run"
 	},
 	"dependencies": {
 		"@expo-google-fonts/lato": "^0.4.1",
@@ -22,6 +23,7 @@
 		"@react-navigation/native": "^7.3.18",
 		"@react-navigation/native-stack": "^7.5.1",
 		"convex": "^1.45.0",
+		"convex-helpers": "^0.1.124",
 		"expo": "^57.0.17",
 		"expo-audio": "~57.0.5",
 		"expo-constants": "^57.0.18",
@@ -29,6 +31,7 @@
 		"expo-font": "~57.0.4",
 		"expo-haptics": "~57.0.3",
 		"expo-image": "^57.0.5",
+		"expo-image-manipulator": "~57.0.18",
 		"expo-image-picker": "^57.0.17",
 		"expo-splash-screen": "~57.0.9",
 		"expo-status-bar": "~57.0.1",
@@ -45,7 +48,8 @@
 		"react-native-web": "^0.21.0",
 		"react-native-worklets": "0.10.1",
 		"uuid": "^13.0.0",
-		"whisper-kit-expo": "^1.1.6"
+		"whisper-kit-expo": "^1.1.6",
+		"zustand": "^5.0.15"
 	},
 	"devDependencies": {
 		"@arthurrios/biome-config": "^1.1.4",

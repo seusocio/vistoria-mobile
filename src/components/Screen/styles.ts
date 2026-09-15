@@ -102,6 +102,15 @@ export const styles = StyleSheet.create({
     gap: 10,
     flex: 1,
   },
+  connectionPill: {
+    paddingHorizontal: 20,
+    paddingVertical: 6,
+    backgroundColor: colors.gray[100],
+  },
+  connectionText: {
+    ...textStyles.metaLabel,
+    color: colors.gray[600],
+  },
   footer: {
     paddingHorizontal: 20,
     paddingTop: 16,

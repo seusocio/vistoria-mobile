@@ -14,7 +14,7 @@ export interface CreateApplicationInput {
   date: string
 }
 
-function buildApplicationItems(checklist: Checklist): ApplicationItem[] {
+export function buildApplicationItems(checklist: Checklist): ApplicationItem[] {
   const now = new Date().toISOString()
   return checklist.items
     .filter((item) => !item.deletedAt)
@@ -37,6 +37,35 @@ function buildApplicationItems(checklist: Checklist): ApplicationItem[] {
     }))
 }
 
+export function buildApplication(
+  input: CreateApplicationInput,
+  checklist: Checklist,
+): Application {
+  if (input.tagsIds.length === 0) {
+    throw new Error('Selecione ao menos uma tag para a aplicação')
+  }
+  if (!input.date) {
+    throw new Error('Data da visita é obrigatória')
+  }
+
+  const now = new Date().toISOString()
+  return {
+    id: generateId('application_'),
+    checklistId: input.checklistId,
+    tagsIds: [...input.tagsIds],
+    date: input.date,
+    status: 'draft',
+    items: buildApplicationItems(checklist),
+    attachments: [],
+    gallerySourceApplicationId: null,
+    transcript: null,
+    createdAt: now,
+    updatedAt: now,
+    completedAt: null,
+    deletedAt: null,
+  }
+}
+
 function cloneExtraItem(item: ApplicationItem, now: string): ApplicationItem {
   return {
     ...item,
@@ -56,48 +85,21 @@ export async function createApplication(
   checklist: Checklist,
   repo: ApplicationRepository = applicationRepository,
 ): Promise<Application> {
-  if (input.tagsIds.length === 0) {
-    throw new Error('Selecione ao menos uma tag para a aplicação')
-  }
-  if (!input.date) {
-    throw new Error('Data da visita é obrigatória')
-  }
-
-  const now = new Date().toISOString()
-  const application: Application = {
-    id: generateId('application_'),
-    checklistId: input.checklistId,
-    tagsIds: [...input.tagsIds],
-    date: input.date,
-    status: 'draft',
-    items: buildApplicationItems(checklist),
-    attachments: [],
-    gallerySourceApplicationId: null,
-    transcript: null,
-    createdAt: now,
-    updatedAt: now,
-    completedAt: null,
-    deletedAt: null,
-  }
-
-  return repo.save(application)
+  return repo.save(buildApplication(input, checklist))
 }
 
-export async function repeatApplicationWithTags(
+export function buildRepeatedApplication(
   sourceApplication: Application,
   checklist: Checklist,
-  repo: ApplicationRepository = applicationRepository,
-): Promise<Application> {
-  const newApplication = await createApplication(
+): Application {
+  const newApplication = buildApplication(
     {
       checklistId: sourceApplication.checklistId,
       tagsIds: sourceApplication.tagsIds,
       date: new Date().toISOString(),
     },
     checklist,
-    repo,
   )
-
   const previousItemsByPosition = new Map(
     sourceApplication.items.map((item) => [item.position, item]),
   )
@@ -125,14 +127,21 @@ export async function repeatApplicationWithTags(
   const extraItems = sourceApplication.items
     .filter((item) => !checklistPositions.has(item.position))
     .map((item) => cloneExtraItem(item, now))
-
-  return repo.save({
+  return {
     ...newApplication,
     items: [...items, ...extraItems],
     attachments: [],
     gallerySourceApplicationId: sourceApplication.id,
     updatedAt: now,
-  })
+  }
+}
+
+export async function repeatApplicationWithTags(
+  sourceApplication: Application,
+  checklist: Checklist,
+  repo: ApplicationRepository = applicationRepository,
+): Promise<Application> {
+  return repo.save(buildRepeatedApplication(sourceApplication, checklist))
 }
 
 export async function listApplicationsByChecklist(
@@ -159,28 +168,6 @@ function touchApplication(application: Application): Application {
   return { ...application, updatedAt: new Date().toISOString() }
 }
 
-export async function updateApplicationTags(
-  application: Application,
-  tagsIds: string[],
-  repo: ApplicationRepository = applicationRepository,
-): Promise<Application> {
-  if (tagsIds.length === 0) {
-    throw new Error('A aplicação precisa de ao menos uma tag')
-  }
-  return repo.save(touchApplication({ ...application, tagsIds }))
-}
-
-export async function updateApplicationDate(
-  application: Application,
-  date: string,
-  repo: ApplicationRepository = applicationRepository,
-): Promise<Application> {
-  if (!date) {
-    throw new Error('Data da visita é obrigatória')
-  }
-  return repo.save(touchApplication({ ...application, date }))
-}
-
 export interface ApplicationItemPatch {
   answer?: string
   note?: string
@@ -190,23 +177,38 @@ export interface ApplicationItemPatch {
   suggestionSource?: ApplicationItem['suggestionSource']
 }
 
+export function applyApplicationItemPatch(
+  application: Application,
+  itemId: string,
+  patch: ApplicationItemPatch,
+  updatedAt: string,
+): Application {
+  const items = application.items.map((item) => {
+    if (item.id !== itemId) return item
+    const next = { ...item, ...patch, updatedAt }
+    if (patch.suggested === false) next.suggestionSource = null
+    if ('answer' in patch && patch.answer !== item.answer) {
+      next.answeredAt = patch.answer ? updatedAt : null
+    }
+    return next
+  })
+  return { ...application, items, updatedAt }
+}
+
 export async function updateApplicationItem(
   application: Application,
   itemId: string,
   patch: ApplicationItemPatch,
   repo: ApplicationRepository = applicationRepository,
 ): Promise<Application> {
-  const now = new Date().toISOString()
-  const items = application.items.map((item) => {
-    if (item.id !== itemId) return item
-    const next = { ...item, ...patch, updatedAt: now }
-    if (patch.suggested === false) next.suggestionSource = null
-    if ('answer' in patch && patch.answer !== item.answer) {
-      next.answeredAt = patch.answer ? now : null
-    }
-    return next
-  })
-  return repo.save(touchApplication({ ...application, items }))
+  return repo.save(
+    applyApplicationItemPatch(
+      application,
+      itemId,
+      patch,
+      new Date().toISOString(),
+    ),
+  )
 }
 
 export interface AddApplicationItemInput {
@@ -248,21 +250,30 @@ export async function addApplicationItem(
 }
 
 export interface AttachmentInput {
+  id?: string
   name: string
-  storageId: string
+  storageId?: string
+  localUri?: string
+  uploadStatus?: Attachment['uploadStatus']
   mimeType?: string
   width?: number
   height?: number
 }
 
-function createAttachment(input: AttachmentInput, position: number, now: string): Attachment {
+export function createAttachment(
+  input: AttachmentInput,
+  position: number,
+  now: string,
+): Attachment {
   return {
-    id: generateId('attachment_'),
+    id: input.id ?? generateId('attachment_'),
     name: input.name,
     position,
     createdAt: now,
     deletedAt: null,
-    storageId: input.storageId,
+    ...(input.storageId ? { storageId: input.storageId } : {}),
+    ...(input.localUri ? { localUri: input.localUri } : {}),
+    ...(input.uploadStatus ? { uploadStatus: input.uploadStatus } : {}),
     mimeType: input.mimeType,
     width: input.width,
     height: input.height,
@@ -428,10 +439,8 @@ export async function removeApplication(
   applicationId: string,
   repo: ApplicationRepository = applicationRepository,
 ): Promise<void> {
-  const exists = await repo.findById(applicationId)
-  if (!exists) return
-
   await repo.softDelete(applicationId)
+
 }
 
 // ---- Derived / read helpers ----
@@ -486,7 +495,6 @@ export function groupApplicationsByTagSet(
   applications: Application[],
 ): ApplicationGroup[] {
   const groups = new Map<string, ApplicationGroup>()
-
   for (const application of applications) {
     const key = tagsKey(application.tagsIds)
     const existing = groups.get(key)

@@ -59,9 +59,8 @@ export function ItemDrawer({
   onSave,
 }: ItemDrawerProps) {
   const activeAttachments = attachments.filter(
-    (attachment) => !attachment.deletedAt,
+    (attachment) => !attachment.deletedAt && attachment.uploadStatus !== 'pending',
   )
-
   function renderFooter(props: BottomSheetFooterProps) {
     return (
       <BottomSheetFooter {...props} style={styles.footer}>

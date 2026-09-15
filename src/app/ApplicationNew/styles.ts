@@ -11,21 +11,6 @@ export const styles = StyleSheet.create({
   fieldLabel: {
     ...textStyles.fieldLabel,
   },
-  dateBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    borderRadius: 12,
-    borderCurve: 'continuous',
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-  },
-  dateText: {
-    ...textStyles.inputValue,
-  },
   helperRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -7,13 +7,12 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
-    // backgroundColor: colors.gray[100],
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.gray[200],
-    borderRadius: radius.sheet,
+    borderRadius: radius.md,
     borderCurve: 'continuous',
     paddingHorizontal: space.md,
-    paddingVertical: space.xs,
   },
   rowAccent: {
     borderColor: colors.blue.base,
@@ -28,21 +27,6 @@ export const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: space.xs,
-  },
-  rowTapArea: {
-    minHeight: touch.min,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.xs,
-    flexShrink: 1,
-  },
-  rowChevron: {
-    minWidth: touch.min,
-    minHeight: touch.min,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: -space.xs,
-    marginRight: -space.md,
   },
   rowValueEmpty: {
     ...textStyles.inputPlaceholder,
@@ -124,8 +108,8 @@ export const styles = StyleSheet.create({
     borderCurve: 'continuous',
   },
   optionSelected: {
-    backgroundColor: colors.blue.base,
-    color: colors.white
+    backgroundColor: colors.blue.tint,
+    color: colors.blue.base
   },
   optionText: {
     ...textStyles.body,

@@ -30,11 +30,10 @@ export class ConvexApplicationRepository implements ApplicationRepository {
 
   async save(application: Application): Promise<Application> {
     const normalized = normalizeApplication(application)
-    const saved = await convexClient.mutation(api.applications.save, {
-      id: normalized.id,
+    await convexClient.mutation(api.applications.create, {
       entity: normalized,
     })
-    return normalizeApplication(castConvex<Application>(saved))
+    return normalized
   }
 
   async softDelete(id: string): Promise<void> {

@@ -16,12 +16,18 @@ function isUploadResponse(value: unknown): value is UploadResponse {
   )
 }
 
+export async function generateUploadUrl(): Promise<string> {
+  return convexClient.mutation(api.files.generateUploadUrl, {})
+}
+
 export async function uploadImage(
   uri: string,
   mimeType = 'image/jpeg',
   onProgress?: (fraction: number) => void,
+  uploadUrl?: string,
 ): Promise<string> {
-  const uploadUrl = await convexClient.mutation(api.files.generateUploadUrl, {})
+  const resolvedUploadUrl =
+    uploadUrl ?? (await convexClient.mutation(api.files.generateUploadUrl, {}))
   let responseBody: string
 
   if (Platform.OS === 'web') {
@@ -30,7 +36,7 @@ export async function uploadImage(
     const blob = await response.blob()
     responseBody = await new Promise<string>((resolve, reject) => {
       const xhr = new XMLHttpRequest()
-      xhr.open('POST', uploadUrl)
+      xhr.open('POST', resolvedUploadUrl)
       xhr.setRequestHeader(
         'Content-Type',
         mimeType || blob.type || 'image/jpeg',
@@ -52,7 +58,7 @@ export async function uploadImage(
     })
   } else {
     const task = FileSystem.createUploadTask(
-      uploadUrl,
+      resolvedUploadUrl,
       uri,
       {
         httpMethod: 'POST',

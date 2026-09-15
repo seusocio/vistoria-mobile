@@ -25,46 +25,31 @@ import { Icon } from '@/components/Icon'
 import { VoiceState } from '@/components/VoiceCard'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { useApplicationFill } from '@/hooks/useApplicationFill'
+import { useApplicationMutations } from '@/hooks/useApplicationMutations'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 import {
   PhotoSource,
   PickedPhoto,
+  generateUploadUrl,
   pickPhotos,
-  uploadImage,
+  prepareAsset,
 } from '@/infra/convex'
-import type { AttachmentInput } from '@/infra/services'
+import { generateId } from '@/infra/id'
 import {
-  acceptSuggestion,
-  addApplicationAttachment,
-  addApplicationItem,
-  addAttachment,
-  completeApplication,
+  createAttachment,
   generateSuggestions,
   getDerivedState,
   getProgress,
   prepareTranscriber,
-  rejectSuggestion,
-  removeApplication,
-  removeApplicationAttachment,
-  removeAttachment,
-  setTranscript,
   transcribeAudio,
-  updateApplicationDate,
-  updateApplicationItem,
-  updateApplicationTags,
 } from '@/infra/services'
+import { useUploadStore } from '@/infra/uploads/upload-store'
 import { StackRoutesProps } from '@/routes/types'
 import { colors } from '@/styles'
 import { haptics } from '@/utils/haptics'
 import { styles } from './styles'
 
-interface PendingUpload {
-  id: string
-  uri: string
-  itemId?: string
-  progress: number
-}
 
 const DERIVED_STATE_LABEL = {
   not_started: 'Não iniciada',
@@ -77,15 +62,24 @@ export function ApplicationFill({
   route,
 }: StackRoutesProps<'applicationFill'>) {
   const { checklistId, applicationId } = route.params
-  const { checklist, application, setApplication, loading } =
-    useApplicationFill(checklistId, applicationId)
+  const { checklist, application: applicationData, loading } = useApplicationFill(
+    checklistId,
+    applicationId,
+  )
+  const mutations = useApplicationMutations()
   const tagsCatalog = useTagsCatalog()
   const { startRecording, stopRecording } = useVoiceRecorder()
   const { show: showUndo } = useUndoToast()
+  const uploadProgress = useUploadStore((state) => state.progress)
 
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [editingItemDraft, setEditingItemDraft] = useState<{
+    note: string
+    tagsIds: string[]
+    quantity: number | null
+  } | null>(null)
   const [editingApplication, setEditingApplication] = useState(false)
   const [draftTagsIds, setDraftTagsIds] = useState<string[]>([])
   const [draftDate, setDraftDate] = useState('')
@@ -97,14 +91,9 @@ export function ApplicationFill({
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] =
     useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([])
-  const latestApplication = useRef(application)
-  const uploadQueue = useRef<Promise<void>>(Promise.resolve())
-  useEffect(() => {
-    latestApplication.current = application
-  }, [application])
-  const currentApplicationId = application?.id
-  const currentTranscript = application?.transcript
+  const submitted = useRef(false)
+  const currentApplicationId = applicationData?.id
+  const currentTranscript = applicationData?.transcript
   useEffect(() => {
     if (!FEATURE_FLAG.voice || !currentApplicationId) return
     setVoiceState(currentTranscript ? 'ready' : 'idle')
@@ -117,14 +106,14 @@ export function ApplicationFill({
   }, [])
 
   const progress = useMemo(
-    () => (application ? getProgress(application) : { answered: 0, total: 0 }),
-    [application],
+    () => (applicationData ? getProgress(applicationData) : { answered: 0, total: 0 }),
+    [applicationData],
   )
-  const derivedState = application
-    ? getDerivedState(application)
+  const derivedState = applicationData
+    ? getDerivedState(applicationData)
     : 'not_started'
 
-  if (loading || !checklist || !application) {
+  if (loading || !checklist || !applicationData) {
     return (
       <Screen
         loading
@@ -136,69 +125,62 @@ export function ApplicationFill({
       </Screen>
     )
   }
-
-  async function refresh(updater: () => Promise<typeof application>) {
-    const updated = await updater()
-    setApplication(updated)
-  }
-
-  async function handleAnswerChange(itemId: string, answer: string) {
-    await refresh(() =>
-      updateApplicationItem(application!, itemId, { answer, suggested: false }),
-    )
-  }
-
-  function enqueueAttachment(input: AttachmentInput, itemId?: string) {
-    uploadQueue.current = uploadQueue.current.then(async () => {
-      const base = latestApplication.current
-      if (!base) return
-      const updated = itemId
-        ? await addAttachment(base, itemId, input)
-        : await addApplicationAttachment(base, input)
-      latestApplication.current = updated
-      setApplication(updated)
-    })
-    return uploadQueue.current
+  const application = applicationData
+  function handleAnswerChange(itemId: string, answer: string) {
+    const updatedAt = new Date().toISOString()
+    void mutations
+      .patchItem({
+        applicationId: application.id,
+        itemId,
+        patch: { answer, suggested: false, suggestionSource: null },
+        updatedAt,
+      })
+      .catch(() => setApplicationError('Não foi possível salvar a resposta'))
   }
 
   async function uploadAsset(asset: PickedPhoto, target: { itemId?: string }) {
-    const uploadId = `upload_${Date.now()}_${Math.random().toString(36).slice(2)}`
-    setPendingUploads((prev) => [
-      ...prev,
-      { id: uploadId, uri: asset.uri, itemId: target.itemId, progress: 0 },
-    ])
     try {
-      const storageId = await uploadImage(
-        asset.uri,
-        asset.mimeType,
-        (fraction) =>
-          setPendingUploads((prev) =>
-            prev.map((upload) =>
-              upload.id === uploadId
-                ? { ...upload, progress: fraction }
-                : upload,
-            ),
-          ),
-      )
-      await enqueueAttachment(
+      const uploadUrlPromise = generateUploadUrl()
+      const prepared = await prepareAsset(asset)
+      const uploadUrl = await uploadUrlPromise
+      const item = target.itemId
+        ? application.items.find((candidate) => candidate.id === target.itemId)
+        : undefined
+      const attachment = createAttachment(
         {
-          name: asset.fileName ?? `Foto ${Date.now()}`,
-          storageId,
-          mimeType: asset.mimeType,
-          width: asset.width,
-          height: asset.height,
+          id: generateId('attachment_'),
+          name: prepared.fileName ?? `Foto ${Date.now()}`,
+          localUri: prepared.uri,
+          uploadStatus: 'pending',
+          mimeType: prepared.mimeType,
+          width: prepared.width,
+          height: prepared.height,
         },
-        target.itemId,
+        item?.attachments.length ?? application.attachments.length,
+        new Date().toISOString(),
       )
+      const updatedAt = new Date().toISOString()
+      void mutations
+        .addAttachment({
+          applicationId: application.id,
+          itemId: target.itemId ?? null,
+          attachment,
+          updatedAt,
+        })
+        .then(() => {
+          useUploadStore.getState().enqueue({
+            applicationId: application.id,
+            itemId: target.itemId ?? null,
+            attachment,
+            uploadUrl,
+          })
+        })
+        .catch(() => setApplicationError('Não foi possível adicionar a foto'))
     } catch (error) {
       setApplicationError(
         error instanceof Error
           ? error.message
-          : 'Não foi possível adicionar a foto',
-      )
-    } finally {
-      setPendingUploads((prev) =>
-        prev.filter((upload) => upload.id !== uploadId),
+          : 'Não foi possível preparar a foto',
       )
     }
   }
@@ -214,14 +196,8 @@ export function ApplicationFill({
 
   function choosePhoto(target: { itemId?: string }) {
     Alert.alert('Adicionar foto', 'Escolha a origem da imagem.', [
-      {
-        text: 'Câmera',
-        onPress: () => void attachPhotos('camera', target),
-      },
-      {
-        text: 'Biblioteca',
-        onPress: () => void attachPhotos('library', target),
-      },
+      { text: 'Câmera', onPress: () => void attachPhotos('camera', target) },
+      { text: 'Biblioteca', onPress: () => void attachPhotos('library', target) },
       { text: 'Cancelar', style: 'cancel' },
     ])
   }
@@ -234,83 +210,61 @@ export function ApplicationFill({
     choosePhoto({})
   }
 
-  function setItemAttachmentDeletedAt(
-    itemId: string,
-    attachmentId: string,
-    deletedAt: string | null,
-  ) {
-    setApplication((current) =>
-      current
-        ? {
-            ...current,
-            items: current.items.map((item) =>
-              item.id === itemId
-                ? {
-                    ...item,
-                    attachments: item.attachments.map((attachment) =>
-                      attachment.id === attachmentId
-                        ? { ...attachment, deletedAt }
-                        : attachment,
-                    ),
-                  }
-                : item,
-            ),
-          }
-        : current,
-    )
-  }
-
-  function setApplicationAttachmentDeletedAt(
-    attachmentId: string,
-    deletedAt: string | null,
-  ) {
-    setApplication((current) =>
-      current
-        ? {
-            ...current,
-            attachments: current.attachments.map((attachment) =>
-              attachment.id === attachmentId
-                ? { ...attachment, deletedAt }
-                : attachment,
-            ),
-          }
-        : current,
-    )
-  }
-
   function handleRemoveAttachment(itemId: string, attachmentId: string) {
-    setItemAttachmentDeletedAt(itemId, attachmentId, new Date().toISOString())
+    const deletedAt = new Date().toISOString()
+    void mutations
+      .setAttachmentDeletedAt({
+        applicationId: application.id,
+        itemId,
+        attachmentId,
+        deletedAt,
+        updatedAt: deletedAt,
+      })
+      .catch(() => setApplicationError('Não foi possível remover a foto'))
     showUndo({
       message: 'Foto removida',
-      onCommit: () => {
-        const current = latestApplication.current
-        if (!current) return
-        void removeAttachment(current, itemId, attachmentId)
-          .then(setApplication)
-          .catch(() => {
-            setItemAttachmentDeletedAt(itemId, attachmentId, null)
-            setApplicationError('Não foi possível remover a foto')
+      onCommit: () => undefined,
+      onUndo: () => {
+        const updatedAt = new Date().toISOString()
+        void mutations
+          .setAttachmentDeletedAt({
+            applicationId: application.id,
+            itemId,
+            attachmentId,
+            deletedAt: null,
+            updatedAt,
           })
+          .catch(() => setApplicationError('Não foi possível desfazer'))
       },
-      onUndo: () => setItemAttachmentDeletedAt(itemId, attachmentId, null),
     })
   }
 
   function handleRemoveApplicationAttachment(attachmentId: string) {
-    setApplicationAttachmentDeletedAt(attachmentId, new Date().toISOString())
+    const deletedAt = new Date().toISOString()
+    void mutations
+      .setAttachmentDeletedAt({
+        applicationId: application.id,
+        itemId: null,
+        attachmentId,
+        deletedAt,
+        updatedAt: deletedAt,
+      })
+      .catch(() => setApplicationError('Não foi possível remover a foto'))
     showUndo({
       message: 'Foto removida',
-      onCommit: () => {
-        const current = latestApplication.current
-        if (!current) return
-        void removeApplicationAttachment(current, attachmentId)
-          .then(setApplication)
-          .catch(() => {
-            setApplicationAttachmentDeletedAt(attachmentId, null)
-            setApplicationError('Não foi possível remover a foto')
+      onCommit: () => undefined,
+      onUndo: () => {
+        const updatedAt = new Date().toISOString()
+        void mutations
+          .setAttachmentDeletedAt({
+            applicationId: application.id,
+            itemId: null,
+            attachmentId,
+            deletedAt: null,
+            updatedAt,
           })
+          .catch(() => setApplicationError('Não foi possível desfazer'))
       },
-      onUndo: () => setApplicationAttachmentDeletedAt(attachmentId, null),
     })
   }
 
@@ -335,7 +289,14 @@ export function ApplicationFill({
       const uri = await stopRecording()
       if (!uri) throw new Error('Gravação vazia')
       const transcript = await transcribeAudio(uri)
-      await refresh(() => setTranscript(application!, transcript))
+      const updatedAt = new Date().toISOString()
+      void mutations
+        .updateMeta({
+          applicationId: application.id,
+          transcript,
+          updatedAt,
+        })
+        .catch(() => setApplicationError('Não foi possível salvar a transcrição'))
       setVoiceState('ready')
     } catch (error) {
       setApplicationError(
@@ -343,7 +304,7 @@ export function ApplicationFill({
           ? error.message
           : 'Não foi possível transcrever a gravação',
       )
-      setVoiceState(application?.transcript ? 'ready' : 'idle')
+      setVoiceState(application.transcript ? 'ready' : 'idle')
     }
   }
 
@@ -351,34 +312,71 @@ export function ApplicationFill({
     if (!FEATURE_FLAG.suggestion) return
     setGeneratingSuggestions(true)
     try {
-      const suggestions = await generateSuggestions(checklist!, application!)
-      let current = application!
-      for (const suggestion of suggestions) {
-        current = await updateApplicationItem(current, suggestion.itemId, {
-          answer: suggestion.answer,
-          note: suggestion.note ?? '',
-          suggested: true,
-          suggestionSource: 'transcript',
+      const suggestions = await generateSuggestions(checklist!, application)
+      const updatedAt = new Date().toISOString()
+      void mutations
+        .patchItems({
+          applicationId: application.id,
+          patches: suggestions.map((suggestion) => ({
+            itemId: suggestion.itemId,
+            patch: {
+              answer: suggestion.answer,
+              note: suggestion.note ?? '',
+              suggested: true,
+              suggestionSource: 'transcript' as const,
+            },
+          })),
+          updatedAt,
         })
-      }
-      setApplication(current)
+        .catch(() => setApplicationError('Não foi possível salvar as sugestões'))
     } finally {
       setGeneratingSuggestions(false)
     }
   }
 
-  async function handleAcceptSuggestion(itemId: string) {
+  function handleAcceptSuggestion(itemId: string) {
     if (!FEATURE_FLAG.suggestion) return
-    await refresh(() => acceptSuggestion(application!, itemId))
+    const updatedAt = new Date().toISOString()
+    void mutations
+      .patchItem({
+        applicationId: application.id,
+        itemId,
+        patch: { suggested: false, suggestionSource: null },
+        updatedAt,
+      })
+      .catch(() => setApplicationError('Não foi possível aceitar a sugestão'))
   }
 
-  async function handleRejectSuggestion(itemId: string) {
+  function handleRejectSuggestion(itemId: string) {
     if (!FEATURE_FLAG.suggestion) return
-    await refresh(() => rejectSuggestion(application!, itemId))
+    const updatedAt = new Date().toISOString()
+    void mutations
+      .patchItem({
+        applicationId: application.id,
+        itemId,
+        patch: {
+          suggested: false,
+          suggestionSource: null,
+          answer: '',
+          note: '',
+        },
+        updatedAt,
+      })
+      .catch(() => setApplicationError('Não foi possível rejeitar a sugestão'))
   }
 
-  async function handleComplete() {
-    await refresh(() => completeApplication(application!))
+  function handleComplete() {
+    if (submitted.current) return
+    submitted.current = true
+    const updatedAt = new Date().toISOString()
+    void mutations
+      .updateMeta({
+        applicationId: application.id,
+        status: 'completed',
+        completedAt: updatedAt,
+        updatedAt,
+      })
+      .catch(() => setApplicationError('Não foi possível concluir a aplicação'))
     haptics.success()
     navigation.navigate('checklistDetail', { checklistId })
   }
@@ -387,36 +385,38 @@ export function ApplicationFill({
     setDeleteConfirmationVisible(true)
   }
 
-  async function confirmDelete() {
+  function confirmDelete() {
     if (deleting) return
     setDeleting(true)
-    try {
-      await removeApplication(application!.id)
-      setDeleteConfirmationVisible(false)
-      navigation.replace('checklistDetail', { checklistId })
-    } finally {
-      setDeleting(false)
-    }
+    void mutations
+      .softDelete({ id: application.id, deletedAt: new Date().toISOString() })
+      .catch(() => setApplicationError('Não foi possível excluir a aplicação'))
+    setDeleteConfirmationVisible(false)
+    navigation.replace('checklistDetail', { checklistId })
   }
 
   function handleOpenEditApplication() {
-    setDraftTagsIds(application!.tagsIds)
-    setDraftDate(application!.date)
+    setDraftTagsIds(application.tagsIds)
+    setDraftDate(application.date)
     setApplicationError(null)
     setEditingApplication(true)
   }
 
-  async function handleSaveApplication() {
+  function handleSaveApplication() {
     if (draftTagsIds.length === 0) {
       haptics.error()
       setApplicationError('Selecione ao menos uma tag')
       return
     }
-    setApplicationError(null)
-    let current = application!
-    current = await updateApplicationTags(current, draftTagsIds)
-    current = await updateApplicationDate(current, draftDate)
-    setApplication(current)
+    const updatedAt = new Date().toISOString()
+    void mutations
+      .updateMeta({
+        applicationId: application.id,
+        tagsIds: draftTagsIds,
+        date: draftDate,
+        updatedAt,
+      })
+      .catch(() => setApplicationError('Não foi possível salvar a aplicação'))
     setEditingApplication(false)
   }
 
@@ -427,20 +427,45 @@ export function ApplicationFill({
     setAddingItem(true)
   }
 
-  async function handleSaveNewItem() {
+  function handleSaveNewItem() {
     if (!newItemTitle.trim()) {
       haptics.error()
       setNewItemError('Informe um título para o item')
       return
     }
-    setNewItemError(null)
-    await refresh(() =>
-      addApplicationItem(application!, {
-        title: newItemTitle,
-        tagsIds: newItemTagsIds,
-      }),
-    )
+    const now = new Date().toISOString()
+    const item = {
+      id: generateId('aitem_'),
+      position: application.items.length,
+      title: newItemTitle.trim(),
+      description: '',
+      answer: '',
+      answeredAt: null,
+      note: '',
+      quantity: null,
+      attachments: [],
+      tagsIds: [...newItemTagsIds],
+      suggested: false,
+      suggestionSource: null,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    }
+    void mutations
+      .addItem({ applicationId: application.id, item, updatedAt: now })
+      .catch(() => setNewItemError('Não foi possível adicionar o item'))
     setAddingItem(false)
+  }
+
+  function handleOpenItemDrawer(itemId: string) {
+    const item = application.items.find((candidate) => candidate.id === itemId)
+    if (!item) return
+    setEditingItemDraft({
+      note: item.note,
+      tagsIds: [...item.tagsIds],
+      quantity: item.quantity,
+    })
+    setEditingItemId(itemId)
   }
 
   const editingItem = editingItemId
@@ -449,6 +474,11 @@ export function ApplicationFill({
   const editingItemIndex = editingItem
     ? application.items.indexOf(editingItem)
     : -1
+  const itemDraft = editingItem && editingItemDraft
+    ? editingItemDraft
+    : editingItem
+      ? { note: editingItem.note, tagsIds: editingItem.tagsIds, quantity: editingItem.quantity }
+      : null
   function renderEditApplicationFooter(props: BottomSheetFooterProps) {
     return (
       <BottomSheetFooter {...props} style={styles.sheetFooter}>
@@ -547,6 +577,9 @@ export function ApplicationFill({
           {progress.answered}/{progress.total} respondidos ·{' '}
           {DERIVED_STATE_LABEL[derivedState]}
         </Text>
+        {applicationError ? (
+          <Text style={styles.modalError}>{applicationError}</Text>
+        ) : null}
         <ProgressBar
           progress={progress.total > 0 ? progress.answered / progress.total : 0}
         />
@@ -586,20 +619,12 @@ export function ApplicationFill({
             .map((attachment) => (
               <PhotoThumb
                 key={attachment.id}
-                uri={attachment.url}
+                uri={attachment.url ?? attachment.localUri}
+                uploading={attachment.uploadStatus === 'pending'}
+                progress={uploadProgress[attachment.id] ?? 0}
                 onRemove={() =>
                   handleRemoveApplicationAttachment(attachment.id)
                 }
-              />
-            ))}
-          {pendingUploads
-            .filter((upload) => !upload.itemId)
-            .map((upload) => (
-              <PhotoThumb
-                key={upload.id}
-                uri={upload.uri}
-                uploading
-                progress={upload.progress}
               />
             ))}
         </View>
@@ -647,7 +672,7 @@ export function ApplicationFill({
             options={checklist.options}
             answer={item.answer}
             onAnswerChange={(answer) => handleAnswerChange(item.id, answer)}
-            onOpenDrawer={() => setEditingItemId(item.id)}
+            onOpenDrawer={() => handleOpenItemDrawer(item.id)}
             onAcceptSuggestion={
               FEATURE_FLAG.suggestion
                 ? () => handleAcceptSuggestion(item.id)
@@ -665,61 +690,65 @@ export function ApplicationFill({
       {editingItem && (
         <ItemDrawer
           visible={Boolean(editingItem)}
-          onClose={() => setEditingItemId(null)}
+          onClose={() => {
+            setEditingItemId(null)
+            setEditingItemDraft(null)
+          }}
           itemIndex={editingItemIndex + 1}
           itemsTotal={application.items.length}
           title={editingItem.title}
-          note={editingItem.note}
+          note={itemDraft?.note ?? editingItem.note}
           onNoteChange={(note) =>
-            setApplication({
-              ...application,
-              items: application.items.map((i) =>
-                i.id === editingItem.id ? { ...i, note } : i,
-              ),
-            })
+            setEditingItemDraft((current) => ({
+              note,
+              tagsIds: current?.tagsIds ?? editingItem.tagsIds,
+              quantity: current?.quantity ?? editingItem.quantity,
+            }))
           }
-          tagsIds={editingItem.tagsIds}
+          tagsIds={itemDraft?.tagsIds ?? editingItem.tagsIds}
           availableTags={tagsCatalog.activeTags}
           allTagsById={tagsCatalog.tagsById}
-          onChangeTags={(ids) =>
-            setApplication({
-              ...application,
-              items: application.items.map((i) =>
-                i.id === editingItem.id ? { ...i, tagsIds: ids } : i,
-              ),
-            })
+          onChangeTags={(tagsIds) =>
+            setEditingItemDraft((current) => ({
+              note: current?.note ?? editingItem.note,
+              tagsIds,
+              quantity: current?.quantity ?? editingItem.quantity,
+            }))
           }
           onCreateTag={tagsCatalog.createTag}
-          quantity={editingItem.quantity}
+          quantity={itemDraft?.quantity ?? editingItem.quantity}
           onQuantityChange={(quantity) =>
-            setApplication({
-              ...application,
-              items: application.items.map((i) =>
-                i.id === editingItem.id ? { ...i, quantity } : i,
-              ),
-            })
+            setEditingItemDraft((current) => ({
+              note: current?.note ?? editingItem.note,
+              tagsIds: current?.tagsIds ?? editingItem.tagsIds,
+              quantity,
+            }))
           }
           attachments={editingItem.attachments}
-          pendingPhotos={pendingUploads
-            .filter((upload) => upload.itemId === editingItem.id)
-            .map((upload) => ({
-              id: upload.id,
-              uri: upload.uri,
-              progress: upload.progress,
+          pendingPhotos={editingItem.attachments
+            .filter((attachment) => attachment.uploadStatus === 'pending' && !attachment.deletedAt && attachment.localUri)
+            .map((attachment) => ({
+              id: attachment.id,
+              uri: attachment.localUri as string,
+              progress: uploadProgress[attachment.id] ?? 0,
             }))}
           onAddPhoto={() => handleAddPhoto(editingItem.id)}
           onRemoveAttachment={(attachmentId) =>
             handleRemoveAttachment(editingItem.id, attachmentId)
           }
-          onSave={async () => {
-            await refresh(() =>
-              updateApplicationItem(application, editingItem.id, {
-                note: editingItem.note,
-                tagsIds: editingItem.tagsIds,
-                quantity: editingItem.quantity,
-              }),
-            )
+          onSave={() => {
+            if (!itemDraft) return
+            const updatedAt = new Date().toISOString()
+            void mutations
+              .patchItem({
+                applicationId: application.id,
+                itemId: editingItem.id,
+                patch: itemDraft,
+                updatedAt,
+              })
+              .catch(() => setApplicationError('Não foi possível salvar o item'))
             setEditingItemId(null)
+            setEditingItemDraft(null)
           }}
         />
       )}

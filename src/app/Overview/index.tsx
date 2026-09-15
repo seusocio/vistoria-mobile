@@ -125,11 +125,19 @@ export function Overview() {
           <View style={styles.customRangeRow}>
             <View style={styles.dateField}>
               <Text style={styles.dateFieldLabel}>De</Text>
-              <DatePickerField value={customFrom} onChange={setCustomFrom} />
+              <DatePickerField
+                value={customFrom}
+                onChange={setCustomFrom}
+                accessibilityLabel="Selecionar data inicial do relatório"
+              />
             </View>
             <View style={styles.dateField}>
               <Text style={styles.dateFieldLabel}>Até</Text>
-              <DatePickerField value={customTo} onChange={setCustomTo} />
+              <DatePickerField
+                value={customTo}
+                onChange={setCustomTo}
+                accessibilityLabel="Selecionar data final do relatório"
+              />
             </View>
           </View>
         )}

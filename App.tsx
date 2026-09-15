@@ -4,16 +4,18 @@ import {
 	Lato_700Bold,
 	useFonts,
 } from "@expo-google-fonts/lato";
-import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { ConvexProvider } from "convex/react";
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { ConvexQueryCacheProvider } from 'convex-helpers/react/cache';
+import { ConvexProvider } from 'convex/react';
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { UndoToastProvider } from "@/components";
-import { convexClient } from "@/infra/convex";
-import { migrateLocalDataToConvex } from "@/infra/storage";
+import { convexClient } from '@/infra/convex'
+import { migrateLocalDataToConvex } from '@/infra/storage';
+import { subscribeToUploadRecovery } from '@/infra/uploads/upload-store';
 import { Routes } from "@/routes";
 import { colors } from "@/styles";
 
@@ -105,6 +107,7 @@ export default function App() {
 			mounted = false;
 		};
 	}, [migrationAttempt]);
+  useEffect(() => subscribeToUploadRecovery(), []);
 
 	useEffect(() => {
 		if (fontsLoaded && (dataReady || startupError)) {
@@ -126,16 +129,18 @@ export default function App() {
 	}
 
 	return (
-		<GestureHandlerRootView style={{ flex: 1 }}>
-			<SafeAreaProvider>
-				<UndoToastProvider>
-					<BottomSheetModalProvider>
-						<ConvexProvider client={convexClient}>
-							<Routes />
-						</ConvexProvider>
-					</BottomSheetModalProvider>
-				</UndoToastProvider>
-			</SafeAreaProvider>
-		</GestureHandlerRootView>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <UndoToastProvider>
+          <BottomSheetModalProvider>
+            <ConvexProvider client={convexClient}>
+              <ConvexQueryCacheProvider>
+                <Routes />
+              </ConvexQueryCacheProvider>
+            </ConvexProvider>
+          </BottomSheetModalProvider>
+        </UndoToastProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
 	);
 }

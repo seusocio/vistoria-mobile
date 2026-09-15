@@ -17,6 +17,10 @@ const attachment = v.object({
   createdAt: v.string(),
   deletedAt: v.union(v.string(), v.null()),
   storageId: v.optional(v.string()),
+  localUri: v.optional(v.string()),
+  uploadStatus: v.optional(
+    v.union(v.literal('pending'), v.literal('uploaded'), v.literal('failed')),
+  ),
   mimeType: v.optional(v.string()),
   width: v.optional(v.number()),
   height: v.optional(v.number()),

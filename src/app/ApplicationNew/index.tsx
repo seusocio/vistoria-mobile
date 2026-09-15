@@ -1,14 +1,15 @@
-import { useQuery } from "convex/react";
+import { useQuery } from 'convex-helpers/react/cache'
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { Screen, TagMultiSelect } from "@/components";
+import { Pressable, Text, View, Alert } from "react-native";
+import { DatePickerField, Screen, TagMultiSelect } from "@/components";
 import { Icon } from "@/components/Icon";
-import { useTagsCatalog } from "@/hooks/useTagsCatalog";
-import type { Checklist } from "@/infra/domain/entities";
-import { createApplication } from "@/infra/services";
-import type { StackRoutesProps } from "@/routes/types";
+import { useApplicationMutations } from '@/hooks/useApplicationMutations'
+import { useTagsCatalog } from '@/hooks/useTagsCatalog'
+import { Application, Checklist } from '@/infra/domain/entities'
+import { buildApplication } from '@/infra/services'
+import type { StackRoutesProps } from '@/routes/types'
 import { colors } from "@/styles";
-import { formatBrDate, todayIso } from "@/utils/date";
+import { todayIso } from "@/utils/date";
 import { api } from "../../../convex/_generated/api";
 import { styles } from "./styles";
 
@@ -22,33 +23,35 @@ export function ApplicationNew({
 	}) as Checklist | null | undefined;
 	const checklist = checklistData ?? null;
 	const loading = checklistData === undefined;
-	const [tagsIds, setTagsIds] = useState<string[]>([]);
-	const [date] = useState(todayIso());
-	const [error, setError] = useState<string | null>(null);
-	const [submitting, setSubmitting] = useState(false);
-	const tagsCatalog = useTagsCatalog();
+  const [tagsIds, setTagsIds] = useState<string[]>([])
+  const [date, setDate] = useState(todayIso())
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const tagsCatalog = useTagsCatalog()
+  const mutations = useApplicationMutations()
 
-	async function handleSubmit() {
-		if (!checklist) return;
-		setError(null);
-		setSubmitting(true);
-		try {
-			const application = await createApplication(
-				{ checklistId, tagsIds, date },
-				checklist,
-			);
-			navigation.replace("applicationFill", {
-				checklistId,
-				applicationId: application.id,
-			});
-		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Erro ao criar a aplicação",
-			);
-		} finally {
-			setSubmitting(false);
-		}
-	}
+  function handleSubmit() {
+    if (!checklist || submitting) return
+    setError(null)
+    let application: Application
+    try {
+      application = buildApplication({ checklistId, tagsIds, date }, checklist)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar a aplicação')
+      return
+    }
+    setSubmitting(true)
+    void mutations
+      .create({ entity: application })
+      .catch(() => {
+        navigation.goBack()
+        Alert.alert('Erro', 'Não foi possível criar a aplicação')
+      })
+    navigation.replace('applicationFill', {
+      checklistId,
+      applicationId: application.id,
+    })
+  }
 
 	return (
 		<Screen
@@ -93,10 +96,11 @@ export function ApplicationNew({
 
 					<View style={styles.field}>
 						<Text style={styles.fieldLabel}>Data da visita</Text>
-						<View style={styles.dateBox}>
-							<Icon name="calendar" size={18} color={colors.gray[400]} />
-							<Text style={styles.dateText}>{formatBrDate(date)}</Text>
-						</View>
+						<DatePickerField
+							value={date}
+							onChange={setDate}
+							accessibilityLabel="Selecionar data da nova visita"
+						/>
 					</View>
 
 					<View style={styles.helperRow}>

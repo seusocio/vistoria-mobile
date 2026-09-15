@@ -1,3 +1,5 @@
+export type UploadStatus = 'pending' | 'uploaded' | 'failed'
+
 export interface Attachment {
   id: string
   name: string
@@ -5,6 +7,8 @@ export interface Attachment {
   createdAt: string
   deletedAt: string | null
   storageId?: string
+  localUri?: string
+  uploadStatus?: UploadStatus
   url?: string
   mimeType?: string
   width?: number

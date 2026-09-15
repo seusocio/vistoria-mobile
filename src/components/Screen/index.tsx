@@ -1,4 +1,5 @@
 import { MotiView } from 'moti'
+import { useConvexConnectionState } from 'convex/react'
 import { ReactNode } from 'react'
 import {
   Pressable,
@@ -79,6 +80,12 @@ export function Screen({
   footer,
 }: ScreenProps) {
   const { bottom } = useSafeAreaInsets()
+  const { isWebSocketConnected, hasInflightRequests } = useConvexConnectionState()
+  const connectionLabel = !isWebSocketConnected
+    ? 'Sem conexão · alterações serão reenviadas'
+    : hasInflightRequests
+      ? 'Salvando…'
+      : null
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -122,6 +129,11 @@ export function Screen({
         )}
 
         {headerExtra}
+        {connectionLabel ? (
+          <View style={styles.connectionPill} accessible>
+            <Text style={styles.connectionText}>{connectionLabel}</Text>
+          </View>
+        ) : null}
 
         {loading ? (
           <ScreenSkeleton />

@@ -1,4 +1,4 @@
-import { useQuery } from 'convex/react'
+import { useQuery } from 'convex-helpers/react/cache'
 import { useMemo } from 'react'
 import { normalizeApplication } from '@/infra/convex'
 import { Application } from '@/infra/domain/entities'

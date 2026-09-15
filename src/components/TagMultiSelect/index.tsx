@@ -3,10 +3,10 @@ import {
   BottomSheetScrollView,
   type BottomSheetFooterProps,
 } from '@gorhom/bottom-sheet'
-import { useMemo, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Pressable, Text, View, type TextInput } from 'react-native'
 import { normalizeTagLabel, Tag } from '@/infra/domain/entities'
-import { colors } from '@/styles'
+import { colors, duration } from '@/styles'
 import { haptics } from '@/utils/haptics'
 import { AppBottomSheet } from '../AppBottomSheet'
 import { Icon } from '../Icon'
@@ -31,7 +31,7 @@ export function TagMultiSelect({
   allTagsById,
   onChange,
   onCreateTag,
-  placeholder = 'Adicionar tag...',
+  placeholder = 'Buscar tags',
   variant = 'default',
 }: TagMultiSelectProps) {
   const [query, setQuery] = useState('')
@@ -39,6 +39,16 @@ export function TagMultiSelect({
   const [visible, setVisible] = useState(false)
   const [draftIds, setDraftIds] = useState(selectedIds)
   const [createdTags, setCreatedTags] = useState<Map<string, Tag>>(new Map())
+  const queryInputRef = useRef<TextInput>(null)
+
+  useEffect(() => {
+    if (!visible) return
+    const focusTimer = setTimeout(
+      () => queryInputRef.current?.focus(),
+      duration.sheet,
+    )
+    return () => clearTimeout(focusTimer)
+  }, [visible])
 
   const selectedLabels = selectedIds
     .map((id) => allTagsById.get(id)?.label ?? createdTags.get(id)?.label)
@@ -128,32 +138,25 @@ export function TagMultiSelect({
       </BottomSheetFooter>
     )
   }
-
   return (
     <>
-      <View
-        style={[
+      <Pressable
+        style={({ pressed }) => [
           styles.row,
           variant === 'accent' && styles.rowAccent,
           variant === 'muted' && styles.rowMuted,
+          pressed && styles.pressed,
         ]}
+        onPress={openSheet}
+        accessibilityRole="button"
+        accessibilityLabel={placeholder}
+        accessibilityHint="Abre a seleção de tags"
       >
+        <Icon name="search" size={18} color={colors.gray[400]} />
         <View style={styles.rowContent}>
           {selectedLabels.length === 0 ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.rowTapArea,
-                pressed && styles.pressed,
-              ]}
-              onPress={openSheet}
-              accessibilityRole="button"
-              accessibilityLabel={placeholder}
-              accessibilityHint="Abre a seleção de tags"
-            >
-              <Text style={styles.rowValueEmpty}>{placeholder}</Text>
-            </Pressable>
-          ) : null}
-          {selectedLabels.length > 0 ? (
+            <Text style={styles.rowValueEmpty}>{placeholder}</Text>
+          ) : (
             <View style={styles.chips}>
               {selectedIds.map((id) => {
                 const label =
@@ -168,20 +171,9 @@ export function TagMultiSelect({
                 ) : null
               })}
             </View>
-          ) : null}
+          )}
         </View>
-        <Pressable
-          style={({ pressed }) => [
-            styles.rowChevron,
-            pressed && styles.pressed,
-          ]}
-          onPress={openSheet}
-          accessibilityRole="button"
-          accessibilityLabel={placeholder}
-        >
-          <Icon name="chevron-right" size={18} color={colors.gray[400]} />
-        </Pressable>
-      </View>
+      </Pressable>
 
       <AppBottomSheet
         visible={visible}
@@ -215,15 +207,16 @@ export function TagMultiSelect({
           <View style={styles.searchBox}>
             <Icon name="search" size={18} color={colors.gray[400]} />
             <SheetAwareTextInput
+              ref={queryInputRef}
               value={query}
               onChangeText={setQuery}
-              placeholder="Buscar tags"
+              placeholder={placeholder}
               placeholderTextColor={colors.gray[400]}
               style={styles.searchInput}
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"
-              accessibilityLabel="Buscar tags"
+              accessibilityLabel={placeholder}
             />
           </View>
           <View style={styles.options}>
@@ -241,7 +234,7 @@ export function TagMultiSelect({
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: selected }}
                 >
-                  <Text style={styles.optionText}>{tag.label}</Text>
+                  <Text style={selected ? styles.optionSelected : styles.optionText}>{tag.label}</Text>
                   <View style={[styles.check, selected && styles.checkSelected]}>
                     {selected ? (
                       <Icon name="check" size={14} color={colors.white} />

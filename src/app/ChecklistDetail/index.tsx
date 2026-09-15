@@ -3,7 +3,7 @@ import {
   type BottomSheetFooterProps,
   BottomSheetView,
 } from '@gorhom/bottom-sheet'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import {
   AppBottomSheet,
@@ -16,15 +16,15 @@ import {
   TagMultiSelect,
 } from '@/components'
 import { Icon } from '@/components/Icon'
+import { useApplicationMutations } from '@/hooks/useApplicationMutations'
 import { useChecklistDetail } from '@/hooks/useChecklistDetail'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import {
+  buildRepeatedApplication,
   countNegativeAnswers,
   duplicateChecklist,
   groupApplicationsByTagSet,
-  repeatApplicationWithTags,
   softDeleteChecklist,
-  updateApplicationTags,
 } from '@/infra/services'
 import { StackRoutesProps } from '@/routes/types'
 import { colors } from '@/styles'
@@ -38,7 +38,8 @@ export function ChecklistDetail({
   const { checklistId } = route.params
   const { checklist, applications, loading } = useChecklistDetail(checklistId)
   const { resolveLabels, activeTags, tagsById, createTag } = useTagsCatalog()
-
+  const mutations = useApplicationMutations()
+  const submitted = useRef(false)
   const groups = useMemo(
     () => groupApplicationsByTagSet(applications),
     [applications],
@@ -58,24 +59,26 @@ export function ChecklistDetail({
   ).length
 
   async function handleDuplicate() {
-    const copy = await duplicateChecklist(checklistId)
-    navigation.replace('checklistDetail', { checklistId: copy.id })
+    if (!checklist || submitted.current) return
+    submitted.current = true
+    try {
+      const copy = await duplicateChecklist(checklistId)
+      navigation.replace('checklistDetail', { checklistId: copy.id })
+    } finally {
+      submitted.current = false
+    }
   }
 
   function handleDelete() {
     setDeleteConfirmationVisible(true)
   }
 
-  async function confirmDelete() {
+  function confirmDelete() {
     if (deleting) return
     setDeleting(true)
-    try {
-      await softDeleteChecklist(checklistId)
-      setDeleteConfirmationVisible(false)
-      navigation.navigate('tabs', { screen: 'home' })
-    } finally {
-      setDeleting(false)
-    }
+    void softDeleteChecklist(checklistId).catch(() => setDeleting(false))
+    setDeleteConfirmationVisible(false)
+    navigation.navigate('tabs', { screen: 'home' })
   }
 
   function handleOpenBatchEdit(group: (typeof groups)[number]) {
@@ -84,7 +87,7 @@ export function ChecklistDetail({
     setBatchError(null)
   }
 
-  async function handleSaveBatchEdit() {
+  function handleSaveBatchEdit() {
     if (!editingGroup) return
     if (draftGroupTags.length === 0) {
       setBatchError('Selecione ao menos uma tag')
@@ -92,14 +95,16 @@ export function ChecklistDetail({
     }
     setSavingBatch(true)
     setBatchError(null)
-    try {
-      for (const application of editingGroup.applications) {
-        await updateApplicationTags(application, draftGroupTags)
-      }
-      setEditingGroup(null)
-    } finally {
-      setSavingBatch(false)
-    }
+    const updatedAt = new Date().toISOString()
+    void mutations
+      .setTagsForMany({
+        applicationIds: editingGroup.applications.map((application) => application.id),
+        tagsIds: draftGroupTags,
+        updatedAt,
+      })
+      .then(() => setEditingGroup(null))
+      .catch(() => setBatchError('Não foi possível salvar as tags'))
+      .finally(() => setSavingBatch(false))
   }
   function renderBatchFooter(props: BottomSheetFooterProps) {
     return (
@@ -121,12 +126,13 @@ export function ChecklistDetail({
     )
   }
 
-  async function handleRepeat(groupApplications: typeof applications) {
-    if (!checklist) return
-    const newApplication = await repeatApplicationWithTags(
-      groupApplications[0],
-      checklist,
-    )
+  function handleRepeat(groupApplications: typeof applications) {
+    if (!checklist || submitted.current || groupApplications.length === 0) return
+    submitted.current = true
+    const newApplication = buildRepeatedApplication(groupApplications[0], checklist)
+    void mutations
+      .create({ entity: newApplication })
+      .catch(() => setBatchError('Não foi possível repetir a aplicação'))
     navigation.navigate('applicationFill', {
       checklistId,
       applicationId: newApplication.id,

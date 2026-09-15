@@ -34,9 +34,6 @@ export async function findOrCreateTagByLabel(
     throw new Error('Nome da tag não pode ser vazio')
   }
   const normalizedLabel = normalizeTagLabel(trimmed)
-  const existing = await repo.findByNormalizedLabel(normalizedLabel)
-  if (existing) return existing
-
   const now = new Date().toISOString()
   return repo.create({
     id: generateId('tag_'),

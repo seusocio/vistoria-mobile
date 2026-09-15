@@ -22,6 +22,16 @@ pnpm android
 pnpm ios
 ```
 
+### Seed manual do Convex
+
+Para publicar as funções e inserir as tags, apartamentos e checklists iniciais no deployment configurado:
+
+```bash
+bun run convex:seed
+```
+
+O comando é idempotente: executar novamente não duplica as tags nem os checklists semeados.
+
 ## 📚 Documentação
 
 A documentação dos componentes e padrões do projeto está organizada na pasta `docs/`.
