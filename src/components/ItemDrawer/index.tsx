@@ -102,6 +102,7 @@ export function ItemDrawer({
               styles.closeButton,
               pressed && { opacity: 0.7 },
             ]}
+            hitSlop={12}
             onPress={onClose}
             accessibilityLabel="Fechar"
           >
@@ -147,6 +148,7 @@ export function ItemDrawer({
               <Stepper value={quantity} onChange={onQuantityChange} />
               <Pressable
                 style={({ pressed }) => pressed && { opacity: 0.7 }}
+                hitSlop={12}
                 onPress={() => onQuantityChange(null)}
               >
                 <Icon name="trash-2" size={16} color={colors.gray[400]} />

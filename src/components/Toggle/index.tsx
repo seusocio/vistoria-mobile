@@ -3,6 +3,7 @@ import { ResponseSemantic } from '@/infra/domain/entities'
 import { colors } from '@/styles'
 import { Icon } from '../Icon'
 import { styles } from './styles'
+import { haptics } from '@/utils/haptics'
 
 export interface ToggleProps {
   semantic: ResponseSemantic | null
@@ -48,7 +49,11 @@ export function Toggle({
         { width: size, height: size, borderRadius: size / 2 },
         pressed && { opacity: 0.7 },
       ]}
-      onPress={onPress}
+      hitSlop={12}
+      onPress={() => {
+        haptics.selection()
+        onPress()
+      }}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       accessibilityLabel={accessibilityLabel}

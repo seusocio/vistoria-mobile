@@ -14,6 +14,7 @@ export function Stepper({ value, onChange }: StepperProps) {
     <View style={styles.container}>
       <Pressable
         style={({ pressed }) => [styles.button, pressed && { opacity: 0.7 }]}
+        hitSlop={10}
         onPress={() => onChange(Math.max(0, value - 1))}
         accessibilityLabel="Diminuir quantidade"
       >
@@ -22,6 +23,7 @@ export function Stepper({ value, onChange }: StepperProps) {
       <Text style={styles.value}>{value}</Text>
       <Pressable
         style={({ pressed }) => [styles.button, pressed && { opacity: 0.7 }]}
+        hitSlop={10}
         onPress={() => onChange(value + 1)}
         accessibilityLabel="Aumentar quantidade"
       >

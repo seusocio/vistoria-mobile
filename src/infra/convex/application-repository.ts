@@ -2,20 +2,7 @@ import { Application } from '@/infra/domain/entities'
 import { ApplicationRepository } from '@/infra/domain/repositories'
 import { api } from '../../../convex/_generated/api'
 import { castConvex, convexClient } from './client'
-
-export function normalizeApplication(application: Application): Application {
-  return {
-    ...application,
-    attachments: application.attachments ?? [],
-    gallerySourceApplicationId: application.gallerySourceApplicationId ?? null,
-    items: application.items.map((item) => ({
-      ...item,
-      attachments: item.attachments ?? [],
-      tagsIds: item.tagsIds ?? [],
-      suggestionSource: item.suggestionSource ?? null,
-    })),
-  }
-}
+import { normalizeApplication } from './normalize'
 
 export class ConvexApplicationRepository implements ApplicationRepository {
   async listByChecklistId(checklistId: string): Promise<Application[]> {

@@ -55,6 +55,7 @@ import {
 } from '@/infra/services'
 import { StackRoutesProps } from '@/routes/types'
 import { colors } from '@/styles'
+import { haptics } from '@/utils/haptics'
 import { styles } from './styles'
 
 interface PendingUpload {
@@ -304,6 +305,7 @@ export function ApplicationFill({
 
   async function handleComplete() {
     await refresh(() => completeApplication(application!))
+    haptics.success()
     navigation.navigate('checklistDetail', { checklistId })
   }
 
@@ -332,6 +334,7 @@ export function ApplicationFill({
 
   async function handleSaveApplication() {
     if (draftTagsIds.length === 0) {
+      haptics.error()
       setApplicationError('Selecione ao menos uma tag')
       return
     }
@@ -352,6 +355,7 @@ export function ApplicationFill({
 
   async function handleSaveNewItem() {
     if (!newItemTitle.trim()) {
+      haptics.error()
       setNewItemError('Informe um título para o item')
       return
     }
@@ -424,6 +428,7 @@ export function ApplicationFill({
               styles.headerActionButton,
               pressed && { opacity: 0.7 },
             ]}
+            hitSlop={12}
             onPress={handleDelete}
             accessibilityLabel="Excluir aplicação"
           >
@@ -455,6 +460,7 @@ export function ApplicationFill({
             styles.editAppButton,
             pressed && { opacity: 0.7 },
           ]}
+          hitSlop={12}
           onPress={handleOpenEditApplication}
           accessibilityLabel="Editar tags e data da aplicação"
         >
@@ -707,8 +713,9 @@ export function ApplicationFill({
       </AppBottomSheet>
       <ConfirmBottomSheet
         visible={deleteConfirmationVisible}
-        title="Excluir aplicação"
-        message="Tem certeza que deseja excluir esta aplicação?"
+        title={`Excluir esta aplicação de "${checklist.title}"?`}
+        message={`${progress.answered} de ${progress.total} itens respondidos e todas as fotos anexadas serão excluídos.`}
+        confirmLabel="Excluir aplicação"
         confirming={deleting}
         onCancel={() => setDeleteConfirmationVisible(false)}
         onConfirm={confirmDelete}

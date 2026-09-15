@@ -3,9 +3,9 @@ import {
   Pressable,
   TargetedEvent,
   Text,
-  TextInput,
   View,
 } from 'react-native'
+import { SheetAwareTextInput } from '../../SheetAwareTextInput'
 import { useInputContext } from '../hooks/InputContext'
 import { styles } from '../styles'
 import { InputFieldProps } from '../types'
@@ -106,7 +106,7 @@ export function Field({
   }
 
   return (
-    <TextInput
+    <SheetAwareTextInput
       style={textInputStyle}
       placeholderTextColor={styles.placeholderText.color}
       keyboardType={

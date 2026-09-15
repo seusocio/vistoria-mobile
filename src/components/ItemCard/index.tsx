@@ -111,6 +111,7 @@ export const ItemCard = memo(function ItemCard({
             styles.moreButton,
             pressed && { opacity: 0.7 },
           ]}
+          hitSlop={12}
           onPress={onOpenDrawer}
           accessibilityLabel={`Editar detalhes de ${title}`}
         >

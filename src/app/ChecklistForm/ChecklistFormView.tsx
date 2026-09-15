@@ -22,6 +22,7 @@ import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { ChecklistTemplate } from '@/infra/data/templates'
 import { ResponseSemantic } from '@/infra/domain/entities'
 import { colors } from '@/styles'
+import { haptics } from '@/utils/haptics'
 import { styles } from './styles'
 
 const SEMANTIC_DOT_COLOR: Record<ResponseSemantic, string> = {
@@ -96,6 +97,7 @@ export function ChecklistFormView({
 
   function handleSaveItem() {
     if (!draftTitle.trim()) {
+      haptics.error()
       setItemError('Informe um título para o item')
       return
     }
@@ -230,6 +232,7 @@ export function ChecklistFormView({
               />
               <Pressable
                 style={({ pressed }) => pressed && { opacity: 0.7 }}
+                hitSlop={12}
                 onPress={() => setPendingDelete({ type: 'option', index })}
               >
                 <Icon name="multiply" size={12} color={colors.gray[400]} />
@@ -301,7 +304,7 @@ export function ChecklistFormView({
                   </View>
                   <Pressable
                     style={({ pressed }) => pressed && { opacity: 0.7 }}
-                    hitSlop={8}
+                    hitSlop={14}
                     onPress={() =>
                       setPendingDelete({ type: 'item', key: item.key })
                     }
@@ -336,6 +339,9 @@ export function ChecklistFormView({
           pendingDelete?.type === 'option'
             ? 'Deseja remover esta opção de resposta?'
             : 'Deseja remover este item do checklist?'
+        }
+        confirmLabel={
+          pendingDelete?.type === 'option' ? 'Remover opção' : 'Remover item'
         }
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => {

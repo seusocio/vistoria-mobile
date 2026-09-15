@@ -9,6 +9,7 @@ import { Platform, StyleSheet } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { FullWindowOverlay } from 'react-native-screens'
 import { styles } from './styles'
+import { SheetContext } from './context'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 // iOS: render the sheet inside a native full-window overlay so it appears ABOVE
@@ -95,13 +96,14 @@ export function AppBottomSheet({
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
+      enableBlurKeyboardOnGesture
       onDismiss={() => {
         if (visibleRef.current) onClose()
       }}
     >
-      <SafeAreaView>
-        {children}
-        </SafeAreaView>
+      <SheetContext.Provider value={true}>
+        <SafeAreaView>{children}</SafeAreaView>
+      </SheetContext.Provider>
     </BottomSheetModal>
   )
 }

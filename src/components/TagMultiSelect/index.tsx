@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Pressable, Text, TextInput, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import { normalizeTagLabel, Tag } from '@/infra/domain/entities'
 import { colors } from '@/styles'
 import { TagChip } from '../TagChip'
 import { styles } from './styles'
+import { haptics } from '@/utils/haptics'
+import { SheetAwareTextInput } from '../SheetAwareTextInput'
 
 export interface TagMultiSelectProps {
   selectedIds: string[]
@@ -45,6 +47,7 @@ export function TagMultiSelect({
   const showCreateOption = query.trim().length > 0 && !hasExactMatch
 
   function selectTag(id: string) {
+    haptics.selection()
     onChange([...selectedIds, id])
     setQuery('')
   }
@@ -82,7 +85,7 @@ export function TagMultiSelect({
             onRemove={() => removeTag(id)}
           />
         ))}
-        <TextInput
+        <SheetAwareTextInput
           value={query}
           onChangeText={setQuery}
           placeholder={placeholder}

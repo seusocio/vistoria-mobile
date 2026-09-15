@@ -36,7 +36,7 @@ export function SearchBar({
           style={styles.clearButton}
           accessibilityRole="button"
           accessibilityLabel="Limpar busca"
-          hitSlop={8}
+          hitSlop={12}
         >
           <Icon name="multiply" size={14} color={colors.gray[600]} />
         </Pressable>

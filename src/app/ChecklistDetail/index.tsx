@@ -287,8 +287,9 @@ export function ChecklistDetail({
       </AppBottomSheet>
       <ConfirmBottomSheet
         visible={deleteConfirmationVisible}
-        title="Excluir checklist"
-        message="Tem certeza que deseja excluir este checklist?"
+        title={`Excluir o checklist "${checklist?.title ?? ''}"?`}
+        message={`${applications.length} ${applications.length === 1 ? 'aplicação vinculada será excluída' : 'aplicações vinculadas serão excluídas'} junto.`}
+        confirmLabel="Excluir checklist"
         confirming={deleting}
         onCancel={() => setDeleteConfirmationVisible(false)}
         onConfirm={confirmDelete}

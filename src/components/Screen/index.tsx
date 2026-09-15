@@ -97,6 +97,7 @@ export function Screen({
                     styles.backButton,
                     pressed && { opacity: 0.7 },
                   ]}
+                  hitSlop={10}
                   onPress={onBack}
                   accessibilityLabel="Voltar"
                 >

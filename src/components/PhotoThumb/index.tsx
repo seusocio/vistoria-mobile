@@ -49,6 +49,7 @@ export function PhotoThumb({
             styles.removeButton,
             pressed && { opacity: 0.7 },
           ]}
+          hitSlop={14}
           onPress={() => setConfirming(true)}
           accessibilityLabel="Remover foto"
         >
