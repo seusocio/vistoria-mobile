@@ -2,6 +2,20 @@ import { StyleSheet } from 'react-native'
 import { colors, textStyles } from '@/styles'
 
 export const styles = StyleSheet.create({
+  listHeader: {
+    gap: 16,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
+  listSeparator: {
+    height: 12,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
   field: {
     gap: 8,
   },

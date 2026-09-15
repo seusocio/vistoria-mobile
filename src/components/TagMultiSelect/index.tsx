@@ -1,18 +1,19 @@
-import {
-  BottomSheetFooter,
-  BottomSheetScrollView,
-  type BottomSheetFooterProps,
-} from '@gorhom/bottom-sheet'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Pressable, Text, View, type TextInput } from 'react-native'
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet'
+import { LegendList, type LegendListRenderItemProps } from '@legendapp/list/react-native'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
+import { Pressable, Text, View, type ScrollViewProps, type TextInput } from 'react-native'
 import { normalizeTagLabel, Tag } from '@/infra/domain/entities'
 import { colors, duration } from '@/styles'
 import { haptics } from '@/utils/haptics'
 import { AppBottomSheet } from '../AppBottomSheet'
 import { Icon } from '../Icon'
-import { SheetAwareTextInput } from '../SheetAwareTextInput'
-import { TagChip } from '../TagChip'
+import { TagChipList } from '../TagChipList'
+import { useSheetFooterActions } from '../SheetFooterActions'
+import { TagMultiSelectSheetHeader } from './components/TagMultiSelectSheetHeader'
+import { TagOptionRow } from './components/TagOptionRow'
 import { styles } from './styles'
+
+const SheetScrollView = BottomSheetScrollView as unknown as ComponentType<ScrollViewProps>
 
 export interface TagMultiSelectProps {
   selectedIds: string[]
@@ -21,9 +22,37 @@ export interface TagMultiSelectProps {
   onChange: (ids: string[]) => void
   onCreateTag: (label: string) => Promise<Tag>
   placeholder?: string
-  /** default = NovoChecklist/NovaAplicacao TagBox; accent = Overview TagFilterField; muted = ItemDrawer TagBox */
   variant?: 'default' | 'accent' | 'muted'
 }
+
+const tagKeyExtractor = (tag: Tag) => tag.id
+const OptionSeparator = () => <View style={styles.optionSeparator} />
+
+const TagCreateOption = memo(function TagCreateOption({
+  query,
+  creating,
+  onPress,
+}: {
+  query: string
+  creating: boolean
+  onPress: () => void
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.option, pressed && styles.pressed]}
+      onPress={onPress}
+      disabled={creating}
+    >
+      <Text style={styles.createText}>
+        {creating ? 'Criando...' : `+ Criar "${query.trim()}"`}
+      </Text>
+    </Pressable>
+  )
+})
+
+const TagEmpty = memo(function TagEmpty() {
+  return <Text style={styles.emptyText}>Nenhuma tag encontrada.</Text>
+})
 
 export function TagMultiSelect({
   selectedIds,
@@ -73,41 +102,40 @@ export function TagMultiSelect({
   )
   const showCreateOption = query.trim().length > 0 && !hasExactMatch
 
-  function openSheet() {
+  const openSheet = useCallback(() => {
     setDraftIds(selectedIds)
     setQuery('')
     setVisible(true)
-  }
-
-  function closeSheet() {
+  }, [selectedIds])
+  const closeSheet = useCallback(() => {
     setDraftIds(selectedIds)
     setQuery('')
     setVisible(false)
-  }
-
-  function commitSelection() {
+  }, [selectedIds])
+  const commitSelection = useCallback(() => {
     onChange(draftIds)
     setQuery('')
     setVisible(false)
-  }
-
-  function toggleTag(id: string) {
+  }, [draftIds, onChange])
+  const toggleTag = useCallback((id: string) => {
     haptics.selection()
     setDraftIds((current) =>
       current.includes(id)
         ? current.filter((selectedId) => selectedId !== id)
         : [...current, id],
     )
-  }
-  function removeSelectedTag(id: string) {
-    const nextIds = selectedIds.filter((selectedId) => selectedId !== id)
-    onChange(nextIds)
-    setDraftIds((current) =>
-      current.filter((selectedId) => selectedId !== id),
-    )
-  }
-
-  async function handleCreate() {
+  }, [])
+  const removeSelectedTag = useCallback(
+    (index: number) => {
+      const id = selectedIds[index]
+      if (!id) return
+      const nextIds = selectedIds.filter((selectedId) => selectedId !== id)
+      onChange(nextIds)
+      setDraftIds((current) => current.filter((selectedId) => selectedId !== id))
+    },
+    [onChange, selectedIds],
+  )
+  const handleCreate = useCallback(async () => {
     const label = query.trim()
     if (!label || creating) return
     setCreating(true)
@@ -120,24 +148,26 @@ export function TagMultiSelect({
     } finally {
       setCreating(false)
     }
-  }
-  function renderFooter(props: BottomSheetFooterProps) {
-    return (
-      <BottomSheetFooter {...props} style={styles.sheetFooter}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.doneButton,
-            pressed && styles.pressed,
-          ]}
-          onPress={commitSelection}
-          accessibilityRole="button"
-          accessibilityLabel="Concluir seleção de tags"
-        >
-          <Text style={styles.doneButtonText}>Concluído</Text>
-        </Pressable>
-      </BottomSheetFooter>
-    )
-  }
+  }, [creating, onCreateTag, query])
+  const footerComponent = useSheetFooterActions({
+    confirmLabel: 'Concluído',
+    onConfirm: commitSelection,
+  })
+  const renderOption = useCallback(
+    ({ item }: LegendListRenderItemProps<Tag>) => (
+      <TagOptionRow
+        label={item.label}
+        selected={draftIds.includes(item.id)}
+        onPress={() => toggleTag(item.id)}
+      />
+    ),
+    [draftIds, toggleTag],
+  )
+  const renderScrollComponent = useCallback(
+    (props: ScrollViewProps) => <SheetScrollView {...props} />,
+    [],
+  )
+
   return (
     <>
       <Pressable
@@ -157,111 +187,52 @@ export function TagMultiSelect({
           {selectedLabels.length === 0 ? (
             <Text style={styles.rowValueEmpty}>{placeholder}</Text>
           ) : (
-            <View style={styles.chips}>
-              {selectedIds.map((id) => {
-                const label =
-                  allTagsById.get(id)?.label ?? createdTags.get(id)?.label
-                return label ? (
-                  <TagChip
-                    key={id}
-                    label={label}
-                    tone="primary"
-                    onRemove={() => removeSelectedTag(id)}
-                  />
-                ) : null
-              })}
-            </View>
+            <TagChipList
+              labels={selectedLabels}
+              tone="primary"
+              onRemove={(_, index) => removeSelectedTag(index)}
+            />
           )}
         </View>
       </Pressable>
-
       <AppBottomSheet
         visible={visible}
         onClose={closeSheet}
         snapPoints={['50%', '90%']}
-        footerComponent={renderFooter}
+        footerComponent={footerComponent}
       >
-
-        <BottomSheetScrollView
-          contentContainerStyle={styles.sheetContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={styles.sheetTitle}>Selecionar tags</Text>
-          <Text style={styles.sheetSubtitle}>
-            Escolha uma ou mais classificações
-          </Text>
-          {draftIds.length > 0 ? (
-            <View style={styles.selectedChips}>
-              {draftIds.map((id) => {
-                const tag = tagOptions.find((option) => option.id === id)
-                return tag ? (
-                  <TagChip
-                    key={tag.id}
-                    label={tag.label}
-                    onRemove={() => toggleTag(tag.id)}
-                  />
-                ) : null
-              })}
-            </View>
-          ) : null}
-          <View style={styles.searchBox}>
-            <Icon name="search" size={18} color={colors.gray[400]} />
-            <SheetAwareTextInput
-              ref={queryInputRef}
-              value={query}
-              onChangeText={setQuery}
+        <LegendList
+          data={suggestions}
+          renderItem={renderOption}
+          keyExtractor={tagKeyExtractor}
+          renderScrollComponent={renderScrollComponent}
+          ListHeaderComponent={
+            <TagMultiSelectSheetHeader
+              draftIds={draftIds}
+              tagOptions={tagOptions}
+              query={query}
               placeholder={placeholder}
-              placeholderTextColor={colors.gray[400]}
-              style={styles.searchInput}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="search"
-              accessibilityLabel={placeholder}
+              inputRef={queryInputRef}
+              onQueryChange={setQuery}
+              onToggle={toggleTag}
             />
-          </View>
-          <View style={styles.options}>
-            {suggestions.map((tag) => {
-              const selected = draftIds.includes(tag.id)
-              return (
-                <Pressable
-                  key={tag.id}
-                  style={({ pressed }) => [
-                    styles.option,
-                    selected && styles.optionSelected,
-                    pressed && styles.pressed,
-                  ]}
-                  onPress={() => toggleTag(tag.id)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: selected }}
-                >
-                  <Text style={selected ? styles.optionSelected : styles.optionText}>{tag.label}</Text>
-                  <View style={[styles.check, selected && styles.checkSelected]}>
-                    {selected ? (
-                      <Icon name="check" size={14} color={colors.white} />
-                    ) : null}
-                  </View>
-                </Pressable>
-              )
-            })}
-            {showCreateOption ? (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.option,
-                  pressed && styles.pressed,
-                ]}
+          }
+          ListFooterComponent={
+            showCreateOption ? (
+              <TagCreateOption
+                query={query}
+                creating={creating}
                 onPress={handleCreate}
-                disabled={creating}
-              >
-                <Text style={styles.createText}>
-                  {creating ? 'Criando...' : `+ Criar "${query.trim()}"`}
-                </Text>
-              </Pressable>
-            ) : null}
-            {suggestions.length === 0 && !showCreateOption ? (
-              <Text style={styles.emptyText}>Nenhuma tag encontrada.</Text>
-            ) : null}
-          </View>
-        </BottomSheetScrollView>
+              />
+            ) : null
+          }
+          ListEmptyComponent={suggestions.length === 0 && !showCreateOption ? <TagEmpty /> : null}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={OptionSeparator}
+          estimatedItemSize={52}
+          recycleItems
+          showsVerticalScrollIndicator={false}
+        />
       </AppBottomSheet>
     </>
   )

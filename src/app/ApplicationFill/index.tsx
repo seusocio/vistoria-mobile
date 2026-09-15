@@ -1,28 +1,31 @@
-import {
-  BottomSheetFooter,
-  type BottomSheetFooterProps,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet'
+import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
+import { Gesture } from 'react-native-gesture-handler'
+import {
+  NestedReorderableList,
+  reorderItems,
+  ScrollViewContainer,
+} from 'react-native-reorderable-list'
 import {
   AppBottomSheet,
   Badge,
   ConfirmBottomSheet,
   DatePickerField,
   Input,
-  ItemCard,
   ItemDrawer,
-  PhotoThumb,
   ProgressBar,
   Screen,
-  TagChip,
+  TagChipList,
   TagMultiSelect,
   VoiceCard,
   useUndoToast,
 } from '@/components'
 import { Icon } from '@/components/Icon'
+import { ApplicationItemRow } from './components/ApplicationItemRow'
+import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { VoiceState } from '@/components/VoiceCard'
+import { ApplicationGallery } from './components/ApplicationGallery'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { useApplicationFill } from '@/hooks/useApplicationFill'
 import { useApplicationMutations } from '@/hooks/useApplicationMutations'
@@ -36,12 +39,15 @@ import {
   prepareAsset,
 } from '@/infra/convex'
 import { generateId } from '@/infra/id'
+import type { ApplicationItem } from '@/infra/domain/entities'
 import {
   createAttachment,
   generateSuggestions,
   getDerivedState,
   getProgress,
   prepareTranscriber,
+  reorderChecklistItems,
+  sortItemsByChecklistOrder,
   transcribeAudio,
 } from '@/infra/services'
 import { useUploadStore } from '@/infra/uploads/upload-store'
@@ -56,6 +62,7 @@ const DERIVED_STATE_LABEL = {
   in_progress: 'Executando',
   completed: 'Completa',
 } as const
+
 
 export function ApplicationFill({
   navigation,
@@ -91,6 +98,10 @@ export function ApplicationFill({
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] =
     useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [optimisticItems, setOptimisticItems] = useState<ApplicationItem[] | null>(
+    null,
+  )
+  const [reorderPending, setReorderPending] = useState(false)
   const submitted = useRef(false)
   const currentApplicationId = applicationData?.id
   const currentTranscript = applicationData?.transcript
@@ -105,14 +116,47 @@ export function ApplicationFill({
     if (FEATURE_FLAG.voice) void prepareTranscriber()
   }, [])
 
+  const panGesture = useMemo(
+    () => Gesture.Pan().activateAfterLongPress(520),
+    [],
+  )
   const progress = useMemo(
     () => (applicationData ? getProgress(applicationData) : { answered: 0, total: 0 }),
     [applicationData],
   )
+  const sortedItems = useMemo(
+    () =>
+      applicationData && checklist
+        ? sortItemsByChecklistOrder(applicationData.items, checklist)
+        : [],
+    [applicationData, checklist],
+  )
   const derivedState = applicationData
     ? getDerivedState(applicationData)
     : 'not_started'
-
+  const orderedItems = optimisticItems ?? sortedItems
+  useEffect(() => {
+    if (!optimisticItems) return
+    const isSynced =
+      optimisticItems.length === sortedItems.length &&
+      optimisticItems.every(
+        (item, index) => sortedItems[index]?.id === item.id,
+      )
+    if (isSynced) {
+      setOptimisticItems(null)
+      setReorderPending(false)
+    } else if (!reorderPending) {
+      setOptimisticItems(null)
+    }
+  }, [optimisticItems, reorderPending, sortedItems])
+  const renderEditApplicationFooter = useSheetFooterActions({
+    confirmLabel: 'Salvar',
+    onConfirm: handleSaveApplication,
+  })
+  const renderAddItemFooter = useSheetFooterActions({
+    confirmLabel: 'Adicionar',
+    onConfirm: handleSaveNewItem,
+  })
   if (loading || !checklist || !applicationData) {
     return (
       <Screen
@@ -126,6 +170,31 @@ export function ApplicationFill({
     )
   }
   const application = applicationData
+  const activeChecklist = checklist
+  async function handleReorder({ from, to }: { from: number; to: number }) {
+    if (from === to) return
+    const movedItem = orderedItems[from]
+    const targetItem = orderedItems[to]
+    if (!movedItem?.checklistItemId || !targetItem?.checklistItemId) return
+    const templateFrom = activeChecklist.items.findIndex(
+      (item) => item.id === movedItem.checklistItemId,
+    )
+    const templateTo = activeChecklist.items.findIndex(
+      (item) => item.id === targetItem.checklistItemId,
+    )
+    if (templateFrom < 0 || templateTo < 0) return
+
+    const previousItems = orderedItems
+    setOptimisticItems(reorderItems(previousItems, from, to))
+    setReorderPending(true)
+    try {
+      await reorderChecklistItems(activeChecklist.id, templateFrom, templateTo)
+    } catch {
+      setOptimisticItems(previousItems)
+      setReorderPending(false)
+      setApplicationError('Não foi possível reordenar os itens')
+    }
+  }
   function handleAnswerChange(itemId: string, answer: string) {
     const updatedAt = new Date().toISOString()
     void mutations
@@ -150,7 +219,6 @@ export function ApplicationFill({
         {
           id: generateId('attachment_'),
           name: prepared.fileName ?? `Foto ${Date.now()}`,
-          localUri: prepared.uri,
           uploadStatus: 'pending',
           mimeType: prepared.mimeType,
           width: prepared.width,
@@ -437,6 +505,7 @@ export function ApplicationFill({
     const item = {
       id: generateId('aitem_'),
       position: application.items.length,
+      checklistItemId: null,
       title: newItemTitle.trim(),
       description: '',
       answer: '',
@@ -456,9 +525,8 @@ export function ApplicationFill({
       .catch(() => setNewItemError('Não foi possível adicionar o item'))
     setAddingItem(false)
   }
-
   function handleOpenItemDrawer(itemId: string) {
-    const item = application.items.find((candidate) => candidate.id === itemId)
+    const item = orderedItems.find((candidate) => candidate.id === itemId)
     if (!item) return
     setEditingItemDraft({
       note: item.note,
@@ -469,52 +537,21 @@ export function ApplicationFill({
   }
 
   const editingItem = editingItemId
-    ? application.items.find((item) => item.id === editingItemId)
+    ? orderedItems.find((item) => item.id === editingItemId)
     : null
   const editingItemIndex = editingItem
-    ? application.items.indexOf(editingItem)
+    ? orderedItems.indexOf(editingItem)
     : -1
   const itemDraft = editingItem && editingItemDraft
     ? editingItemDraft
     : editingItem
       ? { note: editingItem.note, tagsIds: editingItem.tagsIds, quantity: editingItem.quantity }
       : null
-  function renderEditApplicationFooter(props: BottomSheetFooterProps) {
-    return (
-      <BottomSheetFooter {...props} style={styles.sheetFooter}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.saveAppButton,
-            pressed && { opacity: 0.7 },
-          ]}
-          onPress={handleSaveApplication}
-        >
-          <Icon name="check" size={16} color={colors.white} />
-          <Text style={styles.saveAppButtonText}>Salvar</Text>
-        </Pressable>
-      </BottomSheetFooter>
-    )
-  }
 
-  function renderAddItemFooter(props: BottomSheetFooterProps) {
-    return (
-      <BottomSheetFooter {...props} style={styles.sheetFooter}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.saveAppButton,
-            pressed && { opacity: 0.7 },
-          ]}
-          onPress={handleSaveNewItem}
-        >
-          <Icon name="check" size={16} color={colors.white} />
-          <Text style={styles.saveAppButtonText}>Adicionar</Text>
-        </Pressable>
-      </BottomSheetFooter>
-    )
-  }
 
   return (
     <Screen
+      ScrollComponent={ScrollViewContainer}
       variant="nested"
       navTitleTone="muted"
       onBack={() => navigation.goBack()}
@@ -556,9 +593,7 @@ export function ApplicationFill({
       }
     >
       <View style={styles.tagsRow}>
-        {tagsCatalog.resolveLabels(application.tagsIds).map((label) => (
-          <TagChip key={label} label={label} />
-        ))}
+        <TagChipList labels={tagsCatalog.resolveLabels(application.tagsIds)} />
         <Pressable
           style={({ pressed }) => [
             styles.editAppButton,
@@ -613,21 +648,11 @@ export function ApplicationFill({
             Galeria da aplicação anterior disponível como referência.
           </Text>
         ) : null}
-        <View style={styles.galleryPhotosRow}>
-          {application.attachments
-            .filter((attachment) => !attachment.deletedAt)
-            .map((attachment) => (
-              <PhotoThumb
-                key={attachment.id}
-                uri={attachment.url ?? attachment.localUri}
-                uploading={attachment.uploadStatus === 'pending'}
-                progress={uploadProgress[attachment.id] ?? 0}
-                onRemove={() =>
-                  handleRemoveApplicationAttachment(attachment.id)
-                }
-              />
-            ))}
-        </View>
+        <ApplicationGallery
+          attachments={application.attachments}
+          uploadProgress={uploadProgress}
+          onRemoveAttachment={handleRemoveApplicationAttachment}
+        />
       </View>
 
       {FEATURE_FLAG.voice && (
@@ -656,36 +681,28 @@ export function ApplicationFill({
         </Pressable>
       </View>
 
-      <View style={styles.itemsList}>
-        {application.items.map((item) => (
-          <ItemCard
-            key={item.id}
-            title={item.title}
-            tagLabel={tagsCatalog.resolveLabels(item.tagsIds)[0]}
-            hasNote={Boolean(item.note)}
-            photosCount={item.attachments.filter((a) => !a.deletedAt).length}
-            quantity={item.quantity}
-            suggested={FEATURE_FLAG.suggestion && item.suggested}
-            suggestionSource={
-              FEATURE_FLAG.suggestion ? item.suggestionSource : null
-            }
+      <NestedReorderableList
+        data={orderedItems}
+        scrollable={false}
+        scrollEnabled={false}
+        contentContainerStyle={styles.itemsList}
+        panGesture={panGesture}
+        keyExtractor={(item) => item.id}
+        onReorder={handleReorder}
+        renderItem={({ item }) => (
+          <ApplicationItemRow
+            item={item}
+            canDrag={Boolean(item.checklistItemId)}
             options={checklist.options}
-            answer={item.answer}
-            onAnswerChange={(answer) => handleAnswerChange(item.id, answer)}
-            onOpenDrawer={() => handleOpenItemDrawer(item.id)}
-            onAcceptSuggestion={
-              FEATURE_FLAG.suggestion
-                ? () => handleAcceptSuggestion(item.id)
-                : undefined
-            }
-            onRejectSuggestion={
-              FEATURE_FLAG.suggestion
-                ? () => handleRejectSuggestion(item.id)
-                : undefined
-            }
+            tagLabel={tagsCatalog.resolveLabels(item.tagsIds)[0]}
+            suggestionEnabled={FEATURE_FLAG.suggestion}
+            onAnswerChange={handleAnswerChange}
+            onOpenDrawer={handleOpenItemDrawer}
+            onAcceptSuggestion={handleAcceptSuggestion}
+            onRejectSuggestion={handleRejectSuggestion}
           />
-        ))}
-      </View>
+        )}
+      />
 
       {editingItem && (
         <ItemDrawer
@@ -695,7 +712,7 @@ export function ApplicationFill({
             setEditingItemDraft(null)
           }}
           itemIndex={editingItemIndex + 1}
-          itemsTotal={application.items.length}
+          itemsTotal={orderedItems.length}
           title={editingItem.title}
           note={itemDraft?.note ?? editingItem.note}
           onNoteChange={(note) =>

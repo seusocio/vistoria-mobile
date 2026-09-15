@@ -135,6 +135,34 @@ export async function updateChecklist(
   return repo.save(updated)
 }
 
+export async function reorderChecklistItems(
+  checklistId: string,
+  from: number,
+  to: number,
+  repo: ChecklistRepository = checklistRepository,
+): Promise<Checklist> {
+  const existing = await repo.findById(checklistId)
+  if (!existing) throw new Error('Checklist não encontrado')
+  if (
+    from < 0 ||
+    to < 0 ||
+    from >= existing.items.length ||
+    to >= existing.items.length
+  ) {
+    throw new Error('Posição de item inválida')
+  }
+
+  const items = [...existing.items]
+  const [moved] = items.splice(from, 1)
+  items.splice(to, 0, moved)
+  const updatedAt = new Date().toISOString()
+  return repo.save({
+    ...existing,
+    items: items.map((item, index) => ({ ...item, position: index })),
+    updatedAt,
+  })
+}
+
 export async function duplicateChecklist(
   id: string,
   repo: ChecklistRepository = checklistRepository,

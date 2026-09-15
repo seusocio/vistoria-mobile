@@ -1,9 +1,10 @@
 import { MotiView } from 'moti'
 import { useConvexConnectionState } from 'convex/react'
-import { ReactNode } from 'react'
+import { ReactNode, ComponentType } from 'react'
 import {
   Pressable,
   ScrollView,
+  ScrollViewProps,
   StyleProp,
   Text,
   View,
@@ -53,6 +54,8 @@ export interface ScreenProps {
   children?: ReactNode
   /** Optional virtualized content that replaces the default ScrollView. */
   content?: ReactNode
+  /** Replaces the default ScrollView, e.g. ScrollViewContainer for nested reorderable lists */
+  ScrollComponent?: ComponentType<ScrollViewProps>
   loading?: boolean
   /** top = Screen/Biblioteca & Screen/Overview big title; nested = back button + small nav title */
   variant?: 'top' | 'nested'
@@ -69,6 +72,7 @@ export interface ScreenProps {
 export function Screen({
   children,
   content,
+  ScrollComponent = ScrollView,
   loading = false,
   variant = 'top',
   title,
@@ -80,12 +84,10 @@ export function Screen({
   footer,
 }: ScreenProps) {
   const { bottom } = useSafeAreaInsets()
-  const { isWebSocketConnected, hasInflightRequests } = useConvexConnectionState()
+  const { isWebSocketConnected } = useConvexConnectionState()
   const connectionLabel = !isWebSocketConnected
     ? 'Sem conexão · alterações serão reenviadas'
-    : hasInflightRequests
-      ? 'Salvando…'
-      : null
+    : null
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -140,7 +142,7 @@ export function Screen({
         ) : content ? (
           content
         ) : (
-          <ScrollView
+          <ScrollComponent
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -148,7 +150,7 @@ export function Screen({
             automaticallyAdjustKeyboardInsets
           >
             {children}
-          </ScrollView>
+          </ScrollComponent>
         )}
 
         {footer ? (

@@ -1,17 +1,13 @@
-import {
-  BottomSheetFooter,
-  type BottomSheetFooterProps,
-  BottomSheetScrollView,
-  BottomSheetTextInput,
-} from '@gorhom/bottom-sheet'
+import { BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet'
 import { Pressable, Text, View } from 'react-native'
 import { Attachment, Tag } from '@/infra/domain/entities'
 import { colors } from '@/styles'
 import { AppBottomSheet } from '../AppBottomSheet'
 import { Icon } from '../Icon'
-import { AddPhotoButton, PhotoThumb } from '../PhotoThumb'
+import { PhotoGalleryRow } from '../PhotoGalleryRow'
 import { Stepper } from '../Stepper'
 import { TagMultiSelect } from '../TagMultiSelect'
+import { useSheetFooterActions } from '../SheetFooterActions'
 import { styles } from './styles'
 
 export interface ItemDrawerProps {
@@ -61,29 +57,30 @@ export function ItemDrawer({
   const activeAttachments = attachments.filter(
     (attachment) => !attachment.deletedAt && attachment.uploadStatus !== 'pending',
   )
-  function renderFooter(props: BottomSheetFooterProps) {
-    return (
-      <BottomSheetFooter {...props} style={styles.footer}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.saveButton,
-            pressed && { opacity: 0.7 },
-          ]}
-          onPress={onSave}
-        >
-          <Icon name="check" size={18} color={colors.white} />
-          <Text style={styles.saveButtonText}>Salvar e fechar</Text>
-        </Pressable>
-      </BottomSheetFooter>
-    )
-  }
+  const galleryPhotos = [
+    ...activeAttachments.map((attachment) => ({
+      id: attachment.id,
+      uri: attachment.url,
+      onRemove: () => onRemoveAttachment(attachment.id),
+    })),
+    ...pendingPhotos.map((pending) => ({
+      id: pending.id,
+      uri: pending.uri,
+      uploading: true,
+      progress: pending.progress,
+    })),
+  ]
+  const footerComponent = useSheetFooterActions({
+    confirmLabel: 'Salvar e fechar',
+    onConfirm: onSave,
+  })
 
   return (
     <AppBottomSheet
       visible={visible}
       onClose={onClose}
       snapPoints={['59%']}
-      footerComponent={renderFooter}
+      footerComponent={footerComponent}
     >
       <BottomSheetScrollView
         showsVerticalScrollIndicator={false}
@@ -163,24 +160,7 @@ export function ItemDrawer({
               {activeAttachments.length} anexadas
             </Text>
           </View>
-          <View style={styles.photosRow}>
-            {activeAttachments.map((attachment) => (
-              <PhotoThumb
-                key={attachment.id}
-                uri={attachment.url}
-                onRemove={() => onRemoveAttachment(attachment.id)}
-              />
-            ))}
-            {pendingPhotos.map((pending) => (
-              <PhotoThumb
-                key={pending.id}
-                uri={pending.uri}
-                uploading
-                progress={pending.progress}
-              />
-            ))}
-            <AddPhotoButton onPress={onAddPhoto} />
-          </View>
+          <PhotoGalleryRow photos={galleryPhotos} onAddPhoto={onAddPhoto} />
         </View>
       </BottomSheetScrollView>
     </AppBottomSheet>

@@ -110,6 +110,12 @@ export const styles = StyleSheet.create({
   itemsList: {
     gap: 12,
   },
+  dragHandle: {
+    width: 28,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   completeButton: {
     flexDirection: 'row',
     alignItems: 'center',

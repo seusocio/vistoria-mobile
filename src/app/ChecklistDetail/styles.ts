@@ -28,6 +28,17 @@ export const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
   },
+  listHeader: {
+    gap: 16,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
+  listSeparator: {
+    height: 10,
+  },
   metricsRow: {
     flexDirection: 'row',
     gap: 10,

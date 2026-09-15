@@ -1,53 +1,105 @@
+import { BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet'
+import { memo, useMemo, useState } from 'react'
+import { Pressable, Text, View } from 'react-native'
+import { Gesture } from 'react-native-gesture-handler'
 import {
-  BottomSheetFooter,
-  type BottomSheetFooterProps,
-  BottomSheetTextInput,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet'
-import { useState } from 'react'
-import { Pressable, Text, TextInput, View } from 'react-native'
+  NestedReorderableList,
+  reorderItems,
+  useReorderableDrag,
+} from 'react-native-reorderable-list'
 import {
   AppBottomSheet,
   Input,
-  TagChip,
+  TagChipList,
   TagMultiSelect,
   useUndoToast,
 } from '@/components'
-import { Icon, IconName } from '@/components/Icon'
+import { useSheetFooterActions } from '@/components/SheetFooterActions'
+import { Icon } from '@/components/Icon'
 import {
   ChecklistFormApi,
   ChecklistFormItemState,
 } from '@/hooks/useChecklistForm'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { ChecklistTemplate } from '@/infra/data/templates'
-import { ResponseSemantic } from '@/infra/domain/entities'
 import { colors } from '@/styles'
 import { haptics } from '@/utils/haptics'
+import { ResponseOptionsEditor } from './components/ResponseOptionsEditor'
+import { TemplatePicker } from './components/TemplatePicker'
 import { styles } from './styles'
 
-const SEMANTIC_DOT_COLOR: Record<ResponseSemantic, string> = {
-  positivo: colors.success.base,
-  negativo: colors.danger.base,
-  neutro: colors.warning.base,
-}
+const ReorderableChecklistItem = memo(function ReorderableChecklistItem({
+  item,
+  index,
+  labels,
+  onEdit,
+  onRemove,
+}: {
+  item: ChecklistFormItemState
+  index: number
+  labels: string[]
+  onEdit: () => void
+  onRemove: () => void
+}) {
+  const drag = useReorderableDrag()
+  return (
+    <View style={styles.itemCard}>
+      <Pressable
+        style={styles.dragHandle}
+        onLongPress={() => {
+          haptics.dragStart()
+          drag()
+        }}
+        delayLongPress={520}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Reordenar item ${index + 1}`}
+      >
+        <Icon name="grip-vertical" size={18} color={colors.gray[400]} />
+      </Pressable>
+      <Pressable
+        style={({ pressed }) => [
+          styles.itemCardTouchable,
+          pressed && { opacity: 0.7 },
+        ]}
+        onPress={onEdit}
+        accessibilityLabel={`Editar item ${index + 1}`}
+      >
+        <View style={styles.itemNum}>
+          <Text style={styles.itemNumText}>{index + 1}</Text>
+        </View>
+        <View style={styles.itemCardBody}>
+          <Text
+            style={[
+              styles.itemCardTitle,
+              !item.title && styles.itemCardPlaceholder,
+            ]}
+            numberOfLines={1}
+          >
+            {item.title || 'Item sem título'}
+          </Text>
+          {item.description ? (
+            <Text style={styles.itemCardDescription} numberOfLines={1}>
+              {item.description}
+            </Text>
+          ) : null}
+          {labels.length > 0 && (
+            <TagChipList labels={labels} tone="neutral" />
+          )}
+        </View>
+      </Pressable>
+      <Pressable
+        style={({ pressed }) => pressed && { opacity: 0.7 }}
+        hitSlop={14}
+        onPress={onRemove}
+        accessibilityLabel={`Remover item ${index + 1}`}
+      >
+        <Icon name="trash-2" size={16} color={colors.gray[400]} />
+      </Pressable>
+    </View>
+  )
+})
 
-const SEMANTIC_LABEL: Record<ResponseSemantic, string> = {
-  positivo: 'Positivo',
-  negativo: 'Negativo',
-  neutro: 'Neutro',
-}
-
-const NEXT_SEMANTIC: Record<ResponseSemantic, ResponseSemantic> = {
-  positivo: 'negativo',
-  negativo: 'neutro',
-  neutro: 'positivo',
-}
-
-const TEMPLATE_ICON: Record<string, IconName> = {
-  'template-vistoria-entrega': 'clipboard-check',
-  'template-areas-comuns': 'shop',
-  'template-instalacao-hidraulica': 'droplet',
-}
 
 export interface ChecklistFormViewProps {
   form: ChecklistFormApi
@@ -68,6 +120,10 @@ export function ChecklistFormView({
   error,
 }: ChecklistFormViewProps) {
   const { activeTags, tagsById, createTag, resolveLabels } = tagsCatalog
+  const panGesture = useMemo(
+    () => Gesture.Pan().activateAfterLongPress(520),
+    [],
+  )
   const { show } = useUndoToast()
   const [itemSheet, setItemSheet] = useState<
     { mode: 'new' } | { mode: 'edit'; key: string } | null
@@ -131,72 +187,22 @@ export function ChecklistFormView({
     }
     setItemSheet(null)
   }
+  const footerComponent = useSheetFooterActions({
+    confirmLabel: itemSheet?.mode === 'edit' ? 'Salvar' : 'Adicionar',
+    onConfirm: handleSaveItem,
+  })
 
-  function renderItemSheetFooter(props: BottomSheetFooterProps) {
-    return (
-      <BottomSheetFooter {...props} style={styles.sheetFooter}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.sheetSaveButton,
-            pressed && { opacity: 0.7 },
-          ]}
-          onPress={handleSaveItem}
-        >
-          <Icon name="check" size={16} color={colors.white} />
-          <Text style={styles.sheetSaveButtonText}>
-            {itemSheet?.mode === 'edit' ? 'Salvar' : 'Adicionar'}
-          </Text>
-        </Pressable>
-      </BottomSheetFooter>
-    )
-  }
 
   return (
     <View style={styles.container}>
-      {templates && templates.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.fieldLabel}>Começar a partir de um modelo</Text>
-          <View style={styles.templateRow}>
-            {templates.map((template) => {
-              const isSelected = template.id === selectedTemplateId
-              return (
-                <Pressable
-                  key={template.id}
-                  style={({ pressed }) => [
-                    styles.templateCard,
-                    isSelected && styles.templateCardSelected,
-                    pressed && { opacity: 0.7 },
-                  ]}
-                  onPress={() => onSelectTemplate?.(template)}
-                  disabled={Boolean(loadingTemplateId)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Aplicar modelo ${template.title}`}
-                  accessibilityState={{
-                    selected: isSelected,
-                    disabled: Boolean(loadingTemplateId),
-                  }}
-                >
-                  <Icon
-                    name={TEMPLATE_ICON[template.id] ?? 'clipboard-check'}
-                    size={20}
-                    color={isSelected ? colors.blue.base : colors.gray[600]}
-                  />
-                  <Text
-                    style={[
-                      styles.templateLabel,
-                      isSelected && styles.templateLabelSelected,
-                    ]}
-                  >
-                    {loadingTemplateId === template.id
-                      ? 'Aplicando...'
-                      : template.title}
-                  </Text>
-                </Pressable>
-              )
-            })}
-          </View>
-        </View>
-      )}
+      {templates && templates.length > 0 ? (
+        <TemplatePicker
+          templates={templates}
+          selectedTemplateId={selectedTemplateId}
+          loadingTemplateId={loadingTemplateId}
+          onSelect={onSelectTemplate}
+        />
+      ) : null}
 
       <View style={styles.section}>
         <Text style={styles.fieldLabel}>Nome do checklist</Text>
@@ -220,44 +226,10 @@ export function ChecklistFormView({
 
       <View style={styles.section}>
         <Text style={styles.fieldLabel}>Opções de resposta</Text>
-        <View style={styles.optionsRow}>
-          {form.options.map((option, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: options are positional and have no stable id before saving
-            <View key={index} style={styles.optionPill}>
-              <Pressable
-                hitSlop={8}
-                onPress={() =>
-                  form.updateOptionSemantic(
-                    index,
-                    NEXT_SEMANTIC[option.semantic],
-                  )
-                }
-                accessibilityLabel={`Significado da opção: ${SEMANTIC_LABEL[option.semantic]}. Toque para alternar`}
-              >
-                <View
-                  style={[
-                    styles.optionDot,
-                    { backgroundColor: SEMANTIC_DOT_COLOR[option.semantic] },
-                  ]}
-                />
-              </Pressable>
-              <TextInput
-                style={styles.optionInput}
-                value={option.label}
-                onChangeText={(value) => form.updateOptionLabel(index, value)}
-                placeholder="Rótulo"
-                placeholderTextColor={colors.gray[400]}
-              />
-              <Pressable
-                style={({ pressed }) => pressed && { opacity: 0.7 }}
-                hitSlop={12}
-                onPress={() => removeOptionWithUndo(index)}
-              >
-                <Icon name="multiply" size={12} color={colors.gray[400]} />
-              </Pressable>
-            </View>
-          ))}
-        </View>
+        <ResponseOptionsEditor
+          form={form}
+          onRemoveOption={removeOptionWithUndo}
+        />
         <Pressable
           style={({ pressed }) => [
             styles.addOptionButton,
@@ -266,9 +238,7 @@ export function ChecklistFormView({
           onPress={form.addOption}
         >
           <Icon name="plus" size={12} color={colors.blue.base} />
-          <Text style={styles.addOptionText}>
-            Adicionar opção (ex: Não aplica)
-          </Text>
+          <Text style={styles.addOptionText}>Adicionar opção (ex: Não aplica)</Text>
         </Pressable>
       </View>
 
@@ -278,60 +248,26 @@ export function ChecklistFormView({
           <Text style={styles.itemsCount}>{form.items.length} itens</Text>
         </View>
         {form.items.length > 0 && (
-          <View style={styles.itemsList}>
-            {form.items.map((item, index) => {
-              const labels = resolveLabels(item.tagsIds)
-              return (
-                <Pressable
-                  key={item.key}
-                  style={({ pressed }) => [
-                    styles.itemCard,
-                    pressed && { opacity: 0.7 },
-                  ]}
-                  onPress={() => openEditItem(item)}
-                  accessibilityLabel={`Editar item ${index + 1}`}
-                >
-                  <View style={styles.itemNum}>
-                    <Text style={styles.itemNumText}>{index + 1}</Text>
-                  </View>
-                  <View style={styles.itemCardBody}>
-                    <Text
-                      style={[
-                        styles.itemCardTitle,
-                        !item.title && styles.itemCardPlaceholder,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {item.title || 'Item sem título'}
-                    </Text>
-                    {item.description ? (
-                      <Text
-                        style={styles.itemCardDescription}
-                        numberOfLines={1}
-                      >
-                        {item.description}
-                      </Text>
-                    ) : null}
-                    {labels.length > 0 && (
-                      <View style={styles.itemCardTags}>
-                        {labels.map((label) => (
-                          <TagChip key={label} label={label} tone="neutral" />
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                  <Pressable
-                    style={({ pressed }) => pressed && { opacity: 0.7 }}
-                    hitSlop={14}
-                    onPress={() => removeItemWithUndo(item.key)}
-                    accessibilityLabel={`Remover item ${index + 1}`}
-                  >
-                    <Icon name="trash-2" size={16} color={colors.gray[400]} />
-                  </Pressable>
-                </Pressable>
-              )
-            })}
-          </View>
+          <NestedReorderableList
+            data={form.items}
+            scrollable={false}
+            scrollEnabled={false}
+            contentContainerStyle={styles.itemsList}
+            panGesture={panGesture}
+            keyExtractor={(item) => item.key}
+            onReorder={({ from, to }) =>
+              form.setItems(reorderItems(form.items, from, to))
+            }
+            renderItem={({ item, index }) => (
+              <ReorderableChecklistItem
+                item={item}
+                index={index}
+                labels={resolveLabels(item.tagsIds)}
+                onEdit={() => openEditItem(item)}
+                onRemove={() => removeItemWithUndo(item.key)}
+              />
+            )}
+          />
         )}
         <Pressable
           style={({ pressed }) => [
@@ -350,7 +286,7 @@ export function ChecklistFormView({
         visible={Boolean(itemSheet)}
         onClose={() => setItemSheet(null)}
         snapPoints={['90%']}
-        footerComponent={renderItemSheetFooter}
+        footerComponent={footerComponent}
       >
         <BottomSheetView style={styles.sheetContent}>
           <Text style={styles.sheetTitle}>

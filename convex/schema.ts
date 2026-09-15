@@ -40,6 +40,7 @@ const checklistItem = v.object({
 const applicationItem = v.object({
   id: v.string(),
   position: v.number(),
+  checklistItemId: v.optional(v.union(v.string(), v.null())),
   title: v.string(),
   description: v.string(),
   answer: v.string(),

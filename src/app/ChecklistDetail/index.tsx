@@ -1,20 +1,14 @@
-import {
-  BottomSheetFooter,
-  type BottomSheetFooterProps,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet'
-import { useMemo, useRef, useState } from 'react'
+import { BottomSheetView } from '@gorhom/bottom-sheet'
+import { LegendList, type LegendListRenderItemProps } from '@legendapp/list/react-native'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import {
   AppBottomSheet,
-  ApplicationRow,
-  ApplicationRowEntry,
   ConfirmBottomSheet,
-  Metric,
   Screen,
-  TagChip,
   TagMultiSelect,
 } from '@/components'
+import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { Icon } from '@/components/Icon'
 import { useApplicationMutations } from '@/hooks/useApplicationMutations'
 import { useChecklistDetail } from '@/hooks/useChecklistDetail'
@@ -26,10 +20,15 @@ import {
   groupApplicationsByTagSet,
   softDeleteChecklist,
 } from '@/infra/services'
+import type { ApplicationRowEntry } from '@/components/ApplicationRow'
 import { StackRoutesProps } from '@/routes/types'
 import { colors } from '@/styles'
 import { formatBrDateShort } from '@/utils/date'
 import { styles } from './styles'
+import { ApplicationGroupRow } from './components/ApplicationGroupRow'
+import { ChecklistDetailHeader } from './components/ChecklistDetailHeader'
+
+const GroupSeparator = () => <View style={styles.listSeparator} />
 
 export function ChecklistDetail({
   navigation,
@@ -41,8 +40,18 @@ export function ChecklistDetail({
   const mutations = useApplicationMutations()
   const submitted = useRef(false)
   const groups = useMemo(
-    () => groupApplicationsByTagSet(applications),
-    [applications],
+    () =>
+      checklist
+        ? groupApplicationsByTagSet(applications).map((group) => ({
+            ...group,
+            entries: group.applications.map((application): ApplicationRowEntry => ({
+              id: application.id,
+              dateLabel: formatBrDateShort(application.date),
+              negativeCount: countNegativeAnswers(application, checklist),
+            })),
+          }))
+        : [],
+    [applications, checklist],
   )
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] =
     useState(false)
@@ -55,7 +64,7 @@ export function ChecklistDetail({
   const [savingBatch, setSavingBatch] = useState(false)
 
   const completedCount = applications.filter(
-    (a) => a.status === 'completed',
+    (application) => application.status === 'completed',
   ).length
 
   async function handleDuplicate() {
@@ -81,11 +90,14 @@ export function ChecklistDetail({
     navigation.navigate('tabs', { screen: 'home' })
   }
 
-  function handleOpenBatchEdit(group: (typeof groups)[number]) {
-    setEditingGroup(group)
-    setDraftGroupTags(group.tagsIds)
-    setBatchError(null)
-  }
+  const handleOpenBatchEdit = useCallback(
+    (group: (typeof groups)[number]) => {
+      setEditingGroup(group)
+      setDraftGroupTags(group.tagsIds)
+      setBatchError(null)
+    },
+    [],
+  )
 
   function handleSaveBatchEdit() {
     if (!editingGroup) return
@@ -106,38 +118,47 @@ export function ChecklistDetail({
       .catch(() => setBatchError('Não foi possível salvar as tags'))
       .finally(() => setSavingBatch(false))
   }
-  function renderBatchFooter(props: BottomSheetFooterProps) {
-    return (
-      <BottomSheetFooter {...props} style={styles.batchFooter}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.saveTagsButton,
-            pressed && { opacity: 0.7 },
-            savingBatch && { opacity: 0.55 },
-          ]}
-          onPress={handleSaveBatchEdit}
-          disabled={savingBatch}
-        >
-          <Text style={styles.saveTagsButtonText}>
-            {savingBatch ? 'Salvando...' : 'Aplicar às aplicações'}
-          </Text>
-        </Pressable>
-      </BottomSheetFooter>
-    )
-  }
+  const footerComponent = useSheetFooterActions({
+    confirmLabel: savingBatch ? 'Salvando...' : 'Aplicar às aplicações',
+    onConfirm: handleSaveBatchEdit,
+    confirming: savingBatch,
+  })
 
-  function handleRepeat(groupApplications: typeof applications) {
-    if (!checklist || submitted.current || groupApplications.length === 0) return
-    submitted.current = true
-    const newApplication = buildRepeatedApplication(groupApplications[0], checklist)
-    void mutations
-      .create({ entity: newApplication })
-      .catch(() => setBatchError('Não foi possível repetir a aplicação'))
-    navigation.navigate('applicationFill', {
-      checklistId,
-      applicationId: newApplication.id,
-    })
-  }
+
+  const handleOpenEntry = useCallback(
+    (applicationId: string) => {
+      navigation.navigate('applicationFill', { checklistId, applicationId })
+    },
+    [checklistId, navigation],
+  )
+  const handleRepeat = useCallback(
+    (groupApplications: typeof applications) => {
+      if (!checklist || submitted.current || groupApplications.length === 0) return
+      submitted.current = true
+      const newApplication = buildRepeatedApplication(groupApplications[0], checklist)
+      void mutations
+        .create({ entity: newApplication })
+        .catch(() => setBatchError('Não foi possível repetir a aplicação'))
+      navigation.navigate('applicationFill', {
+        checklistId,
+        applicationId: newApplication.id,
+      })
+    },
+    [checklist, checklistId, mutations, navigation],
+  )
+  const renderGroup = useCallback(
+    ({ item, index }: LegendListRenderItemProps<(typeof groups)[number]>) => (
+      <ApplicationGroupRow
+        group={item}
+        tagLabels={resolveLabels(item.tagsIds)}
+        defaultExpanded={index === 0}
+        onOpenEntry={handleOpenEntry}
+        onRepeat={handleRepeat}
+        onEditTags={handleOpenBatchEdit}
+      />
+    ),
+    [handleOpenBatchEdit, handleOpenEntry, handleRepeat, resolveLabels],
+  )
 
   return (
     <Screen
@@ -148,13 +169,8 @@ export function ChecklistDetail({
       footer={
         checklist ? (
           <Pressable
-            style={({ pressed }) => [
-              styles.newAppButton,
-              pressed && { opacity: 0.7 },
-            ]}
-            onPress={() =>
-              navigation.navigate('applicationNew', { checklistId })
-            }
+            style={({ pressed }) => [styles.newAppButton, pressed && { opacity: 0.7 }]}
+            onPress={() => navigation.navigate('applicationNew', { checklistId })}
           >
             <Icon name="plus" size={18} color={colors.white} />
             <Text style={styles.newAppButtonText}>Nova aplicação</Text>
@@ -165,32 +181,21 @@ export function ChecklistDetail({
         checklist ? (
           <View style={styles.headerActions}>
             <Pressable
-              style={({ pressed }) => [
-                styles.headerActionButton,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() =>
-                navigation.navigate('checklistEdit', { checklistId })
-              }
+              style={({ pressed }) => [styles.headerActionButton, pressed && { opacity: 0.7 }]}
+              onPress={() => navigation.navigate('checklistEdit', { checklistId })}
               accessibilityLabel="Editar checklist"
             >
               <Icon name="edit-pen" size={16} color={colors.ink.base} />
             </Pressable>
             <Pressable
-              style={({ pressed }) => [
-                styles.headerActionButton,
-                pressed && { opacity: 0.7 },
-              ]}
+              style={({ pressed }) => [styles.headerActionButton, pressed && { opacity: 0.7 }]}
               onPress={handleDuplicate}
               accessibilityLabel="Duplicar checklist"
             >
               <Icon name="copy" size={16} color={colors.ink.base} />
             </Pressable>
             <Pressable
-              style={({ pressed }) => [
-                styles.headerActionButton,
-                pressed && { opacity: 0.7 },
-              ]}
+              style={({ pressed }) => [styles.headerActionButton, pressed && { opacity: 0.7 }]}
               onPress={handleDelete}
               accessibilityLabel="Excluir checklist"
             >
@@ -199,107 +204,66 @@ export function ChecklistDetail({
           </View>
         ) : undefined
       }
-    >
-      {checklist && (
+      content={
         <>
-          <View style={styles.titleCol}>
-            <Text style={styles.title}>{checklist.title}</Text>
-            <View style={styles.tagsRow}>
-              {resolveLabels(checklist.tagsIds).map((label) => (
-                <TagChip key={label} label={label} tone="neutral" />
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.metricsRow}>
-            <Metric label="Aplicações" value={String(applications.length)} />
-            <Metric label="Concluídas" value={String(completedCount)} />
-            <Metric
-              label="Itens/visita"
-              value={String(checklist.items.length)}
-            />
-          </View>
-
-          <Text style={styles.sectionTitle}>Histórico</Text>
-
-          {groups.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>
-                Nenhuma aplicação ainda. Crie a primeira vistoria com este
-                checklist.
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.list}>
-              {groups.map((group) => {
-                const entries: ApplicationRowEntry[] = group.applications.map(
-                  (application) => ({
-                    id: application.id,
-                    dateLabel: formatBrDateShort(application.date),
-                    negativeCount: countNegativeAnswers(application, checklist),
-                  }),
-                )
-                const latestStatus = group.applications[0].status
-
-                return (
-                  <ApplicationRow
-                    key={group.key}
-                    tagLabels={resolveLabels(group.tagsIds)}
-                    latestStatusLabel={
-                      latestStatus === 'completed' ? 'Concluída' : 'Rascunho'
-                    }
-                    latestStatusTone={
-                      latestStatus === 'completed' ? 'completed' : 'draft'
-                    }
-                    entries={entries}
-                    defaultExpanded={group === groups[0]}
-                    onOpenEntry={(applicationId) =>
-                      navigation.navigate('applicationFill', {
-                        checklistId,
-                        applicationId,
-                      })
-                    }
-                    onRepeat={() => handleRepeat(group.applications)}
-                    onEditTags={() => handleOpenBatchEdit(group)}
-                  />
-                )
-              })}
-            </View>
-          )}
-        </>
-      )}
-      <AppBottomSheet
-        visible={Boolean(editingGroup)}
-        onClose={() => setEditingGroup(null)}
-        snapPoints={['95%']}
-        footerComponent={renderBatchFooter}
-      >
-        <BottomSheetView style={styles.batchContent}>
-          <Text style={styles.batchHelpText}>
-            As tags selecionadas serão aplicadas a todas as aplicações deste
-            grupo.
-          </Text>
-          <TagMultiSelect
-            selectedIds={draftGroupTags}
-            availableTags={activeTags}
-            allTagsById={tagsById}
-            onChange={setDraftGroupTags}
-            onCreateTag={createTag}
+          <LegendList
+            data={groups}
+            renderItem={renderGroup}
+            keyExtractor={(item) => item.key}
+            ListHeaderComponent={
+              checklist ? (
+                <ChecklistDetailHeader
+                  checklist={checklist}
+                  tagLabels={resolveLabels(checklist.tagsIds)}
+                  applicationsCount={applications.length}
+                  completedCount={completedCount}
+                />
+              ) : null
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>
+                  Nenhuma aplicação ainda. Crie a primeira vistoria com este checklist.
+                </Text>
+              </View>
+            }
+            contentContainerStyle={styles.listContent}
+            ItemSeparatorComponent={GroupSeparator}
+            estimatedItemSize={180}
+            recycleItems={false}
+            showsVerticalScrollIndicator={false}
           />
-          {batchError ? (
-            <Text style={styles.batchError}>{batchError}</Text>
-          ) : null}
-        </BottomSheetView>
-      </AppBottomSheet>
-      <ConfirmBottomSheet
-        visible={deleteConfirmationVisible}
-        title={`Excluir o checklist "${checklist?.title ?? ''}"?`}
-        message={`${applications.length} ${applications.length === 1 ? 'aplicação vinculada será excluída' : 'aplicações vinculadas serão excluídas'} junto.`}
-        confirmLabel="Excluir checklist"
-        confirming={deleting}
-        onCancel={() => setDeleteConfirmationVisible(false)}
-        onConfirm={confirmDelete}
-      />
-    </Screen>
+          <AppBottomSheet
+            visible={Boolean(editingGroup)}
+            onClose={() => setEditingGroup(null)}
+            snapPoints={['95%']}
+            footerComponent={footerComponent}
+          >
+            <BottomSheetView style={styles.batchContent}>
+              <Text style={styles.batchHelpText}>
+                As tags selecionadas serão aplicadas a todas as aplicações deste grupo.
+              </Text>
+              <TagMultiSelect
+                selectedIds={draftGroupTags}
+                availableTags={activeTags}
+                allTagsById={tagsById}
+                onChange={setDraftGroupTags}
+                onCreateTag={createTag}
+              />
+              {batchError ? <Text style={styles.batchError}>{batchError}</Text> : null}
+            </BottomSheetView>
+          </AppBottomSheet>
+          <ConfirmBottomSheet
+            visible={deleteConfirmationVisible}
+            title={`Excluir o checklist "${checklist?.title ?? ''}"?`}
+            message={`${applications.length} ${applications.length === 1 ? 'aplicação vinculada será excluída' : 'aplicações vinculadas serão excluídas'} junto.`}
+            confirmLabel="Excluir checklist"
+            confirming={deleting}
+            onCancel={() => setDeleteConfirmationVisible(false)}
+            onConfirm={confirmDelete}
+          />
+        </>
+      }
+    />
   )
 }

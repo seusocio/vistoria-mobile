@@ -1,10 +1,10 @@
-import { memo } from 'react'
+import { memo, type ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { ResponseOption } from '@/infra/domain/entities'
 import { colors } from '@/styles'
 import { Icon } from '../Icon'
-import { Toggle } from '../Toggle'
+import { AnswerToggleRow } from './AnswerToggleRow'
 import { styles } from './styles'
 
 export interface ItemCardProps {
@@ -21,6 +21,8 @@ export interface ItemCardProps {
   onOpenDrawer: () => void
   onAcceptSuggestion?: () => void
   onRejectSuggestion?: () => void
+  /** Optional drag handle rendered inside the card, left of the title */
+  dragHandle?: ReactNode
 }
 
 /** Component/ItemCard */
@@ -38,6 +40,7 @@ export const ItemCard = memo(function ItemCard({
   onOpenDrawer,
   onAcceptSuggestion,
   onRejectSuggestion,
+  dragHandle,
 }: ItemCardProps) {
   const suggestionEnabled = FEATURE_FLAG.suggestion && suggested
   const transcriptSuggestion =
@@ -57,6 +60,7 @@ export const ItemCard = memo(function ItemCard({
           transcriptSuggestion && styles.containerTranscriptSuggestion,
         ]}
       >
+        {dragHandle}
         <View style={styles.titleCol}>
           <Text style={styles.title} numberOfLines={2}>
             {title}
@@ -93,15 +97,13 @@ export const ItemCard = memo(function ItemCard({
 
         <View style={styles.answerToggles}>
           {options.map((option) => (
-            <Toggle
+            <AnswerToggleRow
               key={option.label}
-              semantic={option.semantic}
+              option={option}
               selected={answer === option.label}
               onPress={() =>
                 onAnswerChange(answer === option.label ? '' : option.label)
               }
-              accessibilityLabel={option.label}
-              size={26}
             />
           ))}
         </View>

@@ -115,6 +115,10 @@ export const styles = StyleSheet.create({
     ...textStyles.body,
     color: colors.ink.base,
   },
+  optionSelectedText: {
+    ...textStyles.body,
+    color: colors.blue.base,
+  },
   check: {
     width: 24,
     height: 24,
@@ -138,6 +142,13 @@ export const styles = StyleSheet.create({
     color: colors.gray[600],
     paddingVertical: space.lg,
     textAlign: 'center',
+  },
+  listContent: {
+    paddingHorizontal: space.xl,
+    paddingBottom: space.xxl,
+  },
+  optionSeparator: {
+    height: space.xs,
   },
   doneButton: {
     minHeight: touch.min,

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pressable, Text } from 'react-native'
+import { ScrollViewContainer } from 'react-native-reorderable-list'
 import { Screen } from '@/components'
 import { Icon } from '@/components/Icon'
 import { useChecklistForm } from '@/hooks/useChecklistForm'
@@ -75,6 +76,7 @@ export function ChecklistNew({ navigation }: StackRoutesProps<'checklistNew'>) {
 
   return (
     <Screen
+      ScrollComponent={ScrollViewContainer}
       variant="nested"
       navTitleTone="strong"
       onBack={() => navigation.goBack()}
@@ -86,15 +88,11 @@ export function ChecklistNew({ navigation }: StackRoutesProps<'checklistNew'>) {
             pressed && { opacity: 0.7 },
           ]}
           onPress={handleSubmit}
-          disabled={submitting || Boolean(loadingTemplateId)}
-          accessibilityRole="button"
-          accessibilityState={{
-            disabled: submitting || Boolean(loadingTemplateId),
-          }}
+          disabled={submitting}
         >
           <Icon name="check" size={18} color={colors.white} />
           <Text style={styles.saveButtonText}>
-            {submitting ? 'Salvando...' : 'Salvar checklist'}
+            {submitting ? 'Salvando...' : 'Criar checklist'}
           </Text>
         </Pressable>
       }

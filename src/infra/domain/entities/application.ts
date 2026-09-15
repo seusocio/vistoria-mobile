@@ -20,6 +20,8 @@ export type SuggestionSource = 'transcript' | 'previous_application'
 export interface ApplicationItem {
   id: string
   position: number
+  /** id of the checklist template item this was copied from; null for ad-hoc items added in this application only */
+  checklistItemId?: string | null
   title: string
   description: string
   /** label of the chosen ResponseOption, empty when unanswered */

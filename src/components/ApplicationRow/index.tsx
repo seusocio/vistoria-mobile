@@ -4,6 +4,7 @@ import { Pressable, Text, View } from 'react-native'
 import { colors } from '@/styles'
 import { BadgeTone } from '../Badge'
 import { Icon } from '../Icon'
+import { VisitRow } from './VisitRow'
 import { styles } from './styles'
 
 export interface ApplicationRowEntry {
@@ -109,72 +110,23 @@ export const ApplicationRow = memo(function ApplicationRow({
                 <Text style={styles.historyLabel}>Vistorias anteriores</Text>
                 <View style={styles.historyList}>
                   {previous.map((entry) => (
-                    <Pressable
+                    <VisitRow
                       key={entry.id}
-                      style={({ pressed }) => [
-                        styles.visitRow,
-                        pressed && { opacity: 0.7 },
-                      ]}
+                      entry={entry}
                       onPress={() => onOpenEntry(entry.id)}
-                    >
-                      <Text style={styles.dateText}>{entry.dateLabel}</Text>
-                      {entry.negativeCount > 0 ? (
-                        <View style={[styles.negPill, styles.negPillWarning]}>
-                          <Icon
-                            name="alert-triangle"
-                            size={12}
-                            color={colors.warning.base}
-                          />
-                          <Text style={styles.negPillWarningText}>
-                            {entry.negativeCount} negativas
-                          </Text>
-                        </View>
-                      ) : (
-                        <View style={[styles.negPill, styles.negPillSuccess]}>
-                          <Icon
-                            name="check"
-                            size={12}
-                            color={colors.success.base}
-                          />
-                          <Text style={styles.negPillSuccessText}>
-                            Sem negativas
-                          </Text>
-                        </View>
-                      )}
-                    </Pressable>
+                    />
                   ))}
                 </View>
               </>
             )}
 
-            {latest && (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.visitRow,
-                  pressed && { opacity: 0.7 },
-                ]}
+            {latest ? (
+              <VisitRow
+                entry={latest}
+                strong
                 onPress={() => onOpenEntry(latest.id)}
-              >
-                <Text style={styles.dateTextStrong}>{latest.dateLabel}</Text>
-                {latest.negativeCount > 0 ? (
-                  <View style={[styles.negPill, styles.negPillWarning]}>
-                    <Icon
-                      name="alert-triangle"
-                      size={12}
-                      color={colors.warning.base}
-                    />
-                    <Text style={styles.negPillWarningText}>
-                      {latest.negativeCount} negativas
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={[styles.negPill, styles.negPillSuccess]}>
-                    <Icon name="check" size={12} color={colors.success.base} />
-                    <Text style={styles.negPillSuccessText}>Sem negativas</Text>
-                  </View>
-                )}
-              </Pressable>
-            )}
+              />
+            ) : null}
 
             <Pressable
               style={({ pressed }) => [

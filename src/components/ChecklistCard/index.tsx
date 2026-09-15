@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { colors } from '@/styles'
 import { Icon } from '../Icon'
-import { TagChip } from '../TagChip'
+import { TagChipList } from '../TagChipList'
 import { styles } from './styles'
 
 export interface ChecklistCardProps {
@@ -43,11 +43,7 @@ export const ChecklistCard = memo(function ChecklistCard({
       </View>
 
       {tagLabels.length > 0 && (
-        <View style={styles.tagsRow}>
-          {tagLabels.slice(0, 3).map((label) => (
-            <TagChip key={label} label={label} tone="neutral" />
-          ))}
-        </View>
+        <TagChipList labels={tagLabels.slice(0, 3)} tone="neutral" />
       )}
 
       <View style={styles.bottomRow}>

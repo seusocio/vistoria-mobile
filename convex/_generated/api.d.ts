@@ -11,6 +11,7 @@
 import type * as applications from "../applications.js";
 import type * as checklists from "../checklists.js";
 import type * as files from "../files.js";
+import type * as migrations from "../migrations.js";
 import type * as seed from "../seed.js";
 import type * as tags from "../tags.js";
 
@@ -24,6 +25,7 @@ declare const fullApi: ApiFromModules<{
   applications: typeof applications;
   checklists: typeof checklists;
   files: typeof files;
+  migrations: typeof migrations;
   seed: typeof seed;
   tags: typeof tags;
 }>;

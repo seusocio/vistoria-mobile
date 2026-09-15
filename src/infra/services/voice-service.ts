@@ -12,14 +12,18 @@ let transcriberLoad: Promise<boolean> | null = null
 export async function prepareTranscriber(): Promise<boolean> {
   if (Platform.OS !== 'ios') return false
   if (transcriberLoad) return transcriberLoad
-  // Platform-specific: whisper-kit-expo has no Android/web native module and
-  // throws at eval time, so a static import cannot work off iOS.
-  const { loadTranscriber } = await import('whisper-kit-expo')
-  const load = loadTranscriber()
-  transcriberLoad = load
-  const ready = await load
-  // Do not cache a failed load: the native side leaves the pipe uninitialized,
-  // and calling transcribe() then hangs forever waiting for it.
+
+  transcriberLoad = (async () => {
+    try {
+      // Platform-specific: the package has no native module in Expo Go or non-iOS runtimes.
+      const { loadTranscriber } = await import('whisper-kit-expo')
+      return await loadTranscriber()
+    } catch {
+      return false
+    }
+  })()
+
+  const ready = await transcriberLoad
   if (!ready) transcriberLoad = null
   return ready
 }

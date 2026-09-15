@@ -1,15 +1,10 @@
-import { useMemo, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
-import {
-  DatePickerField,
-  Metric,
-  PendGroupCard,
-  Screen,
-  TagMultiSelect,
-} from '@/components'
-import { metricValueColors } from '@/components/Metric'
+import { LegendList, type LegendListRenderItemProps } from '@legendapp/list/react-native'
+import { memo, useCallback, useMemo, useState } from 'react'
+import { Text, View } from 'react-native'
+import { Screen } from '@/components'
 import { useReport } from '@/hooks/useReport'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
+import type { ReportPendingGroup } from '@/infra/services'
 import { DateRange } from '@/infra/services'
 import {
   endOfDayIso,
@@ -20,16 +15,32 @@ import {
   todayIso,
 } from '@/utils/date'
 import { styles } from './styles'
+import { OverviewHeader } from './components/OverviewHeader'
+import {
+  PeriodPreset,
+} from './components/PeriodPresetRow'
+import { PendingGroupListItem } from './components/PendingGroupListItem'
 
-type PeriodPreset = 'all' | 'today' | 'week' | 'month' | 'custom'
-
-const PRESET_LABEL: Record<PeriodPreset, string> = {
-  all: 'Tudo',
-  today: 'Hoje',
-  week: 'Últimos 7 dias',
-  month: 'Este mês',
-  custom: 'Personalizado',
+type PendingListData = {
+  group: ReportPendingGroup
+  tagLabels: string[]
+  dateLabel: string
+  itemTitles: string[]
 }
+
+const PendingSeparator = () => <View style={styles.listSeparator} />
+
+const OverviewEmpty = memo(function OverviewEmpty({ hasTags }: { hasTags: boolean }) {
+  return (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyText}>
+        {hasTags
+          ? 'Nenhuma pendência para esta combinação de tags.'
+          : 'Selecione uma ou mais tags para cruzar torre, unidade, responsável ou qualquer outra classificação.'}
+      </Text>
+    </View>
+  )
+})
 
 export function Overview() {
   const [tagsIds, setTagsIds] = useState<string[]>([])
@@ -58,24 +69,43 @@ export function Overview() {
   }, [preset, customFrom, customTo])
 
   const { result, loading } = useReport(tagsIds, dateRange)
-
   const itemPercent =
     result && result.itemProgress.total > 0
-      ? Math.round(
-          (result.itemProgress.answered / result.itemProgress.total) * 100,
-        )
+      ? Math.round((result.itemProgress.answered / result.itemProgress.total) * 100)
       : 0
   const appPercent =
     result && result.applicationProgress.total > 0
       ? Math.round(
-          (result.applicationProgress.completed /
-            result.applicationProgress.total) *
-            100,
+          (result.applicationProgress.completed / result.applicationProgress.total) * 100,
         )
       : 0
   const totalPendingItems =
-    result?.pendingGroups.reduce((sum, group) => sum + group.items.length, 0) ??
-    0
+    result?.pendingGroups.reduce((sum, group) => sum + group.items.length, 0) ?? 0
+
+  const pendingListData = useMemo<PendingListData[]>(
+    () =>
+      result?.pendingGroups.map((group) => ({
+        group,
+        tagLabels: tagsCatalog.resolveLabels(group.application.tagsIds),
+        dateLabel: formatBrDateShort(group.application.date),
+        itemTitles: group.items.map((item) => item.itemTitle),
+      })) ?? [],
+    [result, tagsCatalog.resolveLabels],
+  )
+  const renderPending = useCallback(
+    ({ item }: LegendListRenderItemProps<PendingListData>) => (
+      <PendingGroupListItem
+        group={item.group}
+        tagLabels={item.tagLabels}
+        dateLabel={item.dateLabel}
+        itemTitles={item.itemTitles}
+      />
+    ),
+    [],
+  )
+  const handlePresetChange = useCallback((value: PeriodPreset) => {
+    setPreset(value)
+  }, [])
 
   return (
     <Screen
@@ -83,122 +113,39 @@ export function Overview() {
       variant="top"
       title="Relatório por tags"
       subtitle="Selecione tags para cruzar aplicações e itens"
-    >
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Filtrar por tags (interseção AND)</Text>
-        <TagMultiSelect
-          selectedIds={tagsIds}
-          availableTags={tagsCatalog.activeTags}
-          allTagsById={tagsCatalog.tagsById}
-          onChange={setTagsIds}
-          onCreateTag={tagsCatalog.createTag}
-          variant="accent"
+      content={
+        <LegendList
+          data={pendingListData}
+          renderItem={renderPending}
+          keyExtractor={(item) => item.group.application.id}
+          ListHeaderComponent={
+            <OverviewHeader
+              tagsIds={tagsIds}
+              activeTags={tagsCatalog.activeTags}
+              allTagsById={tagsCatalog.tagsById}
+              onChangeTags={setTagsIds}
+              onCreateTag={tagsCatalog.createTag}
+              preset={preset}
+              onPresetChange={handlePresetChange}
+              customFrom={customFrom}
+              customTo={customTo}
+              onCustomFromChange={setCustomFrom}
+              onCustomToChange={setCustomTo}
+              result={result}
+              itemPercent={itemPercent}
+              appPercent={appPercent}
+              totalPendingItems={totalPendingItems}
+            />
+          }
+          ListEmptyComponent={<OverviewEmpty hasTags={tagsIds.length > 0} />}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={PendingSeparator}
+          estimatedItemSize={180}
+          recycleItems
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         />
-      </View>
-
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>Período</Text>
-        <View style={styles.presetRow}>
-          {(Object.keys(PRESET_LABEL) as PeriodPreset[]).map((key) => (
-            <Pressable
-              key={key}
-              style={({ pressed }) => [
-                styles.presetChip,
-                preset === key && styles.presetChipActive,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => setPreset(key)}
-            >
-              <Text
-                style={[
-                  styles.presetChipText,
-                  preset === key && styles.presetChipTextActive,
-                ]}
-              >
-                {PRESET_LABEL[key]}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {preset === 'custom' && (
-          <View style={styles.customRangeRow}>
-            <View style={styles.dateField}>
-              <Text style={styles.dateFieldLabel}>De</Text>
-              <DatePickerField
-                value={customFrom}
-                onChange={setCustomFrom}
-                accessibilityLabel="Selecionar data inicial do relatório"
-              />
-            </View>
-            <View style={styles.dateField}>
-              <Text style={styles.dateFieldLabel}>Até</Text>
-              <DatePickerField
-                value={customTo}
-                onChange={setCustomTo}
-                accessibilityLabel="Selecionar data final do relatório"
-              />
-            </View>
-          </View>
-        )}
-      </View>
-
-      {tagsIds.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>
-            Selecione uma ou mais tags para cruzar torre, unidade, responsável
-            ou qualquer outra classificação.
-          </Text>
-        </View>
-      ) : (
-        result && (
-          <>
-            <View style={styles.statsRow}>
-              <Metric
-                label="Progresso por item"
-                value={`${itemPercent}%`}
-                valueColor={metricValueColors.blue}
-                detail={`${result.itemProgress.answered}/${result.itemProgress.total} itens respondidos`}
-              />
-              <Metric
-                label="Progresso por aplicação"
-                value={`${appPercent}%`}
-                valueColor={metricValueColors.green}
-                detail={`${result.applicationProgress.completed}/${result.applicationProgress.total} aplicações concluídas`}
-              />
-            </View>
-
-            <View style={styles.pendHeader}>
-              <Text style={styles.pendTitle}>Pendências detalhadas</Text>
-              <Text style={styles.pendCount}>
-                {totalPendingItems} itens em {result.pendingGroups.length}{' '}
-                aplicações
-              </Text>
-            </View>
-
-            {result.pendingGroups.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>
-                  Nenhuma pendência para esta combinação de tags.
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.pendList}>
-                {result.pendingGroups.map((group) => (
-                  <PendGroupCard
-                    key={group.application.id}
-                    tagLabels={tagsCatalog.resolveLabels(
-                      group.application.tagsIds,
-                    )}
-                    dateLabel={formatBrDateShort(group.application.date)}
-                    itemTitles={group.items.map((item) => item.itemTitle)}
-                  />
-                ))}
-              </View>
-            )}
-          </>
-        )
-      )}
-    </Screen>
+      }
+    />
   )
 }

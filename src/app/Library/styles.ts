@@ -6,7 +6,9 @@ export const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingTop: space.lg,
     paddingBottom: space.xxl,
-    gap: space.sm,
+  },
+  itemSeparator: {
+    height: space.sm,
   },
   listHeader: {
     gap: space.lg,

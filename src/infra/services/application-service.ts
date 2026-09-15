@@ -21,6 +21,7 @@ export function buildApplicationItems(checklist: Checklist): ApplicationItem[] {
     .map((item) => ({
       id: generateId('aitem_'),
       position: item.position,
+      checklistItemId: item.id,
       title: item.title,
       description: item.description,
       answer: '',
@@ -100,12 +101,19 @@ export function buildRepeatedApplication(
     },
     checklist,
   )
+  const previousItemsByChecklistItemId = new Map(
+    sourceApplication.items
+      .filter((item) => item.checklistItemId)
+      .map((item) => [item.checklistItemId as string, item]),
+  )
   const previousItemsByPosition = new Map(
     sourceApplication.items.map((item) => [item.position, item]),
   )
   const now = new Date().toISOString()
   const items = newApplication.items.map((item) => {
-    const previousItem = previousItemsByPosition.get(item.position)
+    const previousItem =
+      previousItemsByChecklistItemId.get(item.checklistItemId as string) ??
+      previousItemsByPosition.get(item.position)
     if (!previousItem) return item
     return {
       ...item,
@@ -123,9 +131,18 @@ export function buildRepeatedApplication(
       updatedAt: now,
     }
   })
+  const checklistItemIds = new Set(
+    items
+      .map((item) => item.checklistItemId)
+      .filter((id): id is string => Boolean(id)),
+  )
   const checklistPositions = new Set(items.map((item) => item.position))
   const extraItems = sourceApplication.items
-    .filter((item) => !checklistPositions.has(item.position))
+    .filter((item) =>
+      item.checklistItemId
+        ? !checklistItemIds.has(item.checklistItemId)
+        : !checklistPositions.has(item.position),
+    )
     .map((item) => cloneExtraItem(item, now))
   return {
     ...newApplication,
@@ -230,6 +247,7 @@ export async function addApplicationItem(
   const item: ApplicationItem = {
     id: generateId('aitem_'),
     position: application.items.length,
+    checklistItemId: null,
     title,
     description: input.description?.trim() ?? '',
     answer: '',
@@ -444,6 +462,28 @@ export async function removeApplication(
 }
 
 // ---- Derived / read helpers ----
+
+export function sortItemsByChecklistOrder(
+  items: ApplicationItem[],
+  checklist: Checklist,
+): ApplicationItem[] {
+  const ranks = new Map(checklist.items.map((item, index) => [item.id, index]))
+  return items
+    .map((item, originalIndex) => ({
+      item,
+      originalIndex,
+      rank: item.checklistItemId
+        ? (ranks.get(item.checklistItemId) ?? checklist.items.length)
+        : checklist.items.length,
+    }))
+    .sort(
+      (a, b) =>
+        a.rank - b.rank ||
+        a.item.position - b.item.position ||
+        a.originalIndex - b.originalIndex,
+    )
+    .map(({ item }) => item)
+}
 
 export function getProgress(application: Application): {
   answered: number

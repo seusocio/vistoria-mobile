@@ -25,4 +25,9 @@ export const haptics = {
       () => {},
     )
   },
+  /** A long press started reordering an item. */
+  dragStart() {
+    if (typeof Haptics.impactAsync !== 'function') return
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+  },
 }

@@ -1,17 +1,18 @@
 import { useQuery } from 'convex-helpers/react/cache'
-import { useState } from "react";
-import { Pressable, Text } from "react-native";
-import { Screen } from "@/components";
-import { Icon } from "@/components/Icon";
-import { useChecklistForm } from "@/hooks/useChecklistForm";
-import { useTagsCatalog } from "@/hooks/useTagsCatalog";
-import type { Checklist } from "@/infra/domain/entities";
-import { updateChecklist } from "@/infra/services";
-import type { StackRoutesProps } from "@/routes/types";
-import { colors } from "@/styles";
-import { api } from "../../../convex/_generated/api";
-import { ChecklistFormView } from "../ChecklistForm/ChecklistFormView";
-import { styles } from "../ChecklistNew/styles";
+import { useState } from 'react'
+import { Pressable, Text } from 'react-native'
+import { ScrollViewContainer } from 'react-native-reorderable-list'
+import { Screen } from '@/components'
+import { Icon } from '@/components/Icon'
+import { useChecklistForm } from '@/hooks/useChecklistForm'
+import { useTagsCatalog } from '@/hooks/useTagsCatalog'
+import type { Checklist } from '@/infra/domain/entities'
+import { updateChecklist } from '@/infra/services'
+import type { StackRoutesProps } from '@/routes/types'
+import { colors } from '@/styles'
+import { api } from '../../../convex/_generated/api'
+import { ChecklistFormView } from '../ChecklistForm/ChecklistFormView'
+import { styles } from '../ChecklistNew/styles'
 
 function ChecklistEditForm({
 	checklist,
@@ -50,31 +51,32 @@ function ChecklistEditForm({
 		}
 	}
 
-	return (
-		<Screen
-			variant="nested"
-			navTitleTone="strong"
-			onBack={() => navigation.goBack()}
-			title="Editar checklist"
-			footer={
-				<Pressable
-					style={({ pressed }) => [
-						styles.saveButton,
-						pressed && { opacity: 0.7 },
-					]}
-					onPress={handleSubmit}
-					disabled={submitting}
-				>
-					<Icon name="check" size={18} color={colors.white} />
-					<Text style={styles.saveButtonText}>
-						{submitting ? "Salvando..." : "Salvar alterações"}
-					</Text>
-				</Pressable>
-			}
-		>
-			<ChecklistFormView form={form} tagsCatalog={tagsCatalog} error={error} />
-		</Screen>
-	);
+  return (
+    <Screen
+      ScrollComponent={ScrollViewContainer}
+      variant="nested"
+      navTitleTone="strong"
+      onBack={() => navigation.goBack()}
+      title="Editar checklist"
+      footer={
+        <Pressable
+          style={({ pressed }) => [
+            styles.saveButton,
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={handleSubmit}
+          disabled={submitting}
+        >
+          <Icon name="check" size={18} color={colors.white} />
+          <Text style={styles.saveButtonText}>
+            {submitting ? 'Salvando...' : 'Salvar alterações'}
+          </Text>
+        </Pressable>
+      }
+    >
+      <ChecklistFormView form={form} tagsCatalog={tagsCatalog} error={error} />
+    </Screen>
+  )
 }
 
 export function ChecklistEdit({
