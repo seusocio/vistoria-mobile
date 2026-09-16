@@ -5,9 +5,12 @@ import { AddPhotoButton, PhotoThumb } from '../PhotoThumb'
 import type { PhotoThumbProps } from '../PhotoThumb'
 import { styles } from './styles'
 
-export interface PhotoGalleryItem extends Omit<PhotoThumbProps, 'onRemove'> {
+export interface PhotoGalleryItem
+  extends Omit<PhotoThumbProps, 'onRemove' | 'onPress' | 'onRetry'> {
   id: string
   onRemove?: () => void
+  onPress?: () => void
+  onRetry?: () => void
 }
 
 interface PhotoGalleryRowProps {
@@ -28,7 +31,10 @@ export const PhotoGalleryRow = memo(function PhotoGalleryRow({
         uri={item.uri}
         uploading={item.uploading}
         progress={item.progress}
+        failed={item.failed}
         onRemove={item.onRemove}
+        onPress={item.onPress}
+        onRetry={item.onRetry}
       />
     ),
     [],

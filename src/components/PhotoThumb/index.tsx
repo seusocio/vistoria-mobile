@@ -8,29 +8,46 @@ import { styles } from './styles'
 export interface PhotoThumbProps {
   uri?: string
   onRemove?: () => void
+  onPress?: () => void
+  onRetry?: () => void
   uploading?: boolean
   progress?: number
+  failed?: boolean
 }
 
 /** Component/PhotoThumb */
 export function PhotoThumb({
   uri,
   onRemove,
+  onPress,
+  onRetry,
   uploading = false,
   progress = 0,
+  failed = false,
 }: PhotoThumbProps) {
+  const image = uri ? (
+    <Image
+      source={uri}
+      style={styles.image}
+      contentFit="cover"
+      accessibilityLabel="Foto anexada"
+    />
+  ) : (
+    <Icon name="camera" size={20} color={colors.gray[400]} />
+  )
 
   return (
-    <View style={styles.container}>
-      {uri ? (
-        <Image
-          source={uri}
-          style={styles.image}
-          contentFit="cover"
-          accessibilityLabel="Foto anexada"
-        />
+    <View style={[styles.container, failed && styles.containerFailed]}>
+      {onPress ? (
+        <Pressable
+          onPress={onPress}
+          accessibilityLabel="Ver foto"
+          style={styles.pressable}
+        >
+          {image}
+        </Pressable>
       ) : (
-        <Icon name="camera" size={20} color={colors.gray[400]} />
+        image
       )}
       {uploading && (
         <View style={styles.uploadingOverlay}>
@@ -39,6 +56,19 @@ export function PhotoThumb({
             <ProgressBar progress={progress} />
           </View>
         </View>
+      )}
+      {failed && !uploading && onRetry && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.retryOverlay,
+            pressed && { opacity: 0.7 },
+          ]}
+          hitSlop={8}
+          onPress={onRetry}
+          accessibilityLabel="Tentar enviar novamente"
+        >
+          <Icon name="repeat" size={16} color={colors.white} />
+        </Pressable>
       )}
       {onRemove && !uploading && (
         <Pressable

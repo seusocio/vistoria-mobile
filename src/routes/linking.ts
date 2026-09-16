@@ -17,6 +17,7 @@ export const linking: LinkingOptions<StackRoutesList> = {
       checklistEdit: 'checklists/:checklistId/edit',
       applicationNew: 'checklists/:checklistId/applications/new',
       applicationFill: 'checklists/:checklistId/applications/:applicationId',
+      photoCapture: 'photo-capture',
     },
   },
 }

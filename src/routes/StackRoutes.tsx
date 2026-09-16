@@ -4,6 +4,7 @@ import { ApplicationNew } from '@/app/ApplicationNew'
 import { ChecklistDetail } from '@/app/ChecklistDetail'
 import { ChecklistEdit } from '@/app/ChecklistEdit'
 import { ChecklistNew } from '@/app/ChecklistNew'
+import { PhotoCapture } from '@/app/PhotoCapture'
 import { TabRoutes } from './TabRoutes'
 import { StackRoutesList } from './types'
 
@@ -23,6 +24,15 @@ export function StackRoutes() {
       <Stack.Screen name="checklistEdit" component={ChecklistEdit} />
       <Stack.Screen name="applicationNew" component={ApplicationNew} />
       <Stack.Screen name="applicationFill" component={ApplicationFill} />
+      <Stack.Screen
+        name="photoCapture"
+        component={PhotoCapture}
+        options={{
+          presentation: 'fullScreenModal',
+          animation: 'slide_from_bottom',
+          headerShown: false,
+        }}
+      />
     </Stack.Navigator>
   )
 }

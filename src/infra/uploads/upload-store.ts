@@ -15,8 +15,10 @@ export interface UploadJob {
 interface UploadState {
   progress: Record<string, number>
   inFlight: Record<string, true>
+  abandoned: Record<string, true>
   queue: UploadJob[]
   enqueue: (job: UploadJob) => void
+  cancel: (attachmentId: string) => void
   resumePending: () => Promise<void>
 }
 
@@ -69,6 +71,19 @@ async function processJob(job: UploadJob) {
     }
     if (!storageId) throw lastError ?? new Error('Não foi possível enviar a foto')
 
+    if (useUploadStore.getState().abandoned[attachmentId]) {
+      try {
+        await convexClient.mutation(api.files.remove, { storageId })
+      } catch {
+        // já removido
+      }
+      useUploadStore.setState((state) => {
+        const { [attachmentId]: _abandoned, ...abandoned } = state.abandoned
+        return { abandoned }
+      })
+      return
+    }
+
     await convexClient.mutation(api.applications.setAttachmentUploaded, {
       applicationId: job.applicationId,
       attachmentId,
@@ -113,6 +128,7 @@ function drainQueue() {
 export const useUploadStore = create<UploadState>((set, get) => ({
   progress: {},
   inFlight: {},
+  abandoned: {},
   queue: [],
   enqueue: (job) => {
     const state = get()
@@ -124,6 +140,12 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     }
     set((current) => ({ queue: [...current.queue, job] }))
     drainQueue()
+  },
+  cancel: (attachmentId) => {
+    set((state) => ({
+      queue: state.queue.filter((job) => job.attachment.id !== attachmentId),
+      abandoned: { ...state.abandoned, [attachmentId]: true },
+    }))
   },
   resumePending: async () => {
     const applications = (await convexClient.query(api.applications.listAll, {})) as Application[]

@@ -55,9 +55,6 @@ export const styles = StyleSheet.create({
   },
   sheetContent: {
     gap: space.md,
-    paddingHorizontal: space.xl,
-    paddingTop: space.lg,
-    paddingBottom: space.xxl,
   },
   sheetTitle: {
     ...textStyles.drawerTitle,

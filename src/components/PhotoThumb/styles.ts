@@ -13,6 +13,16 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  containerFailed: {
+    borderColor: colors.danger.base,
+    borderWidth: 2,
+  },
+  pressable: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   image: {
     width: '100%',
     height: '100%',
@@ -34,6 +44,17 @@ export const styles = StyleSheet.create({
     left: 6,
     right: 6,
     bottom: 6,
+  },
+  retryOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 9,
+    backgroundColor: 'rgba(216,67,61,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   removeButton: {
     position: 'absolute',

@@ -26,9 +26,11 @@ export interface ItemDrawerProps {
   quantity: number | null
   onQuantityChange: (quantity: number | null) => void
   attachments: Attachment[]
-  pendingPhotos?: { id: string; uri: string; progress: number }[]
+  uploadProgress: Record<string, number>
   onAddPhoto: () => void
   onRemoveAttachment: (attachmentId: string) => void
+  onRetryAttachment: (attachmentId: string) => void
+  onOpenPhoto: (index: number) => void
   onSave: () => void
 }
 
@@ -49,27 +51,24 @@ export function ItemDrawer({
   quantity,
   onQuantityChange,
   attachments,
-  pendingPhotos = [],
+  uploadProgress,
   onAddPhoto,
   onRemoveAttachment,
+  onRetryAttachment,
+  onOpenPhoto,
   onSave,
 }: ItemDrawerProps) {
-  const activeAttachments = attachments.filter(
-    (attachment) => !attachment.deletedAt && attachment.uploadStatus !== 'pending',
-  )
-  const galleryPhotos = [
-    ...activeAttachments.map((attachment) => ({
-      id: attachment.id,
-      uri: attachment.url,
-      onRemove: () => onRemoveAttachment(attachment.id),
-    })),
-    ...pendingPhotos.map((pending) => ({
-      id: pending.id,
-      uri: pending.uri,
-      uploading: true,
-      progress: pending.progress,
-    })),
-  ]
+  const activeAttachments = attachments.filter((attachment) => !attachment.deletedAt)
+  const galleryPhotos = activeAttachments.map((attachment, index) => ({
+    id: attachment.id,
+    uri: attachment.url ?? attachment.localUri,
+    uploading: attachment.uploadStatus === 'pending',
+    failed: attachment.uploadStatus === 'failed',
+    progress: uploadProgress[attachment.id] ?? 0,
+    onPress: () => onOpenPhoto(index),
+    onRemove: () => onRemoveAttachment(attachment.id),
+    onRetry: () => onRetryAttachment(attachment.id),
+  }))
   const footerComponent = useSheetFooterActions({
     confirmLabel: 'Salvar e fechar',
     onConfirm: onSave,

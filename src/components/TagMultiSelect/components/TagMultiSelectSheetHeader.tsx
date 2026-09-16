@@ -33,12 +33,6 @@ export const TagMultiSelectSheetHeader = memo(function TagMultiSelectSheetHeader
     <View style={styles.sheetContent}>
       <Text style={styles.sheetTitle}>Selecionar tags</Text>
       <Text style={styles.sheetSubtitle}>Escolha uma ou mais classificações</Text>
-      {selectedLabels.length > 0 ? (
-        <TagChipList
-          labels={selectedLabels}
-          onRemove={(_, index) => onToggle(draftIds[index])}
-        />
-      ) : null}
       <View style={styles.searchBox}>
         <Icon name="search" size={18} color={colors.gray[400]} />
         <SheetAwareTextInput
@@ -54,6 +48,12 @@ export const TagMultiSelectSheetHeader = memo(function TagMultiSelectSheetHeader
           accessibilityLabel={placeholder}
         />
       </View>
+      {selectedLabels.length > 0 ? (
+        <TagChipList
+          labels={selectedLabels}
+          onRemove={(_, index) => onToggle(draftIds[index])}
+        />
+      ) : null}
     </View>
   )
 })

@@ -1,6 +1,6 @@
 import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Pressable, Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import {
   NestedReorderableList,
   reorderItems,
@@ -13,12 +13,12 @@ import {
   DatePickerField,
   Input,
   ItemDrawer,
+  PhotoViewer,
   ProgressBar,
   Screen,
   TagChipList,
   TagMultiSelect,
   VoiceCard,
-  useUndoToast,
 } from '@/components'
 import { Icon } from '@/components/Icon'
 import { ApplicationItemRow } from './components/ApplicationItemRow'
@@ -28,20 +28,13 @@ import { ApplicationGallery } from './components/ApplicationGallery'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { useApplicationFill } from '@/hooks/useApplicationFill'
 import { useApplicationMutations } from '@/hooks/useApplicationMutations'
+import { useAttachPhotos } from '@/hooks/useAttachPhotos'
 import { useReorderablePanGesture } from '@/hooks/useReorderablePanGesture'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
-import {
-  PhotoSource,
-  PickedPhoto,
-  generateUploadUrl,
-  pickPhotos,
-  prepareAsset,
-} from '@/infra/convex'
 import { generateId } from '@/infra/id'
 import type { ApplicationItem } from '@/infra/domain/entities'
 import {
-  createAttachment,
   generateSuggestions,
   getDerivedState,
   getProgress,
@@ -74,10 +67,13 @@ export function ApplicationFill({
     applicationId,
   )
   const mutations = useApplicationMutations()
+  const { removeAttachment: removeAttachmentPipeline } = useAttachPhotos()
   const tagsCatalog = useTagsCatalog()
   const { startRecording, stopRecording } = useVoiceRecorder()
-  const { show: showUndo } = useUndoToast()
   const uploadProgress = useUploadStore((state) => state.progress)
+  const [viewer, setViewer] = useState<{ itemId: string | null; index: number } | null>(
+    null,
+  )
 
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false)
@@ -204,133 +200,65 @@ export function ApplicationFill({
       .catch(() => setApplicationError('Não foi possível salvar a resposta'))
   }
 
-  async function uploadAsset(asset: PickedPhoto, target: { itemId?: string }) {
-    try {
-      const uploadUrlPromise = generateUploadUrl()
-      const prepared = await prepareAsset(asset)
-      const uploadUrl = await uploadUrlPromise
-      const item = target.itemId
-        ? application.items.find((candidate) => candidate.id === target.itemId)
-        : undefined
-      const attachment = createAttachment(
-        {
-          id: generateId('attachment_'),
-          name: prepared.fileName ?? `Foto ${Date.now()}`,
-          uploadStatus: 'pending',
-          mimeType: prepared.mimeType,
-          width: prepared.width,
-          height: prepared.height,
-        },
-        item?.attachments.length ?? application.attachments.length,
-        new Date().toISOString(),
-      )
+  function handleAddPhoto(itemId: string) {
+    if (editingItemId === itemId && editingItemDraft) {
       const updatedAt = new Date().toISOString()
       void mutations
-        .addAttachment({
+        .patchItem({
           applicationId: application.id,
-          itemId: target.itemId ?? null,
-          attachment,
+          itemId,
+          patch: editingItemDraft,
           updatedAt,
         })
-        .then(() => {
-          useUploadStore.getState().enqueue({
-            applicationId: application.id,
-            itemId: target.itemId ?? null,
-            attachment,
-            uploadUrl,
-          })
-        })
-        .catch(() => setApplicationError('Não foi possível adicionar a foto'))
-    } catch (error) {
-      setApplicationError(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível preparar a foto',
-      )
+        .catch(() => setApplicationError('Não foi possível salvar o item'))
     }
-  }
-
-  async function attachPhotos(
-    source: PhotoSource,
-    target: { itemId?: string },
-  ) {
-    const assets = await pickPhotos(source)
-    if (assets.length === 0) return
-    await Promise.all(assets.map((asset) => uploadAsset(asset, target)))
-  }
-
-  function choosePhoto(target: { itemId?: string }) {
-    Alert.alert('Adicionar foto', 'Escolha a origem da imagem.', [
-      { text: 'Câmera', onPress: () => void attachPhotos('camera', target) },
-      { text: 'Biblioteca', onPress: () => void attachPhotos('library', target) },
-      { text: 'Cancelar', style: 'cancel' },
-    ])
-  }
-
-  function handleAddPhoto(itemId: string) {
-    choosePhoto({ itemId })
+    setEditingItemId(null)
+    setEditingItemDraft(null)
+    navigation.navigate('photoCapture', { applicationId: application.id, itemId })
   }
 
   function handleAddApplicationPhoto() {
-    choosePhoto({})
+    navigation.navigate('photoCapture', { applicationId: application.id, itemId: null })
   }
 
-  function handleRemoveAttachment(itemId: string, attachmentId: string) {
-    const deletedAt = new Date().toISOString()
-    void mutations
-      .setAttachmentDeletedAt({
-        applicationId: application.id,
-        itemId,
-        attachmentId,
-        deletedAt,
-        updatedAt: deletedAt,
-      })
-      .catch(() => setApplicationError('Não foi possível remover a foto'))
-    showUndo({
-      message: 'Foto removida',
-      onCommit: () => undefined,
-      onUndo: () => {
-        const updatedAt = new Date().toISOString()
-        void mutations
-          .setAttachmentDeletedAt({
-            applicationId: application.id,
-            itemId,
-            attachmentId,
-            deletedAt: null,
-            updatedAt,
-          })
-          .catch(() => setApplicationError('Não foi possível desfazer'))
-      },
+  function removeApplicationAttachment(attachmentId: string) {
+    const attachment = application.attachments.find(
+      (candidate) => candidate.id === attachmentId,
+    )
+    if (!attachment) return
+    removeAttachmentPipeline({
+      applicationId: application.id,
+      itemId: null,
+      attachment,
+      onError: () => setApplicationError('Não foi possível remover a foto'),
     })
   }
 
-  function handleRemoveApplicationAttachment(attachmentId: string) {
-    const deletedAt = new Date().toISOString()
-    void mutations
-      .setAttachmentDeletedAt({
-        applicationId: application.id,
-        itemId: null,
-        attachmentId,
-        deletedAt,
-        updatedAt: deletedAt,
-      })
-      .catch(() => setApplicationError('Não foi possível remover a foto'))
-    showUndo({
-      message: 'Foto removida',
-      onCommit: () => undefined,
-      onUndo: () => {
-        const updatedAt = new Date().toISOString()
-        void mutations
-          .setAttachmentDeletedAt({
-            applicationId: application.id,
-            itemId: null,
-            attachmentId,
-            deletedAt: null,
-            updatedAt,
-          })
-          .catch(() => setApplicationError('Não foi possível desfazer'))
-      },
+  function removeItemAttachment(itemId: string, attachmentId: string) {
+    const item = application.items.find((candidate) => candidate.id === itemId)
+    const attachment = item?.attachments.find((candidate) => candidate.id === attachmentId)
+    if (!attachment) return
+    removeAttachmentPipeline({
+      applicationId: application.id,
+      itemId,
+      attachment,
+      onError: () => setApplicationError('Não foi possível remover a foto'),
     })
+  }
+
+  function retryApplicationAttachment(attachmentId: string) {
+    const attachment = application.attachments.find(
+      (candidate) => candidate.id === attachmentId,
+    )
+    if (!attachment) return
+    useUploadStore.getState().enqueue({ applicationId: application.id, itemId: null, attachment })
+  }
+
+  function retryItemAttachment(itemId: string, attachmentId: string) {
+    const item = application.items.find((candidate) => candidate.id === itemId)
+    const attachment = item?.attachments.find((candidate) => candidate.id === attachmentId)
+    if (!attachment) return
+    useUploadStore.getState().enqueue({ applicationId: application.id, itemId, attachment })
   }
 
   async function handleStartRecording() {
@@ -545,6 +473,18 @@ export function ApplicationFill({
       ? { note: editingItem.note, tagsIds: editingItem.tagsIds, quantity: editingItem.quantity }
       : null
 
+  const viewerAttachments = viewer
+    ? (viewer.itemId === null
+        ? application.attachments
+        : application.items.find((item) => item.id === viewer.itemId)?.attachments ?? []
+      ).filter((attachment) => !attachment.deletedAt)
+    : []
+  const viewerPhotos = viewerAttachments.map((attachment) => ({
+    id: attachment.id,
+    uri: attachment.url ?? attachment.localUri,
+    uploading: attachment.uploadStatus === 'pending',
+    progress: uploadProgress[attachment.id] ?? 0,
+  }))
 
   return (
     <Screen
@@ -648,7 +588,9 @@ export function ApplicationFill({
         <ApplicationGallery
           attachments={application.attachments}
           uploadProgress={uploadProgress}
-          onRemoveAttachment={handleRemoveApplicationAttachment}
+          onRemoveAttachment={removeApplicationAttachment}
+          onRetryAttachment={retryApplicationAttachment}
+          onOpenPhoto={(index) => setViewer({ itemId: null, index })}
         />
       </View>
 
@@ -739,17 +681,15 @@ export function ApplicationFill({
             }))
           }
           attachments={editingItem.attachments}
-          pendingPhotos={editingItem.attachments
-            .filter((attachment) => attachment.uploadStatus === 'pending' && !attachment.deletedAt && attachment.localUri)
-            .map((attachment) => ({
-              id: attachment.id,
-              uri: attachment.localUri as string,
-              progress: uploadProgress[attachment.id] ?? 0,
-            }))}
+          uploadProgress={uploadProgress}
           onAddPhoto={() => handleAddPhoto(editingItem.id)}
           onRemoveAttachment={(attachmentId) =>
-            handleRemoveAttachment(editingItem.id, attachmentId)
+            removeItemAttachment(editingItem.id, attachmentId)
           }
+          onRetryAttachment={(attachmentId) =>
+            retryItemAttachment(editingItem.id, attachmentId)
+          }
+          onOpenPhoto={(index) => setViewer({ itemId: editingItem.id, index })}
           onSave={() => {
             if (!itemDraft) return
             const updatedAt = new Date().toISOString()
@@ -766,6 +706,18 @@ export function ApplicationFill({
           }}
         />
       )}
+
+      <PhotoViewer
+        visible={viewer !== null}
+        photos={viewerPhotos}
+        initialIndex={viewer?.index ?? 0}
+        onClose={() => setViewer(null)}
+        onDelete={(attachmentId) => {
+          if (!viewer) return
+          if (viewer.itemId === null) removeApplicationAttachment(attachmentId)
+          else removeItemAttachment(viewer.itemId, attachmentId)
+        }}
+      />
 
       <AppBottomSheet
         visible={editingApplication}

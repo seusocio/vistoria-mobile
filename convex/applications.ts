@@ -253,6 +253,46 @@ export const setAttachmentDeletedAt = mutation({
   },
 })
 
+export const purgeAttachment = mutation({
+  args: {
+    applicationId: v.string(),
+    itemId: v.union(v.string(), v.null()),
+    attachmentId: v.string(),
+  },
+  handler: async (ctx, { applicationId, itemId, attachmentId }) => {
+    const application = await getApp(ctx, applicationId)
+    if (!application) return null
+
+    const source = itemId === null
+      ? application.attachments
+      : (application.items.find((item) => item.id === itemId)?.attachments ?? [])
+    const target = source.find((attachment) => attachment.id === attachmentId)
+    if (!target) return null
+
+    if (target.storageId) {
+      try {
+        await ctx.storage.delete(target.storageId as Id<'_storage'>)
+      } catch {
+        // já removido
+      }
+    }
+
+    const drop = (list: PersistedAttachment[]) =>
+      list.filter((attachment) => attachment.id !== attachmentId)
+
+    if (itemId === null) {
+      await ctx.db.patch(application._id, { attachments: drop(application.attachments) })
+    } else {
+      await ctx.db.patch(application._id, {
+        items: application.items.map((item) =>
+          item.id === itemId ? { ...item, attachments: drop(item.attachments) } : item,
+        ),
+      })
+    }
+    return null
+  },
+})
+
 export const setAttachmentUploadStatus = mutation({
   args: {
     applicationId: v.string(),
@@ -313,6 +353,19 @@ export const softDelete = mutation({
   args: { id: v.string(), deletedAt: v.string() },
   handler: async (ctx, { id, deletedAt }) => {
     const application = await getApp(ctx, id)
-    if (application) await ctx.db.patch(application._id, { deletedAt })
+    if (!application) return
+    const allAttachments = [
+      ...application.attachments,
+      ...application.items.flatMap((item) => item.attachments),
+    ]
+    for (const attachment of allAttachments) {
+      if (!attachment.storageId) continue
+      try {
+        await ctx.storage.delete(attachment.storageId as Id<'_storage'>)
+      } catch {
+        // já removido
+      }
+    }
+    await ctx.db.patch(application._id, { deletedAt })
   },
 })

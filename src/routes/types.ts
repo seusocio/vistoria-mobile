@@ -19,6 +19,7 @@ export type StackRoutesList = {
 	checklistEdit: { checklistId: string };
 	applicationNew: { checklistId: string };
 	applicationFill: { checklistId: string; applicationId: string };
+	photoCapture: { applicationId: string; itemId: string | null };
 };
 
 export type StackRoutesProps<T extends keyof StackRoutesList> =

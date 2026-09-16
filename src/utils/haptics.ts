@@ -30,4 +30,9 @@ export const haptics = {
     if (typeof Haptics.impactAsync !== 'function') return
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
   },
+  /** The camera shutter fired. */
+  impact() {
+    if (typeof Haptics.impactAsync !== 'function') return
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
+  },
 }

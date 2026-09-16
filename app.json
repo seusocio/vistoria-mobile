@@ -34,6 +34,13 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Permita o acesso à câmera para fotografar a vistoria.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#ffffff",

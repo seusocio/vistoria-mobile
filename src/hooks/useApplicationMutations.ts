@@ -125,6 +125,34 @@ function updateItemAttachment(
   }
 }
 
+function removeAttachmentFromApplication(
+  application: Application,
+  itemId: string | null,
+  attachmentId: string,
+): Application {
+  if (itemId === null) {
+    return {
+      ...application,
+      attachments: application.attachments.filter(
+        (attachment) => attachment.id !== attachmentId,
+      ),
+    }
+  }
+  return {
+    ...application,
+    items: application.items.map((item) =>
+      item.id === itemId
+        ? {
+            ...item,
+            attachments: item.attachments.filter(
+              (attachment) => attachment.id !== attachmentId,
+            ),
+          }
+        : item,
+    ),
+  }
+}
+
 function seedApplicationEverywhere(
   store: OptimisticLocalStore,
   application: Application,
@@ -221,6 +249,12 @@ export function useApplicationMutations() {
         : updateItemAttachment(application, itemId, attachmentId, (attachment) => ({ ...attachment, deletedAt }), updatedAt),
     ),
   )
+  const purgeAttachment = useMutation(api.applications.purgeAttachment).withOptimisticUpdate(
+    (store, { applicationId, itemId, attachmentId }) =>
+      patchAppEverywhere(store, applicationId, (application) =>
+        removeAttachmentFromApplication(application, itemId, attachmentId),
+      ),
+  )
   const updateMeta = useMutation(api.applications.updateMeta).withOptimisticUpdate(
     (store, { applicationId, updatedAt, ...meta }) =>
       patchAppEverywhere(store, applicationId, (application) => ({
@@ -253,6 +287,7 @@ export function useApplicationMutations() {
     addAttachment,
     setAttachmentUploaded,
     setAttachmentDeletedAt,
+    purgeAttachment,
     updateMeta,
     setTagsForMany,
     softDelete,
