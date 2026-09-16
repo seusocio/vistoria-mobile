@@ -14,7 +14,7 @@ export const DRAG_LONG_PRESS_DELAY = 520
  * and cancel the touch before the item's onLongPress ever fires (this raced
  * and silently lost on heavier screens when both delays were equal).
  */
-const DRAG_PAN_ACTIVATION_DELAY = 700
+const DRAG_PAN_ACTIVATION_DELAY = 900
 
 /** Pan gesture for a NestedReorderableList/ReorderableList's `panGesture` prop. */
 export function useReorderablePanGesture() {

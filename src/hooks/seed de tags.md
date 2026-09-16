@@ -61,4 +61,15 @@ Preenchimento de caçamba
 Transporte vertical de vasos sanitários
 
 
-nem tudo é do elevador, quero que vc crie pelo menos uma para vistoria de apartamentos e outra para areas comuns.
+
+
+---
+Cozinha: 
+Q:
+QS:
+WC:
+WCS:
+AE:
+CHURRASQUEIRA:
+
+

@@ -21,6 +21,7 @@ import { ChecklistItemRow } from './components/ChecklistItemRow'
 import { ResponseOptionsEditor } from './components/ResponseOptionsEditor'
 import { TemplatePicker } from './components/TemplatePicker'
 import { styles } from './styles'
+import { LinearTransition } from 'react-native-reanimated'
 
 export interface ChecklistFormViewProps {
   form: ChecklistFormApi
@@ -175,6 +176,7 @@ export function ChecklistFormView({
             scrollEnabled={false}
             contentContainerStyle={styles.itemsList}
             panGesture={panGesture}
+            itemLayoutAnimation={LinearTransition.duration(220)}
             keyExtractor={(item) => item.key}
             onReorder={({ from, to }) =>
               form.setItems(reorderItems(form.items, from, to))

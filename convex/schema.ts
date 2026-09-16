@@ -32,6 +32,8 @@ const checklistItem = v.object({
   title: v.string(),
   description: v.string(),
   tagsIds: v.array(v.string()),
+  /** id of the group/section header item this belongs to; null for top-level items (including the headers themselves) */
+  parentId: v.optional(v.union(v.string(), v.null())),
   createdAt: v.string(),
   updatedAt: v.string(),
   deletedAt: v.union(v.string(), v.null()),
@@ -41,6 +43,8 @@ const applicationItem = v.object({
   id: v.string(),
   position: v.number(),
   checklistItemId: v.optional(v.union(v.string(), v.null())),
+  /** id of the group/section header item this belongs to; null for top-level items (including the headers themselves) */
+  parentId: v.optional(v.union(v.string(), v.null())),
   title: v.string(),
   description: v.string(),
   answer: v.string(),

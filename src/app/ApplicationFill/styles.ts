@@ -107,8 +107,8 @@ export const styles = StyleSheet.create({
     ...textStyles.badgeLabel,
     color: colors.blue.base,
   },
-  itemsList: {
-    gap: 12,
+  groupsList: {
+    gap: 10,
   },
   completeButton: {
     flexDirection: 'row',

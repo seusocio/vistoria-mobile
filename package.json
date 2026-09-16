@@ -12,7 +12,8 @@
 		"format": "biome format --write App.tsx src convex/*.ts",
 		"generate-icons": "node scripts/generate-icons-adapted.js",
 		"convex:seed": "convex dev --once --run seed:run",
-		"convex:migrate": "convex dev --once --run migrations:backfillChecklistItemIds"
+		"convex:migrate": "convex dev --once --run migrations:backfillChecklistItemIds",
+		"convex:resync-applications": "convex dev --once --run migrations:resyncApplicationItemsFromChecklist"
 	},
 	"dependencies": {
 		"@expo-google-fonts/lato": "^0.4.1",

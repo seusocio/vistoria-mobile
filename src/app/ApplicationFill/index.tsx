@@ -1,11 +1,7 @@
 import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import {
-  NestedReorderableList,
-  reorderItems,
-  ScrollViewContainer,
-} from 'react-native-reorderable-list'
+import { ScrollViewContainer } from 'react-native-reorderable-list'
 import {
   AppBottomSheet,
   Badge,
@@ -21,7 +17,7 @@ import {
   VoiceCard,
 } from '@/components'
 import { Icon } from '@/components/Icon'
-import { ApplicationItemRow } from './components/ApplicationItemRow'
+import { ApplicationItemGroupSection } from './components/ApplicationItemGroupSection'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { VoiceState } from '@/components/VoiceCard'
 import { ApplicationGallery } from './components/ApplicationGallery'
@@ -33,13 +29,13 @@ import { useReorderablePanGesture } from '@/hooks/useReorderablePanGesture'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 import { generateId } from '@/infra/id'
-import type { ApplicationItem } from '@/infra/domain/entities'
 import {
   generateSuggestions,
   getDerivedState,
   getProgress,
+  groupItemsByTitlePrefix,
+  isItemAnswerComplete,
   prepareTranscriber,
-  reorderChecklistItems,
   sortItemsByChecklistOrder,
   transcribeAudio,
 } from '@/infra/services'
@@ -94,10 +90,9 @@ export function ApplicationFill({
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] =
     useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [optimisticItems, setOptimisticItems] = useState<ApplicationItem[] | null>(
-    null,
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(
+    () => new Set(),
   )
-  const [reorderPending, setReorderPending] = useState(false)
   const submitted = useRef(false)
   const currentApplicationId = applicationData?.id
   const currentTranscript = applicationData?.transcript
@@ -117,31 +112,38 @@ export function ApplicationFill({
     () => (applicationData ? getProgress(applicationData) : { answered: 0, total: 0 }),
     [applicationData],
   )
-  const sortedItems = useMemo(
-    () =>
-      applicationData && checklist
-        ? sortItemsByChecklistOrder(applicationData.items, checklist)
-        : [],
-    [applicationData, checklist],
-  )
+  const groups = useMemo(() => {
+    if (!applicationData || !checklist) return []
+    const sortedAllItems = sortItemsByChecklistOrder(applicationData.items, checklist)
+    return groupItemsByTitlePrefix(sortedAllItems).map((group) => ({
+      key: group.label ?? 'ungrouped',
+      title: group.label ?? 'Outros itens',
+      total: group.children.length,
+      answered: group.children.filter((item) => isItemAnswerComplete(item, checklist))
+        .length,
+      // completed items move to the "Concluídos" section below instead of
+      // sinking within this list, so answering something never reshuffles
+      // the drag-reorderable list the user is currently looking at.
+      children: group.children.filter((item) => !isItemAnswerComplete(item, checklist)),
+    }))
+  }, [applicationData, checklist])
+  const completedItems = useMemo(() => {
+    if (!applicationData || !checklist) return []
+    return sortItemsByChecklistOrder(applicationData.items, checklist).filter((item) =>
+      isItemAnswerComplete(item, checklist),
+    )
+  }, [applicationData, checklist])
   const derivedState = applicationData
     ? getDerivedState(applicationData)
     : 'not_started'
-  const orderedItems = optimisticItems ?? sortedItems
-  useEffect(() => {
-    if (!optimisticItems) return
-    const isSynced =
-      optimisticItems.length === sortedItems.length &&
-      optimisticItems.every(
-        (item, index) => sortedItems[index]?.id === item.id,
-      )
-    if (isSynced) {
-      setOptimisticItems(null)
-      setReorderPending(false)
-    } else if (!reorderPending) {
-      setOptimisticItems(null)
-    }
-  }, [optimisticItems, reorderPending, sortedItems])
+  function toggleGroup(groupKey: string) {
+    setExpandedGroupIds((current) => {
+      const next = new Set(current)
+      if (next.has(groupKey)) next.delete(groupKey)
+      else next.add(groupKey)
+      return next
+    })
+  }
   const renderEditApplicationFooter = useSheetFooterActions({
     confirmLabel: 'Salvar',
     onConfirm: handleSaveApplication,
@@ -163,31 +165,6 @@ export function ApplicationFill({
     )
   }
   const application = applicationData
-  const activeChecklist = checklist
-  async function handleReorder({ from, to }: { from: number; to: number }) {
-    if (from === to) return
-    const movedItem = orderedItems[from]
-    const targetItem = orderedItems[to]
-    if (!movedItem?.checklistItemId || !targetItem?.checklistItemId) return
-    const templateFrom = activeChecklist.items.findIndex(
-      (item) => item.id === movedItem.checklistItemId,
-    )
-    const templateTo = activeChecklist.items.findIndex(
-      (item) => item.id === targetItem.checklistItemId,
-    )
-    if (templateFrom < 0 || templateTo < 0) return
-
-    const previousItems = orderedItems
-    setOptimisticItems(reorderItems(previousItems, from, to))
-    setReorderPending(true)
-    try {
-      await reorderChecklistItems(activeChecklist.id, templateFrom, templateTo)
-    } catch {
-      setOptimisticItems(previousItems)
-      setReorderPending(false)
-      setApplicationError('Não foi possível reordenar os itens')
-    }
-  }
   function handleAnswerChange(itemId: string, answer: string) {
     const updatedAt = new Date().toISOString()
     void mutations
@@ -451,7 +428,7 @@ export function ApplicationFill({
     setAddingItem(false)
   }
   function handleOpenItemDrawer(itemId: string) {
-    const item = orderedItems.find((candidate) => candidate.id === itemId)
+    const item = application.items.find((candidate) => candidate.id === itemId)
     if (!item) return
     setEditingItemDraft({
       note: item.note,
@@ -462,11 +439,17 @@ export function ApplicationFill({
   }
 
   const editingItem = editingItemId
-    ? orderedItems.find((item) => item.id === editingItemId)
+    ? application.items.find((item) => item.id === editingItemId)
     : null
-  const editingItemIndex = editingItem
-    ? orderedItems.indexOf(editingItem)
+  const editingItemContainer = editingItem
+    ? (groups.find((group) => group.children.some((child) => child.id === editingItem.id))
+        ?.children ??
+      (completedItems.some((child) => child.id === editingItem.id) ? completedItems : null))
+    : null
+  const editingItemIndex = editingItemContainer
+    ? editingItemContainer.findIndex((child) => child.id === editingItem?.id)
     : -1
+  const editingItemsTotal = editingItemContainer?.length ?? 0
   const itemDraft = editingItem && editingItemDraft
     ? editingItemDraft
     : editingItem
@@ -620,28 +603,47 @@ export function ApplicationFill({
         </Pressable>
       </View>
 
-      <NestedReorderableList
-        data={orderedItems}
-        scrollable={false}
-        scrollEnabled={false}
-        contentContainerStyle={styles.itemsList}
-        panGesture={panGesture}
-        keyExtractor={(item) => item.id}
-        onReorder={handleReorder}
-        renderItem={({ item }) => (
-          <ApplicationItemRow
-            item={item}
-            canDrag={Boolean(item.checklistItemId)}
-            options={checklist.options}
-            tagLabel={tagsCatalog.resolveLabels(item.tagsIds)[0]}
+      <View style={styles.groupsList}>
+        {groups.map((group) => (
+          <ApplicationItemGroupSection
+            key={group.key}
+            title={group.title}
+            groupItems={group.children}
+            total={group.total}
+            answered={group.answered}
+            checklist={checklist}
+            expanded={expandedGroupIds.has(group.key)}
+            onToggle={() => toggleGroup(group.key)}
             suggestionEnabled={FEATURE_FLAG.suggestion}
+            panGesture={panGesture}
+            resolveTagLabel={(item) => tagsCatalog.resolveLabels(item.tagsIds)[0]}
             onAnswerChange={handleAnswerChange}
             onOpenDrawer={handleOpenItemDrawer}
             onAcceptSuggestion={handleAcceptSuggestion}
             onRejectSuggestion={handleRejectSuggestion}
+            onError={setApplicationError}
           />
-        )}
-      />
+        ))}
+        {completedItems.length > 0 ? (
+          <ApplicationItemGroupSection
+            title="Concluídos"
+            groupItems={completedItems}
+            total={completedItems.length}
+            answered={completedItems.length}
+            checklist={checklist}
+            expanded={expandedGroupIds.has('completed')}
+            onToggle={() => toggleGroup('completed')}
+            suggestionEnabled={FEATURE_FLAG.suggestion}
+            panGesture={panGesture}
+            resolveTagLabel={(item) => tagsCatalog.resolveLabels(item.tagsIds)[0]}
+            onAnswerChange={handleAnswerChange}
+            onOpenDrawer={handleOpenItemDrawer}
+            onAcceptSuggestion={handleAcceptSuggestion}
+            onRejectSuggestion={handleRejectSuggestion}
+            onError={setApplicationError}
+          />
+        ) : null}
+      </View>
 
       {editingItem && (
         <ItemDrawer
@@ -651,7 +653,7 @@ export function ApplicationFill({
             setEditingItemDraft(null)
           }}
           itemIndex={editingItemIndex + 1}
-          itemsTotal={orderedItems.length}
+          itemsTotal={editingItemsTotal}
           title={editingItem.title}
           note={itemDraft?.note ?? editingItem.note}
           onNoteChange={(note) =>

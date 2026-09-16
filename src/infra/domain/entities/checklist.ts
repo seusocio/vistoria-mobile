@@ -7,6 +7,8 @@ export interface ChecklistItem {
   description: string
   /** tags of the catalog global, e.g. default responsible for this item */
   tagsIds: string[]
+  /** id of the group/section header item this belongs to; null/undefined for top-level items (including the headers themselves) */
+  parentId?: string | null
   createdAt: string
   updatedAt: string
   deletedAt: string | null

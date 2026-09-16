@@ -171,13 +171,14 @@ export async function duplicateChecklist(
   if (!existing) throw new Error('Checklist não encontrado')
 
   const now = new Date().toISOString()
+  const idMap = new Map(existing.items.map((item) => [item.id, generateId('citem_')]))
   const duplicated: Checklist = {
     ...existing,
     id: generateId('checklist_'),
     title: `${existing.title} (cópia)`,
     items: existing.items.map((item, index) => ({
       ...item,
-      id: generateId('citem_'),
+      id: idMap.get(item.id) as string,
       position: index,
       createdAt: now,
       updatedAt: now,

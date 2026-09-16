@@ -3,7 +3,7 @@ import { colors, textStyles } from '@/styles'
 
 export const styles = StyleSheet.create({
   itemShell: {
-    borderRadius: 12,
+    // borderRadius: 12,
     borderCurve: 'continuous',
     overflow: 'hidden',
   },
@@ -11,10 +11,12 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.gray[100],
-    borderRadius: 12,
+    // borderRadius: 12,
     borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.gray[200],
+    borderRightColor: colors.gray[100],
+    borderLeftColor: colors.gray[100],
     gap: 8,
     padding: 12,
   },

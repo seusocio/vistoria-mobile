@@ -345,7 +345,11 @@ export async function addApplicationAttachment(
   repo: ApplicationRepository = applicationRepository,
 ): Promise<Application> {
   const now = new Date().toISOString()
-  const attachment = createAttachment(input, application.attachments.length, now)
+  const attachment = createAttachment(
+    input,
+    application.attachments.length,
+    now,
+  )
   return repo.save(
     touchApplication({
       ...application,
@@ -458,7 +462,6 @@ export async function removeApplication(
   repo: ApplicationRepository = applicationRepository,
 ): Promise<void> {
   await repo.softDelete(applicationId)
-
 }
 
 // ---- Derived / read helpers ----
@@ -505,6 +508,68 @@ export function getDerivedState(
   if (application.status === 'completed') return 'completed'
   const { answered } = getProgress(application)
   return answered === 0 ? 'not_started' : 'in_progress'
+}
+
+function positiveAnswerLabels(checklist: Checklist): Set<string> {
+  return new Set(
+    checklist.options
+      .filter((option) => option.semantic === 'positivo')
+      .map((option) => option.label),
+  )
+}
+
+export function isItemAnswerComplete(
+  item: ApplicationItem,
+  checklist: Checklist,
+): boolean {
+  return (
+    Boolean(item.answer) && positiveAnswerLabels(checklist).has(item.answer)
+  )
+}
+
+export interface ApplicationItemGroup {
+  /** the shared "Label: " prefix for this group's titles; null for the trailing ungrouped bucket */
+  label: string | null
+  children: ApplicationItem[]
+}
+
+/**
+ * Splits items into TickTick-style accordion sections purely from title text:
+ * items sharing the same "Label: " prefix (e.g. "Cozinha: Instalação
+ * hidráulica") group under that label, in first-seen order. There's no
+ * parentId support in the checklist authoring UI yet, so this text-matching
+ * heuristic is the only grouping signal available today - items without a
+ * "Label: " prefix (ad-hoc items) land in a trailing ungrouped bucket.
+ */
+export function groupItemsByTitlePrefix(
+  items: ApplicationItem[],
+): ApplicationItemGroup[] {
+  const order: string[] = []
+  const byLabel = new Map<string, ApplicationItem[]>()
+  const ungrouped: ApplicationItem[] = []
+
+  for (const item of items) {
+    const separatorIndex = item.title.indexOf(': ')
+    if (separatorIndex <= 0) {
+      ungrouped.push(item)
+      continue
+    }
+    const label = item.title.slice(0, separatorIndex)
+    let group = byLabel.get(label)
+    if (!group) {
+      group = []
+      byLabel.set(label, group)
+      order.push(label)
+    }
+    group.push(item)
+  }
+
+  const groups: ApplicationItemGroup[] = order.map((label) => ({
+    label,
+    children: byLabel.get(label) as ApplicationItem[],
+  }))
+  if (ungrouped.length > 0) groups.push({ label: null, children: ungrouped })
+  return groups
 }
 
 export function countNegativeAnswers(

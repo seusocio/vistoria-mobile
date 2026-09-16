@@ -22,6 +22,8 @@ export interface ApplicationItem {
   position: number
   /** id of the checklist template item this was copied from; null for ad-hoc items added in this application only */
   checklistItemId?: string | null
+  /** id of the group/section header item this belongs to; null/undefined for top-level items (including the headers themselves) and ad-hoc items */
+  parentId?: string | null
   title: string
   description: string
   /** label of the chosen ResponseOption, empty when unanswered */

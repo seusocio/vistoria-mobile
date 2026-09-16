@@ -20,6 +20,11 @@ export interface ItemCardRootProps {
  * Card shell shared by checklist and application item rows: the long-press-to-drag
  * Pressable plus the outer rounded shell. Each row composes its own content as
  * children — only the drag mechanics and container styling live here.
+ *
+ * Appear/disappear/reposition animation is owned by the enclosing
+ * NestedReorderableList (its `itemLayoutAnimation` prop), not this shell,
+ * since the list is what actually controls when an item mounts, unmounts, or
+ * changes position.
  */
 export function ItemCardRoot({
   style,
