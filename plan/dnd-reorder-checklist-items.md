@@ -285,3 +285,87 @@ query**. The two plans are compatible and mutually reinforcing, but order matter
 
 `spec.md:318-319` — *"Todo item deve possuir identificador e posição."* / *"A ordem dos itens deve
 ser preservada."*
+
+---
+
+## Post-ship fix (2026-09-15): drag silently did nothing on `ApplicationFill`
+
+After shipping Phase 6, drag-to-reorder worked on `ChecklistForm` (Novo/Editar) but **did nothing at
+all** on `ApplicationFill` — no haptic, no lift, no console output, even though a plain tap on the
+same `Pressable` worked fine. The touch-target size (initially a 28×40 grip handle, since widened to
+the whole card — see `DraggableCard` below) was *not* the cause; it was a red herring that happened
+to coincide with the real bug.
+
+### Root cause: `delayLongPress` and `activateAfterLongPress` were equal
+
+Both screens set the item `Pressable`'s `delayLongPress` **and** the list's
+`Gesture.Pan().activateAfterLongPress(...)` to the same `520`. The library's own README is explicit
+that this is wrong:
+
+> "This duration should be **slightly longer** than the long press delay necessary to drag your
+> items."
+
+With equal delays it's a race: the native pan gesture (UI thread, via react-native-gesture-handler)
+and the `Pressable`'s long-press timer (JS thread) both fire at ~520ms, and whichever wins first
+determines whether `drag()` ever runs. Losing the race means the native gesture cancels the
+`Pressable`'s pending touch before its JS timer completes — so `onLongPress` never fires, silently.
+
+This explains why it was screen-dependent: `ChecklistForm` is a simple local-state form, so its JS
+thread is idle enough that the JS timer reliably won. `ApplicationFill` has a live Convex
+subscription, `VoiceCard`, `ApplicationGallery`, and upload-progress polling all rendering on the
+same screen — enough JS-thread load that the native gesture consistently won the race instead.
+
+**Fix:** bumped the pan gesture's activation delay to `700` (comfortably longer than the Pressable's
+`520`) in both screens. Confirmed working on `ApplicationFill` afterward.
+
+**If drag silently stops working again on any new reorderable screen, check this first** before
+suspecting hit-slop or layout — it reproduces as "nothing happens, no logs, no errors," which looks
+identical to a hitbox problem.
+
+### Composition cleanup that came out of the fix
+
+Two magic numbers (`520` / `700`) had to stay in sync across two separate files, which is exactly
+how this kind of bug reappears silently after a future edit. Extracted:
+
+- **`src/hooks/useReorderablePanGesture.ts`** — owns `DRAG_LONG_PRESS_DELAY` (520) and the pan
+  gesture's activation delay (700, with the race documented inline), returning the memoized
+  `Gesture.Pan()` for a list's `panGesture` prop.
+- **`src/components/DraggableCard/index.tsx`** — the shared long-press-to-drag `Pressable` shell
+  (`onPress` + `onLongPress` + `delayLongPress` wired once, reading `DRAG_LONG_PRESS_DELAY`).
+  `ItemCard` and `ChecklistFormView`'s `ReorderableChecklistItem` both compose it instead of each
+  hand-rolling the same `Pressable` wiring with the whole card (not just a small handle) as the
+  drag target. Row *content*/layout stays specific to each screen — only the drag mechanics are
+  shared.
+
+### `ItemCard` became a compound component (2026-09-15)
+
+`ItemCard` was a single component with a ~15-prop API that only `ApplicationItemRow` used, while
+`ChecklistFormView`'s `ReorderableChecklistItem` hand-rolled an almost-identical row (drag handle,
+leading badge/handle, title column, trailing button) from scratch. Restructured `ItemCard` into a
+Notification-style compound component — a namespace of small presentational pieces the *caller*
+assembles, instead of one component branching internally on a long prop list:
+
+```
+ItemCard.Root           // DraggableCard + outer shell (drag mechanics, container style)
+ItemCard.DragHandle      ItemCard.Badge          ItemCard.Content
+ItemCard.Title           ItemCard.Description    ItemCard.Meta / MetaItem
+ItemCard.Actions         ItemCard.AnswerToggle   ItemCard.TrailingButton
+ItemCard.SuggestionPanel
+```
+
+Files live under `src/components/ItemCard/` (`Root.tsx`, `DragHandle.tsx`, `Badge.tsx`, `Content.tsx`,
+`Title.tsx`, `Description.tsx`, `Meta.tsx`, `Actions.tsx`, `TrailingButton.tsx`,
+`SuggestionPanel.tsx`, `AnswerToggleRow.tsx`), assembled in `index.tsx`.
+
+Both mounts now build their own tree from the same pieces but look nothing alike structurally:
+
+- `ApplicationItemRow` composes `Root` + `DragHandle` + `Content > Title, Meta > MetaItem*` +
+  `Actions > AnswerToggle*` + `TrailingButton` + a conditional `footer={<SuggestionPanel/>}`.
+- `ReorderableChecklistItem` composes `Root` + `DragHandle` + `Badge` + `Content > Title,
+  Description, TagChipList` + `TrailingButton` (trash instead of chevron).
+
+`ItemCard.Title` and `ItemCard.TrailingButton` accept a `style`/`color` override specifically so
+`ChecklistFormView` keeps its own (intentionally smaller/lighter) typography — the shared
+`itemCardTitle` style in `ChecklistForm/styles.ts` was kept, not merged into `ItemCard`'s default,
+to avoid an unreviewed visual change. Everything else that *was* pixel-identical between the two
+screens (the badge, the card shell/border, the trailing icon button) is now one implementation.

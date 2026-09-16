@@ -99,54 +99,6 @@ export const styles = StyleSheet.create({
   itemsList: {
     gap: 8,
   },
-  itemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.gray[100],
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-  },
-  itemCardTouchable: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  itemNum: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderCurve: 'continuous',
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.gray[200],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemNumText: {
-    ...textStyles.badgeLabel,
-    color: colors.gray[600],
-  },
-  itemCardBody: {
-    flex: 1,
-    gap: 6,
-  },
-  itemCardTitle: {
-    ...textStyles.fieldLabel,
-    fontSize: 13,
-    color: colors.ink.base,
-  },
-  itemCardPlaceholder: {
-    color: colors.gray[400],
-  },
-  itemCardDescription: {
-    ...textStyles.body,
-  },
   itemCardTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',

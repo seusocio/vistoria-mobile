@@ -1,7 +1,6 @@
 import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Pressable, Text, View } from 'react-native'
-import { Gesture } from 'react-native-gesture-handler'
 import {
   NestedReorderableList,
   reorderItems,
@@ -29,6 +28,7 @@ import { ApplicationGallery } from './components/ApplicationGallery'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import { useApplicationFill } from '@/hooks/useApplicationFill'
 import { useApplicationMutations } from '@/hooks/useApplicationMutations'
+import { useReorderablePanGesture } from '@/hooks/useReorderablePanGesture'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 import {
@@ -116,14 +116,7 @@ export function ApplicationFill({
     if (FEATURE_FLAG.voice) void prepareTranscriber()
   }, [])
 
-  // Must stay comfortably longer than the item Pressable's delayLongPress (520ms)
-  // so the JS long-press timer always wins the race and calls drag() first —
-  // otherwise this native pan gesture can activate first and cancel the touch
-  // before the Pressable's onLongPress ever fires.
-  const panGesture = useMemo(
-    () => Gesture.Pan().activateAfterLongPress(700),
-    [],
-  )
+  const panGesture = useReorderablePanGesture()
   const progress = useMemo(
     () => (applicationData ? getProgress(applicationData) : { answered: 0, total: 0 }),
     [applicationData],

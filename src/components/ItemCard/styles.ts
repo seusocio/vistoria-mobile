@@ -3,40 +3,48 @@ import { colors, textStyles } from '@/styles'
 
 export const styles = StyleSheet.create({
   itemShell: {
-    borderRadius: 18,
+    borderRadius: 12,
     borderCurve: 'continuous',
     overflow: 'hidden',
-  },
-  itemShellTranscriptSuggestion: {
-    padding: 6,
-    paddingBottom: 0,
-    // borderWidth: 1.5,
-    // borderColor: colors.blue.base,
-    backgroundColor: colors.blue.tint,
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.gray[100],
-    borderRadius: 16,
+    borderRadius: 12,
     borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.gray[200],
     gap: 8,
     padding: 12,
   },
-  containerSuggested: {
+  badge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderCurve: 'continuous',
     backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  containerTranscriptSuggestion: {
-    backgroundColor: colors.white,
+  badgeText: {
+    ...textStyles.badgeLabel,
+    color: colors.gray[600],
   },
-  titleCol: {
+  content: {
     flex: 1,
     gap: 3,
   },
   title: {
     ...textStyles.itemTitle,
+  },
+  description: {
+    ...textStyles.body,
+  },
+  placeholderText: {
+    color: colors.gray[400],
   },
   metaRow: {
     flexDirection: 'row',
@@ -52,10 +60,15 @@ export const styles = StyleSheet.create({
   metaText: {
     ...textStyles.metaLabel,
   },
-  suggestedText: {
-    ...textStyles.metaLabel,
-    fontFamily: textStyles.badgeLabel.fontFamily,
-    color: colors.blue.base,
+  actions: {
+    flexDirection: 'row',
+    gap: 5,
+  },
+  trailingButton: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   transcriptSuggestionShell: {
     minHeight: 62,
@@ -84,15 +97,5 @@ export const styles = StyleSheet.create({
   },
   transcriptSuggestionActionPressed: {
     opacity: 0.65,
-  },
-  answerToggles: {
-    flexDirection: 'row',
-    gap: 5,
-  },
-  moreButton: {
-    width: 22,
-    height: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 })

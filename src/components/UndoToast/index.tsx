@@ -96,6 +96,7 @@ export function UndoToastProvider({ children }: { children: ReactNode }) {
         {pending ? (
           <MotiView
             key="undo-toast"
+            style={[styles.snackbar, { bottom: insets.bottom + space.md }]}
             from={{ opacity: 0, translateY: 24 }}
             animate={{ opacity: 1, translateY: 0 }}
             exit={{ opacity: 0, translateY: 24 }}

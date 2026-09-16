@@ -1,6 +1,5 @@
 import { memo } from 'react'
 import { useReorderableDrag } from 'react-native-reorderable-list'
-import { Icon } from '@/components/Icon'
 import { ItemCard } from '@/components/ItemCard'
 import type { ApplicationItem, ResponseOption } from '@/infra/domain/entities'
 import { colors } from '@/styles'
@@ -30,15 +29,19 @@ export const ApplicationItemRow = memo(function ApplicationItemRow({
   onRejectSuggestion,
 }: ApplicationItemRowProps) {
   const drag = useReorderableDrag()
+  const suggested = suggestionEnabled && item.suggested
+  const transcriptSuggestion = suggested && item.suggestionSource === 'transcript'
+  const photosCount = item.attachments.filter((attachment) => !attachment.deletedAt).length
+
   return (
-    <ItemCard
-      dragHandle={
-        <Icon
-          name="grip-vertical"
-          size={18}
-          color={canDrag ? colors.gray[400] : colors.gray[200]}
-        />
+    <ItemCard.Root
+      style={suggested ? { backgroundColor: colors.white } : undefined}
+      shellStyle={
+        transcriptSuggestion
+          ? { padding: 6, paddingBottom: 0, backgroundColor: colors.blue.tint }
+          : undefined
       }
+      onPress={() => onOpenDrawer(item.id)}
       onDragStart={
         canDrag
           ? () => {
@@ -47,23 +50,43 @@ export const ApplicationItemRow = memo(function ApplicationItemRow({
             }
           : undefined
       }
-      title={item.title}
-      tagLabel={tagLabel}
-      hasNote={Boolean(item.note)}
-      photosCount={item.attachments.filter((attachment) => !attachment.deletedAt).length}
-      quantity={item.quantity}
-      suggested={suggestionEnabled ? item.suggested : false}
-      suggestionSource={suggestionEnabled ? item.suggestionSource : null}
-      options={options}
-      answer={item.answer}
-      onAnswerChange={(answer) => onAnswerChange(item.id, answer)}
-      onOpenDrawer={() => onOpenDrawer(item.id)}
-      onAcceptSuggestion={
-        suggestionEnabled ? () => onAcceptSuggestion?.(item.id) : undefined
+      accessibilityLabel={`Editar detalhes de ${item.title}`}
+      footer={
+        transcriptSuggestion ? (
+          <ItemCard.SuggestionPanel
+            onAccept={() => onAcceptSuggestion?.(item.id)}
+            onReject={() => onRejectSuggestion?.(item.id)}
+            acceptLabel={`Aceitar sugestão de ${item.title}`}
+            rejectLabel={`Descartar sugestão de ${item.title}`}
+          />
+        ) : null
       }
-      onRejectSuggestion={
-        suggestionEnabled ? () => onRejectSuggestion?.(item.id) : undefined
-      }
-    />
+    >
+      <ItemCard.Content>
+        <ItemCard.Title>{item.title}</ItemCard.Title>
+        <ItemCard.Meta>
+          {tagLabel ? <ItemCard.MetaItem icon="tag">{tagLabel}</ItemCard.MetaItem> : null}
+          {item.note ? <ItemCard.MetaItem icon="note-with-text" /> : null}
+          {photosCount > 0 ? (
+            <ItemCard.MetaItem icon="camera">{photosCount}</ItemCard.MetaItem>
+          ) : null}
+          {item.quantity !== null ? (
+            <ItemCard.MetaItem>{`Qtd ${item.quantity}`}</ItemCard.MetaItem>
+          ) : null}
+        </ItemCard.Meta>
+      </ItemCard.Content>
+      <ItemCard.Actions>
+        {options.map((option) => (
+          <ItemCard.AnswerToggle
+            key={option.label}
+            option={option}
+            selected={item.answer === option.label}
+            onPress={() =>
+              onAnswerChange(item.id, item.answer === option.label ? '' : option.label)
+            }
+          />
+        ))}
+      </ItemCard.Actions>
+    </ItemCard.Root>
   )
 })

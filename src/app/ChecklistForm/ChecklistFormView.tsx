@@ -1,98 +1,26 @@
 import { BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet'
-import { memo, useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { Gesture } from 'react-native-gesture-handler'
-import {
-  NestedReorderableList,
-  reorderItems,
-  useReorderableDrag,
-} from 'react-native-reorderable-list'
+import { NestedReorderableList, reorderItems } from 'react-native-reorderable-list'
 import {
   AppBottomSheet,
+  ConfirmBottomSheet,
   Input,
-  TagChipList,
   TagMultiSelect,
   useUndoToast,
 } from '@/components'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { Icon } from '@/components/Icon'
-import {
-  ChecklistFormApi,
-  ChecklistFormItemState,
-} from '@/hooks/useChecklistForm'
+import { ChecklistFormApi, ChecklistFormItemState } from '@/hooks/useChecklistForm'
+import { useReorderablePanGesture } from '@/hooks/useReorderablePanGesture'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { ChecklistTemplate } from '@/infra/data/templates'
 import { colors } from '@/styles'
 import { haptics } from '@/utils/haptics'
+import { ChecklistItemRow } from './components/ChecklistItemRow'
 import { ResponseOptionsEditor } from './components/ResponseOptionsEditor'
 import { TemplatePicker } from './components/TemplatePicker'
 import { styles } from './styles'
-
-const ReorderableChecklistItem = memo(function ReorderableChecklistItem({
-  item,
-  index,
-  labels,
-  onEdit,
-  onRemove,
-}: {
-  item: ChecklistFormItemState
-  index: number
-  labels: string[]
-  onEdit: () => void
-  onRemove: () => void
-}) {
-  const drag = useReorderableDrag()
-  return (
-    <View style={styles.itemCard}>
-      <Pressable
-        style={({ pressed }) => [
-          styles.itemCardTouchable,
-          pressed && { opacity: 0.7 },
-        ]}
-        onPress={onEdit}
-        onLongPress={() => {
-          haptics.dragStart()
-          drag()
-        }}
-        delayLongPress={520}
-        accessibilityLabel={`Editar item ${index + 1}`}
-      >
-        <Icon name="grip-vertical" size={18} color={colors.gray[200]} />
-        <View style={styles.itemNum}>
-          <Text style={styles.itemNumText}>{index + 1}</Text>
-        </View>
-        <View style={styles.itemCardBody}>
-          <Text
-            style={[
-              styles.itemCardTitle,
-              !item.title && styles.itemCardPlaceholder,
-            ]}
-            numberOfLines={1}
-          >
-            {item.title || 'Item sem título'}
-          </Text>
-          {item.description ? (
-            <Text style={styles.itemCardDescription} numberOfLines={1}>
-              {item.description}
-            </Text>
-          ) : null}
-          {labels.length > 0 && (
-            <TagChipList labels={labels} tone="neutral" />
-          )}
-        </View>
-      </Pressable>
-      <Pressable
-        style={({ pressed }) => pressed && { opacity: 0.7 }}
-        hitSlop={14}
-        onPress={onRemove}
-        accessibilityLabel={`Remover item ${index + 1}`}
-      >
-        <Icon name="trash-2" size={16} color={colors.gray[400]} />
-      </Pressable>
-    </View>
-  )
-})
-
 
 export interface ChecklistFormViewProps {
   form: ChecklistFormApi
@@ -113,14 +41,7 @@ export function ChecklistFormView({
   error,
 }: ChecklistFormViewProps) {
   const { activeTags, tagsById, createTag, resolveLabels } = tagsCatalog
-  // Must stay comfortably longer than the item Pressable's delayLongPress (520ms)
-  // so the JS long-press timer always wins the race and calls drag() first —
-  // otherwise this native pan gesture can activate first and cancel the touch
-  // before the Pressable's onLongPress ever fires.
-  const panGesture = useMemo(
-    () => Gesture.Pan().activateAfterLongPress(700),
-    [],
-  )
+  const panGesture = useReorderablePanGesture()
   const { show } = useUndoToast()
   const [itemSheet, setItemSheet] = useState<
     { mode: 'new' } | { mode: 'edit'; key: string } | null
@@ -129,6 +50,9 @@ export function ChecklistFormView({
   const [draftDescription, setDraftDescription] = useState('')
   const [draftTagsIds, setDraftTagsIds] = useState<string[]>([])
   const [itemError, setItemError] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<
+    { type: 'item'; key: string } | { type: 'option'; index: number } | null
+  >(null)
 
   function openAddItem() {
     setDraftTitle('')
@@ -225,7 +149,7 @@ export function ChecklistFormView({
         <Text style={styles.fieldLabel}>Opções de resposta</Text>
         <ResponseOptionsEditor
           form={form}
-          onRemoveOption={removeOptionWithUndo}
+          onRemoveOption={(index) => setPendingDelete({ type: 'option', index })}
         />
         <Pressable
           style={({ pressed }) => [
@@ -256,12 +180,12 @@ export function ChecklistFormView({
               form.setItems(reorderItems(form.items, from, to))
             }
             renderItem={({ item, index }) => (
-              <ReorderableChecklistItem
+              <ChecklistItemRow
                 item={item}
                 index={index}
                 labels={resolveLabels(item.tagsIds)}
                 onEdit={() => openEditItem(item)}
-                onRemove={() => removeItemWithUndo(item.key)}
+                onRemove={() => setPendingDelete({ type: 'item', key: item.key })}
               />
             )}
           />
@@ -326,6 +250,26 @@ export function ChecklistFormView({
           {itemError ? <Text style={styles.error}>{itemError}</Text> : null}
         </BottomSheetView>
       </AppBottomSheet>
+      <ConfirmBottomSheet
+        visible={pendingDelete !== null}
+        title={pendingDelete?.type === 'option' ? 'Remover opção' : 'Remover item'}
+        message={
+          pendingDelete?.type === 'option'
+            ? 'Deseja remover esta opção de resposta?'
+            : 'Deseja remover este item do checklist?'
+        }
+        confirmLabel={pendingDelete?.type === 'option' ? 'Remover opção' : 'Remover item'}
+        warning="Você poderá desfazer isso por alguns segundos depois de confirmar."
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete?.type === 'option') {
+            removeOptionWithUndo(pendingDelete.index)
+          } else if (pendingDelete?.type === 'item') {
+            removeItemWithUndo(pendingDelete.key)
+          }
+          setPendingDelete(null)
+        }}
+      />
     </View>
   )
 }

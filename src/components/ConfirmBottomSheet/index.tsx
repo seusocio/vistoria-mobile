@@ -12,6 +12,9 @@ export interface ConfirmBottomSheetProps {
   confirmLabel?: string
   cancelLabel?: string
   confirming?: boolean
+  /** Shown in a highlighted box below the message. Pass `false` to omit it
+   * (e.g. when the action is still undoable afterward). */
+  warning?: ReactNode | false
   onCancel: () => void
   onConfirm: () => void
 }
@@ -23,6 +26,7 @@ export function ConfirmBottomSheet({
   confirmLabel = 'Excluir',
   cancelLabel = 'Cancelar',
   confirming = false,
+  warning = 'Esta ação não pode ser desfeita.',
   onCancel,
   onConfirm,
 }: ConfirmBottomSheetProps) {
@@ -45,9 +49,11 @@ export function ConfirmBottomSheet({
       <BottomSheetView style={styles.content}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.message}>{message}</Text>
-        <View style={styles.warning}>
-          <Text style={styles.warningText}>Esta ação não pode ser desfeita.</Text>
-        </View>
+        {warning ? (
+          <View style={styles.warning}>
+            <Text style={styles.warningText}>{warning}</Text>
+          </View>
+        ) : null}
       </BottomSheetView>
     </AppBottomSheet>
   )
