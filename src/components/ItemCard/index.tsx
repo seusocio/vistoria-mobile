@@ -21,8 +21,10 @@ export interface ItemCardProps {
   onOpenDrawer: () => void
   onAcceptSuggestion?: () => void
   onRejectSuggestion?: () => void
-  /** Optional drag handle rendered inside the card, left of the title */
+  /** Optional drag handle icon rendered inside the card, left of the title */
   dragHandle?: ReactNode
+  /** Long-pressing anywhere on the card starts dragging it */
+  onDragStart?: () => void
 }
 
 /** Component/ItemCard */
@@ -41,6 +43,7 @@ export const ItemCard = memo(function ItemCard({
   onAcceptSuggestion,
   onRejectSuggestion,
   dragHandle,
+  onDragStart,
 }: ItemCardProps) {
   const suggestionEnabled = FEATURE_FLAG.suggestion && suggested
   const transcriptSuggestion =
@@ -53,12 +56,16 @@ export const ItemCard = memo(function ItemCard({
         transcriptSuggestion && styles.itemShellTranscriptSuggestion,
       ]}
     >
-      <View
+      <Pressable
         style={[
           styles.container,
           suggestionEnabled && styles.containerSuggested,
           transcriptSuggestion && styles.containerTranscriptSuggestion,
         ]}
+        onPress={onOpenDrawer}
+        onLongPress={onDragStart}
+        delayLongPress={520}
+        accessibilityLabel={`Editar detalhes de ${title}`}
       >
         {dragHandle}
         <View style={styles.titleCol}>
@@ -119,7 +126,7 @@ export const ItemCard = memo(function ItemCard({
         >
           <Icon name="chevron-right" size={18} color={colors.gray[600]} />
         </Pressable>
-      </View>
+      </Pressable>
       {transcriptSuggestion && (
         <View style={styles.transcriptSuggestionShell}>
           <Text style={styles.transcriptSuggestionLabel}>Sugestão da IA</Text>

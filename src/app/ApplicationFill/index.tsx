@@ -116,8 +116,12 @@ export function ApplicationFill({
     if (FEATURE_FLAG.voice) void prepareTranscriber()
   }, [])
 
+  // Must stay comfortably longer than the item Pressable's delayLongPress (520ms)
+  // so the JS long-press timer always wins the race and calls drag() first —
+  // otherwise this native pan gesture can activate first and cancel the touch
+  // before the Pressable's onLongPress ever fires.
   const panGesture = useMemo(
-    () => Gesture.Pan().activateAfterLongPress(520),
+    () => Gesture.Pan().activateAfterLongPress(700),
     [],
   )
   const progress = useMemo(

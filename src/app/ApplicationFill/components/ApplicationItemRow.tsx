@@ -1,12 +1,10 @@
 import { memo } from 'react'
-import { Pressable } from 'react-native'
 import { useReorderableDrag } from 'react-native-reorderable-list'
 import { Icon } from '@/components/Icon'
 import { ItemCard } from '@/components/ItemCard'
 import type { ApplicationItem, ResponseOption } from '@/infra/domain/entities'
 import { colors } from '@/styles'
 import { haptics } from '@/utils/haptics'
-import { styles } from '../styles'
 
 interface ApplicationItemRowProps {
   item: ApplicationItem
@@ -35,29 +33,19 @@ export const ApplicationItemRow = memo(function ApplicationItemRow({
   return (
     <ItemCard
       dragHandle={
-        <Pressable
-          style={styles.dragHandle}
-          disabled={!canDrag}
-          onLongPress={
-            canDrag
-              ? () => {
-                  haptics.dragStart()
-                  drag()
-                }
-              : undefined
-          }
-          delayLongPress={520}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={canDrag ? `Reordenar item ${item.title}` : 'Item avulso'}
-          accessibilityState={{ disabled: !canDrag }}
-        >
-          <Icon
-            name="grip-vertical"
-            size={18}
-            color={canDrag ? colors.gray[400] : colors.gray[200]}
-          />
-        </Pressable>
+        <Icon
+          name="grip-vertical"
+          size={18}
+          color={canDrag ? colors.gray[400] : colors.gray[200]}
+        />
+      }
+      onDragStart={
+        canDrag
+          ? () => {
+              haptics.dragStart()
+              drag()
+            }
+          : undefined
       }
       title={item.title}
       tagLabel={tagLabel}

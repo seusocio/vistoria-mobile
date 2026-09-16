@@ -45,26 +45,19 @@ const ReorderableChecklistItem = memo(function ReorderableChecklistItem({
   return (
     <View style={styles.itemCard}>
       <Pressable
-        style={styles.dragHandle}
-        onLongPress={() => {
-          haptics.dragStart()
-          drag()
-        }}
-        delayLongPress={520}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={`Reordenar item ${index + 1}`}
-      >
-        <Icon name="grip-vertical" size={18} color={colors.gray[400]} />
-      </Pressable>
-      <Pressable
         style={({ pressed }) => [
           styles.itemCardTouchable,
           pressed && { opacity: 0.7 },
         ]}
         onPress={onEdit}
+        onLongPress={() => {
+          haptics.dragStart()
+          drag()
+        }}
+        delayLongPress={520}
         accessibilityLabel={`Editar item ${index + 1}`}
       >
+        <Icon name="grip-vertical" size={18} color={colors.gray[200]} />
         <View style={styles.itemNum}>
           <Text style={styles.itemNumText}>{index + 1}</Text>
         </View>
@@ -120,8 +113,12 @@ export function ChecklistFormView({
   error,
 }: ChecklistFormViewProps) {
   const { activeTags, tagsById, createTag, resolveLabels } = tagsCatalog
+  // Must stay comfortably longer than the item Pressable's delayLongPress (520ms)
+  // so the JS long-press timer always wins the race and calls drag() first —
+  // otherwise this native pan gesture can activate first and cancel the touch
+  // before the Pressable's onLongPress ever fires.
   const panGesture = useMemo(
-    () => Gesture.Pan().activateAfterLongPress(520),
+    () => Gesture.Pan().activateAfterLongPress(700),
     [],
   )
   const { show } = useUndoToast()
