@@ -35,10 +35,10 @@ export async function pickPhotos(source: PhotoSource): Promise<PickedPhoto[]> {
 export async function prepareAsset(asset: RawAsset): Promise<PreparedAsset> {
   const resized = await ImageManipulator.manipulateAsync(
     asset.uri,
-    asset.width > 1600 ? [{ resize: { width: 1600 } }] : [],
+    asset.width > 1600 ? [{ resize: { width: 400 } }] : [],
     {
-      compress: 0.7,
-      format: ImageManipulator.SaveFormat.JPEG,
+      compress: 0.2,
+      format: ImageManipulator.SaveFormat.WEBP,
     },
   )
 
@@ -52,7 +52,7 @@ export async function prepareAsset(asset: RawAsset): Promise<PreparedAsset> {
   const destination = `${uploadsDirectory}${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}.jpg`
-  await FileSystem.copyAsync({ from: resized.uri, to: destination })
+  await FileSystem.moveAsync({ from: resized.uri, to: destination })
 
   return {
     uri: destination,
@@ -60,6 +60,18 @@ export async function prepareAsset(asset: RawAsset): Promise<PreparedAsset> {
     height: resized.height,
     mimeType: 'image/jpeg',
   }
+}
+
+/**
+ * Serializes prepareAsset calls so rapid-fire shutter presses don't pile up
+ * concurrent manipulateAsync (decode/resize/encode) calls competing with the
+ * live camera pipeline for the same hardware codec.
+ */
+let processingChain: Promise<unknown> = Promise.resolve()
+export function prepareAssetQueued(asset: RawAsset): Promise<PreparedAsset> {
+  const result = processingChain.then(() => prepareAsset(asset))
+  processingChain = result.catch(() => undefined)
+  return result
 }
 
 export async function deleteLocalUpload(uri?: string): Promise<void> {

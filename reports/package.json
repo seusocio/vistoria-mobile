@@ -1,0 +1,13 @@
+{
+  "name": "reports",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "report": "bun run src/main.ts"
+  },
+  "dependencies": {
+    "convex": "^1.45.0",
+    "puppeteer-core": "^24.0.0",
+    "sharp": "^0.35.4"
+  }
+}

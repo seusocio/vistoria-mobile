@@ -1,5 +1,5 @@
 import { useUndoToast } from '@/components'
-import { deleteLocalUpload, prepareAsset, type RawAsset } from '@/infra/convex/photo-picker'
+import { deleteLocalUpload, prepareAssetQueued, type RawAsset } from '@/infra/convex/photo-picker'
 import type { Attachment } from '@/infra/domain/entities'
 import { generateId } from '@/infra/id'
 import { createAttachment } from '@/infra/services'
@@ -36,7 +36,7 @@ export function useAttachPhotos() {
   }
 
   async function commitAsset(params: CommitAssetParams) {
-    const prepared = await prepareAsset({
+    const prepared = await prepareAssetQueued({
       uri: params.uri,
       width: params.width,
       height: params.height,

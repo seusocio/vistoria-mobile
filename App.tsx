@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SyncStatusBar, UndoToastProvider } from "@/components";
 import { convexClient } from '@/infra/convex'
 import { migrateLocalDataToConvex } from '@/infra/storage';
+import { registerBackgroundUploadTask } from '@/infra/uploads/background-task';
 import { subscribeToUploadRecovery } from '@/infra/uploads/upload-store';
 import { Routes } from "@/routes";
 import { colors } from "@/styles";
@@ -107,7 +108,8 @@ export default function App() {
 			mounted = false;
 		};
 	}, [migrationAttempt]);
-  useEffect(() => subscribeToUploadRecovery(), []);
+	useEffect(() => subscribeToUploadRecovery(), []);
+	useEffect(() => registerBackgroundUploadTask(), []);
 
 	useEffect(() => {
 		if (fontsLoaded && (dataReady || startupError)) {

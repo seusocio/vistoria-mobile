@@ -4,6 +4,7 @@ import type { Application, Attachment } from '@/infra/domain/entities'
 import { generateId } from '@/infra/id'
 import { api } from '../../../convex/_generated/api'
 import { convexClient } from '../convex/client'
+import { deleteLocalUpload } from '../convex/photo-picker'
 import { uploadImage } from '../convex/file-storage'
 
 export interface UploadJob {
@@ -90,6 +91,8 @@ async function processJob(job: UploadJob) {
       storageId,
       updatedAt: new Date().toISOString(),
     })
+
+    await deleteLocalUpload(job.attachment.localUri)
   } catch {
     try {
       await setStatus(job, 'failed')
