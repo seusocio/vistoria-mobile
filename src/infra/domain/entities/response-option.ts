@@ -1,4 +1,5 @@
-export type ResponseSemantic = 'positivo' | 'negativo' | 'neutro'
+/** Not a closed set — checklists can have custom response options beyond these three canonical ones. */
+export type ResponseSemantic = string
 
 export interface ResponseOption {
   label: string

@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const responseOptionFormSchema = z.object({
   label: z.string().trim().min(1, 'Informe um rótulo'),
-  semantic: z.enum(['positivo', 'negativo', 'neutro']),
+  semantic: z.string().min(1),
 })
 export type ResponseOptionFormValues = z.infer<typeof responseOptionFormSchema>
 

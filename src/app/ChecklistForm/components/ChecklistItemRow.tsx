@@ -4,6 +4,7 @@ import { ItemCard } from '@/components/ItemCard'
 import { TagChipList } from '@/components'
 import type { ChecklistFormItemState } from '@/hooks/useChecklistForm'
 import { haptics } from '@/utils/haptics'
+import { styles } from './ChecklistItemRow.styles'
 
 interface ChecklistItemRowProps {
   item: ChecklistFormItemState
@@ -24,6 +25,7 @@ export const ChecklistItemRow = memo(function ChecklistItemRow({
 
   return (
     <ItemCard.Root
+      style={styles.rowContainer}
       onPress={onEdit}
       onDragStart={() => {
         haptics.dragStart()
@@ -33,7 +35,7 @@ export const ChecklistItemRow = memo(function ChecklistItemRow({
     >
       <ItemCard.Badge>{index + 1}</ItemCard.Badge>
       <ItemCard.Content>
-        <ItemCard.Title numberOfLines={1} muted={!item.title}>
+        <ItemCard.Title style={styles.title} numberOfLines={1} muted={!item.title}>
           {item.title || 'Item sem título'}
         </ItemCard.Title>
         {item.description ? (

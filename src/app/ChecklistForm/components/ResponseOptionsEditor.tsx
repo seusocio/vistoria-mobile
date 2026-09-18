@@ -8,17 +8,17 @@ import type { ChecklistFormValues } from '@/infra/domain/schemas'
 import { colors } from '@/styles'
 import { styles } from '../styles'
 
-const SEMANTIC_DOT_COLOR: Record<ResponseSemantic, string> = {
+const SEMANTIC_DOT_COLOR: Partial<Record<ResponseSemantic, string>> = {
   positivo: colors.success.base,
   negativo: colors.danger.base,
   neutro: colors.warning.base,
 }
-const SEMANTIC_LABEL: Record<ResponseSemantic, string> = {
+const SEMANTIC_LABEL: Partial<Record<ResponseSemantic, string>> = {
   positivo: 'Positivo',
   negativo: 'Negativo',
   neutro: 'Neutro',
 }
-const NEXT_SEMANTIC: Record<ResponseSemantic, ResponseSemantic> = {
+const NEXT_SEMANTIC: Partial<Record<ResponseSemantic, ResponseSemantic>> = {
   positivo: 'negativo',
   negativo: 'neutro',
   neutro: 'positivo',
@@ -45,14 +45,19 @@ export const ResponseOptionsEditor = memo(function ResponseOptionsEditor({
               <Pressable
                 hitSlop={8}
                 onPress={() =>
-                  semanticField.onChange(NEXT_SEMANTIC[semanticField.value])
+                  semanticField.onChange(
+                    NEXT_SEMANTIC[semanticField.value] ?? 'neutro',
+                  )
                 }
-                accessibilityLabel={`Significado da opção: ${SEMANTIC_LABEL[semanticField.value]}. Toque para alternar`}
+                accessibilityLabel={`Significado da opção: ${SEMANTIC_LABEL[semanticField.value] ?? semanticField.value}. Toque para alternar`}
               >
                 <View
                   style={[
                     styles.optionDot,
-                    { backgroundColor: SEMANTIC_DOT_COLOR[semanticField.value] },
+                    {
+                      backgroundColor:
+                        SEMANTIC_DOT_COLOR[semanticField.value] ?? colors.gray[400],
+                    },
                   ]}
                 />
               </Pressable>

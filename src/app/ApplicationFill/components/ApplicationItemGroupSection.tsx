@@ -1,15 +1,15 @@
-import { AnimatePresence, MotiView } from 'moti'
 import { memo, useEffect, useState } from 'react'
-import { View } from 'react-native'
 import type { PanGesture } from 'react-native-gesture-handler'
-import { LinearTransition } from 'react-native-reanimated'
+import Animated, { LinearTransition } from 'react-native-reanimated'
 import { NestedReorderableList, reorderItems } from 'react-native-reorderable-list'
 import { shallow } from 'zustand/shallow'
+import { Collapsible } from '@/components/Collapsible'
 import type { ItemCompletionVariant } from '@/components/ItemCard'
 import type { ApplicationItem, Checklist } from '@/infra/domain/entities'
 import { isItemAnswerComplete, reorderChecklistItems } from '@/infra/services'
 import { ApplicationItemGroupHeader } from './ApplicationItemGroupHeader'
 import { ApplicationItemRow } from './ApplicationItemRow'
+import { COLLAPSIBLE_TRANSITION } from '@/components/Collapsible/contants'
 
 interface ApplicationItemGroupSectionProps {
   title: string
@@ -142,7 +142,7 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
   }
 
   return (
-    <View>
+    <Animated.View layout={LinearTransition.duration(220)}>
       <ApplicationItemGroupHeader
         title={title}
         answered={answered}
@@ -151,45 +151,36 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
         onToggle={() => onToggle(groupKey)}
         onToggleAll={handleToggleGroup}
       />
-      <AnimatePresence>
-        {expanded && (
-          <MotiView
-            from={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ type: 'timing', duration: 180 }}
-          >
-            <NestedReorderableList
-              data={items}
-              scrollable={false}
-              scrollEnabled={false}
-              panGesture={panGesture}
-              itemLayoutAnimation={LinearTransition.duration(220)}
-              keyExtractor={(item) => item.id}
-              onReorder={handleReorder}
-              renderItem={({ item }: { item: ApplicationItem }) => {
-                const complete = isItemAnswerComplete(item, checklist)
-                const completionVariant: ItemCompletionVariant = complete
-                  ? 'completed'
-                  : (item.workflowStatus ?? 'idle')
-                return (
-                  <ApplicationItemRow
-                    item={item}
-                    canDrag={Boolean(item.checklistItemId) && !complete}
-                    completionVariant={completionVariant}
-                    tagLabel={resolveTagLabel(item)}
-                    suggestionEnabled={suggestionEnabled}
-                    onToggleComplete={onToggleComplete}
-                    onOpenDrawer={onOpenDrawer}
-                    onAcceptSuggestion={onAcceptSuggestion}
-                    onRejectSuggestion={onRejectSuggestion}
-                  />
-                )
-              }}
-            />
-          </MotiView>
-        )}
-      </AnimatePresence>
-    </View>
+      <Collapsible expanded={expanded}>
+        <NestedReorderableList
+          data={items}
+          scrollable={false}
+          scrollEnabled={false}
+          panGesture={panGesture}
+          itemLayoutAnimation={COLLAPSIBLE_TRANSITION}
+          keyExtractor={(item) => item.id}
+          onReorder={handleReorder}
+          renderItem={({ item }: { item: ApplicationItem }) => {
+            const complete = isItemAnswerComplete(item, checklist)
+            const completionVariant: ItemCompletionVariant = complete
+              ? 'completed'
+              : (item.workflowStatus ?? 'idle')
+            return (
+              <ApplicationItemRow
+                item={item}
+                canDrag={Boolean(item.checklistItemId) && !complete}
+                completionVariant={completionVariant}
+                tagLabel={resolveTagLabel(item)}
+                suggestionEnabled={suggestionEnabled}
+                onToggleComplete={onToggleComplete}
+                onOpenDrawer={onOpenDrawer}
+                onAcceptSuggestion={onAcceptSuggestion}
+                onRejectSuggestion={onRejectSuggestion}
+              />
+            )
+          }}
+        />
+      </Collapsible>
+    </Animated.View>
   )
 }, arePropsEqual)

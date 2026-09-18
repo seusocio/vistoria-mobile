@@ -1,9 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { BottomSheetView } from '@gorhom/bottom-sheet'
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Pressable, Text, View } from 'react-native'
-import { NestedReorderableList } from 'react-native-reorderable-list'
 import {
   AppBottomSheet,
   ConfirmBottomSheet,
@@ -20,13 +19,13 @@ import {
   ChecklistItemFormValues,
   checklistItemFormSchema,
 } from '@/infra/domain/schemas'
+import { groupItemsByTitlePrefix } from '@/infra/services'
 import { colors } from '@/styles'
 import { haptics } from '@/utils/haptics'
-import { ChecklistItemRow } from './components/ChecklistItemRow'
+import { ChecklistItemGroupSection } from './components/ChecklistItemGroupSection'
 import { ResponseOptionsEditor } from './components/ResponseOptionsEditor'
 import { TemplatePicker } from './components/TemplatePicker'
 import { styles } from './styles'
-import { LinearTransition } from 'react-native-reanimated'
 
 export interface ChecklistFormViewProps {
   form: ChecklistFormApi
@@ -56,10 +55,32 @@ export function ChecklistFormView({
   const [pendingDelete, setPendingDelete] = useState<
     { type: 'item' | 'option'; index: number } | null
   >(null)
+  const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(
+    new Set(),
+  )
   const itemSheetForm = useForm<ChecklistItemFormValues>({
     resolver: zodResolver(checklistItemFormSchema),
     defaultValues: { title: '', description: '', tagsIds: [] },
   })
+
+  const groups = useMemo(
+    () => groupItemsByTitlePrefix(itemsArray.fields),
+    [itemsArray.fields],
+  )
+  // A checklist that never used the "Label: " prefix convention (the common
+  // case) is a single unlabeled bucket - show it as a flat list, matching
+  // the pre-grouping UI exactly, and only reveal headers once rooms/areas
+  // are actually in use.
+  const showGroupHeaders = !(groups.length === 1 && groups[0]?.label === null)
+
+  const toggleGroup = useCallback((groupKey: string) => {
+    setCollapsedGroupIds((current) => {
+      const next = new Set(current)
+      if (next.has(groupKey)) next.delete(groupKey)
+      else next.add(groupKey)
+      return next
+    })
+  }, [])
 
   function openAddItem() {
     itemSheetForm.reset({ title: '', description: '', tagsIds: [] })
@@ -75,6 +96,35 @@ export function ChecklistFormView({
     })
     setItemSheet({ mode: 'edit', index })
   }
+
+  // Group sections only know each item's field-array `key`; groups are a
+  // derived view over the flat `items` array, so every edit/remove/reorder
+  // coming from a section resolves back to a flat index before touching it.
+  function openEditItemByKey(key: string) {
+    const index = itemsArray.fields.findIndex((field) => field.key === key)
+    const item = itemsArray.fields[index]
+    if (index < 0 || !item) return
+    openEditItem(item, index)
+  }
+
+  function removeItemByKey(key: string) {
+    const index = itemsArray.fields.findIndex((field) => field.key === key)
+    if (index < 0) return
+    setPendingDelete({ type: 'item', index })
+  }
+
+  function reorderWithinGroup(groupItems: ChecklistFormItemState[], from: number, to: number) {
+    if (from === to) return
+    const fromIndex = itemsArray.fields.findIndex(
+      (field) => field.key === groupItems[from]?.key,
+    )
+    const toIndex = itemsArray.fields.findIndex(
+      (field) => field.key === groupItems[to]?.key,
+    )
+    if (fromIndex < 0 || toIndex < 0) return
+    itemsArray.move(fromIndex, toIndex)
+  }
+
   function removeOptionWithUndo(index: number) {
     const removedOption = form.getValues(`options.${index}`)
     optionsArray.remove(index)
@@ -170,25 +220,26 @@ export function ChecklistFormView({
           <Text style={styles.itemsCount}>{itemsArray.fields.length} itens</Text>
         </View>
         {itemsArray.fields.length > 0 && (
-          <NestedReorderableList
-            data={itemsArray.fields}
-            scrollable={false}
-            scrollEnabled={false}
-            contentContainerStyle={styles.itemsList}
-            panGesture={panGesture}
-            itemLayoutAnimation={LinearTransition.duration(220)}
-            keyExtractor={(item) => item.key}
-            onReorder={({ from, to }) => itemsArray.move(from, to)}
-            renderItem={({ item, index }) => (
-              <ChecklistItemRow
-                item={item}
-                index={index}
-                labels={resolveLabels(item.tagsIds)}
-                onEdit={() => openEditItem(item, index)}
-                onRemove={() => setPendingDelete({ type: 'item', index })}
-              />
-            )}
-          />
+          <View style={styles.groupsList}>
+            {groups.map((group) => {
+              const groupKey = group.label ?? 'ungrouped'
+              return (
+                <ChecklistItemGroupSection
+                  key={groupKey}
+                  title={group.label ?? 'Outros itens'}
+                  items={group.children}
+                  showHeader={showGroupHeaders}
+                  expanded={!collapsedGroupIds.has(groupKey)}
+                  onToggle={() => toggleGroup(groupKey)}
+                  panGesture={panGesture}
+                  resolveLabels={resolveLabels}
+                  onEdit={openEditItemByKey}
+                  onRemove={removeItemByKey}
+                  onReorder={(from, to) => reorderWithinGroup(group.children, from, to)}
+                />
+              )
+            })}
+          </View>
         )}
         <Pressable
           style={({ pressed }) => [

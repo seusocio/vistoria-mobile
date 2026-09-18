@@ -548,11 +548,13 @@ export function isItemAnswerComplete(
   )
 }
 
-export interface ApplicationItemGroup {
+export interface TitlePrefixGroup<T> {
   /** the shared "Label: " prefix for this group's titles; null for the trailing ungrouped bucket */
   label: string | null
-  children: ApplicationItem[]
+  children: T[]
 }
+
+export type ApplicationItemGroup = TitlePrefixGroup<ApplicationItem>
 
 /**
  * Splits items into TickTick-style accordion sections purely from title text:
@@ -561,13 +563,16 @@ export interface ApplicationItemGroup {
  * parentId support in the checklist authoring UI yet, so this text-matching
  * heuristic is the only grouping signal available today - items without a
  * "Label: " prefix (ad-hoc items) land in a trailing ungrouped bucket.
+ *
+ * Generic over any `{ title }` item so both application items and checklist
+ * template items (authoring UI) group the same way.
  */
-export function groupItemsByTitlePrefix(
-  items: ApplicationItem[],
-): ApplicationItemGroup[] {
+export function groupItemsByTitlePrefix<T extends { title: string }>(
+  items: T[],
+): TitlePrefixGroup<T>[] {
   const order: string[] = []
-  const byLabel = new Map<string, ApplicationItem[]>()
-  const ungrouped: ApplicationItem[] = []
+  const byLabel = new Map<string, T[]>()
+  const ungrouped: T[] = []
 
   for (const item of items) {
     const separatorIndex = item.title.indexOf(': ')
@@ -585,9 +590,9 @@ export function groupItemsByTitlePrefix(
     group.push(item)
   }
 
-  const groups: ApplicationItemGroup[] = order.map((label) => ({
+  const groups: TitlePrefixGroup<T>[] = order.map((label) => ({
     label,
-    children: byLabel.get(label) as ApplicationItem[],
+    children: byLabel.get(label) as T[],
   }))
   if (ungrouped.length > 0) groups.push({ label: null, children: ungrouped })
   return groups

@@ -2,11 +2,7 @@ import { v } from 'convex/values'
 
 export const responseOption = v.object({
   label: v.string(),
-  semantic: v.union(
-    v.literal('positivo'),
-    v.literal('negativo'),
-    v.literal('neutro'),
-  ),
+  semantic: v.string(),
 })
 
 export const attachment = v.object({
