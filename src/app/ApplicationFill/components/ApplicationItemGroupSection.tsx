@@ -1,15 +1,16 @@
-import { memo, useEffect, useState } from 'react'
-import type { PanGesture } from 'react-native-gesture-handler'
-import Animated, { LinearTransition } from 'react-native-reanimated'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { NestedReorderableList, reorderItems } from 'react-native-reorderable-list'
 import { shallow } from 'zustand/shallow'
-import { Collapsible } from '@/components/Collapsible'
+import {
+  COLLAPSIBLE_ROW_TRANSITION,
+  Collapsible,
+} from '@/components/Collapsible'
 import type { ItemCompletionVariant } from '@/components/ItemCard'
+import { useReorderablePanGesture } from '@/hooks/useReorderablePanGesture'
 import type { ApplicationItem, Checklist } from '@/infra/domain/entities'
 import { isItemAnswerComplete, reorderChecklistItems } from '@/infra/services'
 import { ApplicationItemGroupHeader } from './ApplicationItemGroupHeader'
 import { ApplicationItemRow } from './ApplicationItemRow'
-import { COLLAPSIBLE_TRANSITION } from '@/components/Collapsible/contants'
 
 interface ApplicationItemGroupSectionProps {
   title: string
@@ -18,13 +19,7 @@ interface ApplicationItemGroupSectionProps {
   total: number
   answered: number
   checklist: Checklist
-  expanded: boolean
-  groupKey: string
-  /** takes the key so the parent can pass one stable callback to every section */
-  onToggle: (groupKey: string) => void
   suggestionEnabled: boolean
-  /** shared across every section so only one pan gesture is ever mounted for the whole screen */
-  panGesture: PanGesture
   resolveTagLabel: (item: ApplicationItem) => string | undefined
   onToggleComplete: (itemId: string) => void
   onToggleGroupComplete: (itemIds: string[], complete: boolean) => void
@@ -68,11 +63,7 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
   total,
   answered,
   checklist,
-  expanded,
-  groupKey,
-  onToggle,
   suggestionEnabled,
-  panGesture,
   resolveTagLabel,
   onToggleComplete,
   onToggleGroupComplete,
@@ -84,6 +75,14 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
   const [optimisticItems, setOptimisticItems] = useState<ApplicationItem[] | null>(null)
   const [reorderPending, setReorderPending] = useState(false)
   const items = optimisticItems ?? serverChildren
+  // One instance per list - the list mutates it (see useReorderablePanGesture).
+  const panGesture = useReorderablePanGesture()
+  // Owned here rather than lifted to the screen. Nothing outside this section
+  // reads it, and holding it at the screen root meant every toggle re-rendered
+  // the entire fill screen - gallery, voice card, progress, drawer - to flip
+  // one boolean in one section.
+  const [expanded, setExpanded] = useState(false)
+  const handleToggle = useCallback(() => setExpanded((current) => !current), [])
 
   useEffect(() => {
     if (!optimisticItems) return
@@ -98,89 +97,122 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
     }
   }, [optimisticItems, reorderPending, serverChildren])
 
-  async function handleReorder({ from, to }: { from: number; to: number }) {
-    // Completed items are pinned to the tail (see the parent's `groups` memo) and
-    // are never drag sources (`canDrag` below), but an incomplete item could
-    // still be dropped past them without this clamp - keeping the invariant
-    // "completed items always come last within their group" intact.
-    const completedCount = items.filter((item) => isItemAnswerComplete(item, checklist)).length
-    const maxIndex = Math.max(items.length - completedCount - 1, 0)
-    const clampedTo = Math.min(to, maxIndex)
-    if (from === clampedTo) return
-    const movedItem = items[from]
-    const targetItem = items[clampedTo]
-    if (!movedItem?.checklistItemId || !targetItem?.checklistItemId) return
-    const templateFrom = checklist.items.findIndex(
-      (item) => item.id === movedItem.checklistItemId,
-    )
-    const templateTo = checklist.items.findIndex(
-      (item) => item.id === targetItem.checklistItemId,
-    )
-    if (templateFrom < 0 || templateTo < 0) return
+  const handleReorder = useCallback(
+    async ({ from, to }: { from: number; to: number }) => {
+      // Completed items are pinned to the tail (see the parent's `groups` memo) and
+      // are never drag sources (`canDrag` below), but an incomplete item could
+      // still be dropped past them without this clamp - keeping the invariant
+      // "completed items always come last within their group" intact.
+      const completedCount = items.filter((item) => isItemAnswerComplete(item, checklist)).length
+      const maxIndex = Math.max(items.length - completedCount - 1, 0)
+      const clampedTo = Math.min(to, maxIndex)
+      if (from === clampedTo) return
+      const movedItem = items[from]
+      const targetItem = items[clampedTo]
+      if (!movedItem?.checklistItemId || !targetItem?.checklistItemId) return
+      const templateFrom = checklist.items.findIndex(
+        (item) => item.id === movedItem.checklistItemId,
+      )
+      const templateTo = checklist.items.findIndex(
+        (item) => item.id === targetItem.checklistItemId,
+      )
+      if (templateFrom < 0 || templateTo < 0) return
 
-    const previousItems = items
-    setOptimisticItems(reorderItems(previousItems, from, clampedTo))
-    setReorderPending(true)
-    try {
-      await reorderChecklistItems(checklist.id, templateFrom, templateTo)
-    } catch {
-      setOptimisticItems(previousItems)
-      setReorderPending(false)
-      onError('Não foi possível reordenar os itens')
-    }
-  }
+      const previousItems = items
+      setOptimisticItems(reorderItems(previousItems, from, clampedTo))
+      setReorderPending(true)
+      try {
+        await reorderChecklistItems(checklist.id, templateFrom, templateTo)
+      } catch {
+        setOptimisticItems(previousItems)
+        setReorderPending(false)
+        onError('Não foi possível reordenar os itens')
+      }
+    },
+    [items, checklist, onError],
+  )
 
   // Clicking the header's leading progress ring fills or unfills every item
   // in the group at once, mirroring each row's own leading-dot toggle - a
   // group that isn't fully done fills; a fully done group clears back out.
-  function handleToggleGroup() {
+  const handleToggleGroup = useCallback(() => {
     const allComplete = total > 0 && answered === total
     onToggleGroupComplete(
       items.map((item) => item.id),
       !allComplete,
     )
-  }
+  }, [total, answered, items, onToggleGroupComplete])
 
+  // Inline, this arrow would be a new function on every render, which makes
+  // the list rebuild every cell even when nothing about the data changed.
+  const renderItem = useCallback(
+    ({ item }: { item: ApplicationItem }) => {
+      const complete = isItemAnswerComplete(item, checklist)
+      const completionVariant: ItemCompletionVariant = complete
+        ? 'completed'
+        : (item.workflowStatus ?? 'idle')
+      return (
+        <ApplicationItemRow
+          item={item}
+          canDrag={Boolean(item.checklistItemId) && !complete}
+          completionVariant={completionVariant}
+          tagLabel={resolveTagLabel(item)}
+          suggestionEnabled={suggestionEnabled}
+          onToggleComplete={onToggleComplete}
+          onOpenDrawer={onOpenDrawer}
+          onAcceptSuggestion={onAcceptSuggestion}
+          onRejectSuggestion={onRejectSuggestion}
+        />
+      )
+    },
+    [
+      checklist,
+      resolveTagLabel,
+      suggestionEnabled,
+      onToggleComplete,
+      onOpenDrawer,
+      onAcceptSuggestion,
+      onRejectSuggestion,
+    ],
+  )
+
+  // No `layout` animation on a wrapper around all of this: Collapsible.Content
+  // already animates its own height, which reflows every sibling below it for
+  // free. Wrapping the section as well put a second animator on the same
+  // measurement, snapshotting the whole row subtree every layout pass.
   return (
-    <Animated.View layout={LinearTransition.duration(220)}>
+    <Collapsible.Root expanded={expanded} onToggle={handleToggle}>
       <ApplicationItemGroupHeader
         title={title}
         answered={answered}
         total={total}
-        expanded={expanded}
-        onToggle={() => onToggle(groupKey)}
         onToggleAll={handleToggleGroup}
       />
-      <Collapsible expanded={expanded}>
+      <Collapsible.Content>
         <NestedReorderableList
           data={items}
           scrollable={false}
           scrollEnabled={false}
           panGesture={panGesture}
-          itemLayoutAnimation={COLLAPSIBLE_TRANSITION}
-          keyExtractor={(item) => item.id}
+          // Load-bearing: confirming an item sinks it to the end of the group
+          // (see the `groups` memo in ApplicationFill), and this is what slides
+          // the row down instead of teleporting it.
+          itemLayoutAnimation={COLLAPSIBLE_ROW_TRANSITION}
+          // This list never scrolls, so every row is mounted regardless and
+          // virtualization only costs. Left at the default 10, opening a group
+          // of 12 renders ten rows, measures, animates open, then renders the
+          // rest in a second async batch - which is exactly why the trouble
+          // started at "more than 10 items". One pass instead.
+          initialNumToRender={items.length}
+          keyExtractor={keyExtractor}
           onReorder={handleReorder}
-          renderItem={({ item }: { item: ApplicationItem }) => {
-            const complete = isItemAnswerComplete(item, checklist)
-            const completionVariant: ItemCompletionVariant = complete
-              ? 'completed'
-              : (item.workflowStatus ?? 'idle')
-            return (
-              <ApplicationItemRow
-                item={item}
-                canDrag={Boolean(item.checklistItemId) && !complete}
-                completionVariant={completionVariant}
-                tagLabel={resolveTagLabel(item)}
-                suggestionEnabled={suggestionEnabled}
-                onToggleComplete={onToggleComplete}
-                onOpenDrawer={onOpenDrawer}
-                onAcceptSuggestion={onAcceptSuggestion}
-                onRejectSuggestion={onRejectSuggestion}
-              />
-            )
-          }}
+          renderItem={renderItem}
         />
-      </Collapsible>
-    </Animated.View>
+      </Collapsible.Content>
+    </Collapsible.Root>
   )
 }, arePropsEqual)
+
+function keyExtractor(item: ApplicationItem) {
+  return item.id
+}

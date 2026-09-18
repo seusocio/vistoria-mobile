@@ -1,9 +1,13 @@
-import { memo } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { Text, View } from 'react-native'
 import { useReorderableDrag } from 'react-native-reorderable-list'
-import { ItemCard, ITEM_COMPLETION_VARIANT_COLOR, type ItemCompletionVariant } from '@/components/ItemCard'
+import { Collapsible } from '@/components/Collapsible'
+import {
+  ITEM_COMPLETION_VARIANT_COLOR,
+  ItemCard,
+  type ItemCompletionVariant,
+} from '@/components/ItemCard'
 import type { ApplicationItem } from '@/infra/domain/entities'
-import { colors } from '@/styles'
 import { haptics } from '@/utils/haptics'
 import { styles } from './ApplicationItemRow.styles'
 
@@ -39,32 +43,59 @@ export const ApplicationItemRow = memo(function ApplicationItemRow({
   const drag = useReorderableDrag()
   const suggested = suggestionEnabled && item.suggested
   const transcriptSuggestion = suggested && item.suggestionSource === 'transcript'
-  const photosCount = item.attachments.filter((attachment) => !attachment.deletedAt).length
   const statusLabel = STATUS_LABEL[completionVariant]
 
+  // A filter() here allocates a throwaway array per row on every pass; items on
+  // a busy application carry a lot of attachments.
+  const photosCount = useMemo(() => {
+    let count = 0
+    for (const attachment of item.attachments) {
+      if (!attachment.deletedAt) count += 1
+    }
+    return count
+  }, [item.attachments])
+
+  const statusLabelStyle = useMemo(
+    () => [
+      styles.statusLabel,
+      { color: ITEM_COMPLETION_VARIANT_COLOR[completionVariant] },
+    ],
+    [completionVariant],
+  )
+
+  const handlePress = useCallback(
+    () => onOpenDrawer(item.id),
+    [onOpenDrawer, item.id],
+  )
+  const handleToggleComplete = useCallback(
+    () => onToggleComplete(item.id),
+    [onToggleComplete, item.id],
+  )
+  const handleAccept = useCallback(
+    () => onAcceptSuggestion?.(item.id),
+    [onAcceptSuggestion, item.id],
+  )
+  const handleReject = useCallback(
+    () => onRejectSuggestion?.(item.id),
+    [onRejectSuggestion, item.id],
+  )
+  const handleDragStart = useCallback(() => {
+    haptics.dragStart()
+    drag()
+  }, [drag])
+
   return (
-    <ItemCard.Root
-      style={[styles.rowContainer, suggested && { backgroundColor: colors.blue.tint }]}
-      shellStyle={
-        transcriptSuggestion
-          ? { padding: 6, paddingBottom: 0, backgroundColor: colors.blue.tint }
-          : undefined
-      }
-      onPress={() => onOpenDrawer(item.id)}
-      onDragStart={
-        canDrag
-          ? () => {
-              haptics.dragStart()
-              drag()
-            }
-          : undefined
-      }
+    <Collapsible.Row
+      style={suggested ? styles.suggestedRow : undefined}
+      shellStyle={transcriptSuggestion ? styles.suggestionShell : undefined}
+      onPress={handlePress}
+      onDragStart={canDrag ? handleDragStart : undefined}
       accessibilityLabel={`Editar detalhes de ${item.title}`}
       footer={
         transcriptSuggestion ? (
           <ItemCard.SuggestionPanel
-            onAccept={() => onAcceptSuggestion?.(item.id)}
-            onReject={() => onRejectSuggestion?.(item.id)}
+            onAccept={handleAccept}
+            onReject={handleReject}
             acceptLabel={`Aceitar sugestão de ${item.title}`}
             rejectLabel={`Descartar sugestão de ${item.title}`}
           />
@@ -73,19 +104,16 @@ export const ApplicationItemRow = memo(function ApplicationItemRow({
     >
       <ItemCard.StatusDot
         variant={completionVariant}
-        onPress={() => onToggleComplete(item.id)}
+        onPress={handleToggleComplete}
         accessibilityLabel={`Status de ${item.title}`}
       />
       <ItemCard.Content
         style={completionVariant === 'completed' ? styles.completedContent : undefined}
       >
         <View style={styles.titleRow}>
-          <ItemCard.Title style={styles.title}>{item.title}</ItemCard.Title>
+          <Collapsible.RowTitle>{item.title}</Collapsible.RowTitle>
           {statusLabel ? (
-            <Text
-              style={[styles.statusLabel, { color: ITEM_COMPLETION_VARIANT_COLOR[completionVariant] }]}
-              numberOfLines={1}
-            >
+            <Text style={statusLabelStyle} numberOfLines={1}>
               {statusLabel}
             </Text>
           ) : null}
@@ -101,6 +129,6 @@ export const ApplicationItemRow = memo(function ApplicationItemRow({
           ) : null}
         </ItemCard.Meta>
       </ItemCard.Content>
-    </ItemCard.Root>
+    </Collapsible.Row>
   )
 })

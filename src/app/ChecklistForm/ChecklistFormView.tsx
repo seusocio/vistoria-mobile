@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { BottomSheetView } from '@gorhom/bottom-sheet'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Pressable, Text, View } from 'react-native'
 import {
@@ -12,7 +12,6 @@ import {
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { Icon } from '@/components/Icon'
 import { ChecklistFormApi, ChecklistFormItemState } from '@/hooks/useChecklistForm'
-import { useReorderablePanGesture } from '@/hooks/useReorderablePanGesture'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { ChecklistTemplate } from '@/infra/data/templates'
 import {
@@ -47,7 +46,6 @@ export function ChecklistFormView({
 }: ChecklistFormViewProps) {
   const { form, optionsArray, itemsArray } = formApi
   const { activeTags, tagsById, createTag, resolveLabels } = tagsCatalog
-  const panGesture = useReorderablePanGesture()
   const { show } = useUndoToast()
   const [itemSheet, setItemSheet] = useState<
     { mode: 'new' } | { mode: 'edit'; index: number } | null
@@ -55,9 +53,6 @@ export function ChecklistFormView({
   const [pendingDelete, setPendingDelete] = useState<
     { type: 'item' | 'option'; index: number } | null
   >(null)
-  const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(
-    new Set(),
-  )
   const itemSheetForm = useForm<ChecklistItemFormValues>({
     resolver: zodResolver(checklistItemFormSchema),
     defaultValues: { title: '', description: '', tagsIds: [] },
@@ -73,57 +68,62 @@ export function ChecklistFormView({
   // are actually in use.
   const showGroupHeaders = !(groups.length === 1 && groups[0]?.label === null)
 
-  const toggleGroup = useCallback((groupKey: string) => {
-    setCollapsedGroupIds((current) => {
-      const next = new Set(current)
-      if (next.has(groupKey)) next.delete(groupKey)
-      else next.add(groupKey)
-      return next
-    })
-  }, [])
-
   function openAddItem() {
     itemSheetForm.reset({ title: '', description: '', tagsIds: [] })
     setItemSheet({ mode: 'new' })
   }
 
-  function openEditItem(item: ChecklistFormItemState, index: number) {
-    itemSheetForm.reset({
-      id: item.id,
-      title: item.title,
-      description: item.description,
-      tagsIds: item.tagsIds,
-    })
-    setItemSheet({ mode: 'edit', index })
-  }
+  const openEditItem = useCallback(
+    (item: ChecklistFormItemState, index: number) => {
+      itemSheetForm.reset({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        tagsIds: item.tagsIds,
+      })
+      setItemSheet({ mode: 'edit', index })
+    },
+    [itemSheetForm],
+  )
 
   // Group sections only know each item's field-array `key`; groups are a
   // derived view over the flat `items` array, so every edit/remove/reorder
   // coming from a section resolves back to a flat index before touching it.
-  function openEditItemByKey(key: string) {
-    const index = itemsArray.fields.findIndex((field) => field.key === key)
-    const item = itemsArray.fields[index]
-    if (index < 0 || !item) return
-    openEditItem(item, index)
-  }
+  //
+  // The lookups read the array through a ref rather than closing over it, so
+  // the three callbacks below stay referentially stable for the lifetime of
+  // the screen. That's what lets the memoized sections and rows bail out:
+  // closing over `itemsArray` would hand every row a new callback on every
+  // render and defeat their memo() entirely.
+  const itemsArrayRef = useRef(itemsArray)
+  itemsArrayRef.current = itemsArray
 
-  function removeItemByKey(key: string) {
-    const index = itemsArray.fields.findIndex((field) => field.key === key)
+  const openEditItemByKey = useCallback(
+    (key: string) => {
+      const { fields } = itemsArrayRef.current
+      const index = fields.findIndex((field) => field.key === key)
+      const item = fields[index]
+      if (index < 0 || !item) return
+      openEditItem(item, index)
+    },
+    [openEditItem],
+  )
+
+  const removeItemByKey = useCallback((key: string) => {
+    const index = itemsArrayRef.current.fields.findIndex(
+      (field) => field.key === key,
+    )
     if (index < 0) return
     setPendingDelete({ type: 'item', index })
-  }
+  }, [])
 
-  function reorderWithinGroup(groupItems: ChecklistFormItemState[], from: number, to: number) {
-    if (from === to) return
-    const fromIndex = itemsArray.fields.findIndex(
-      (field) => field.key === groupItems[from]?.key,
-    )
-    const toIndex = itemsArray.fields.findIndex(
-      (field) => field.key === groupItems[to]?.key,
-    )
-    if (fromIndex < 0 || toIndex < 0) return
-    itemsArray.move(fromIndex, toIndex)
-  }
+  const reorderItemsByKey = useCallback((fromKey: string, toKey: string) => {
+    const { fields, move } = itemsArrayRef.current
+    const fromIndex = fields.findIndex((field) => field.key === fromKey)
+    const toIndex = fields.findIndex((field) => field.key === toKey)
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return
+    move(fromIndex, toIndex)
+  }, [])
 
   function removeOptionWithUndo(index: number) {
     const removedOption = form.getValues(`options.${index}`)
@@ -229,13 +229,10 @@ export function ChecklistFormView({
                   title={group.label ?? 'Outros itens'}
                   items={group.children}
                   showHeader={showGroupHeaders}
-                  expanded={!collapsedGroupIds.has(groupKey)}
-                  onToggle={() => toggleGroup(groupKey)}
-                  panGesture={panGesture}
                   resolveLabels={resolveLabels}
                   onEdit={openEditItemByKey}
                   onRemove={removeItemByKey}
-                  onReorder={(from, to) => reorderWithinGroup(group.children, from, to)}
+                  onReorder={reorderItemsByKey}
                 />
               )
             })}

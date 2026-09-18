@@ -12,6 +12,7 @@ export interface ConfirmBottomSheetProps {
   confirmLabel?: string
   cancelLabel?: string
   confirming?: boolean
+  snapPoints?: (string | number)[] | undefined
   /** Shown in a highlighted box below the message. Pass `false` to omit it
    * (e.g. when the action is still undoable afterward). */
   warning?: ReactNode | false
@@ -27,6 +28,7 @@ export function ConfirmBottomSheet({
   cancelLabel = 'Cancelar',
   confirming = false,
   warning = 'Esta ação não pode ser desfeita.',
+  snapPoints = ["20%"],
   onCancel,
   onConfirm,
 }: ConfirmBottomSheetProps) {
@@ -43,7 +45,7 @@ export function ConfirmBottomSheet({
       visible={visible}
       onClose={onCancel}
       dismissible={!confirming}
-      snapPoints={['26%']}
+      snapPoints={snapPoints}
       footerComponent={footerComponent}
     >
       <BottomSheetView style={styles.content}>

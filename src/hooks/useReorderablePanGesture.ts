@@ -16,7 +16,18 @@ export const DRAG_LONG_PRESS_DELAY = 520
  */
 const DRAG_PAN_ACTIVATION_DELAY = 900
 
-/** Pan gesture for a NestedReorderableList/ReorderableList's `panGesture` prop. */
+/**
+ * Pan gesture for a NestedReorderableList/ReorderableList's `panGesture` prop.
+ *
+ * Call this once per list, inside the component that renders it. It must NOT
+ * be hoisted to the screen and shared between sections: the list takes the
+ * instance you pass and chains `.onBegin().onUpdate().onEnd().onFinalize()`
+ * onto it, and RNGH's builder methods mutate the gesture in place. Share one
+ * instance across N lists and each list overwrites the previous list's
+ * handlers with worklets closing over its own shared values - the last one
+ * mounted wins, every other list drags the wrong state - while N
+ * GestureDetectors all re-attach the same handler on every mount.
+ */
 export function useReorderablePanGesture() {
   return useMemo(
     () => Gesture.Pan().activateAfterLongPress(DRAG_PAN_ACTIVATION_DELAY),

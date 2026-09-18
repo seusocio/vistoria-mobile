@@ -1,34 +1,27 @@
 import { StyleSheet } from 'react-native'
-import { colors, fontFamily, textStyles } from '@/styles'
+import { colors, textStyles } from '@/styles'
 
+/**
+ * Only what's specific to an application row. The row shell and title come
+ * from Collapsible.Row / Collapsible.RowTitle - the accordion owns that
+ * design, this file must not restate it.
+ */
 export const styles = StyleSheet.create({
-  // Overrides ItemCard's default card look (tinted bg, all-around border,
-  // radius) with a flat, full-bleed row divided only by a bottom hairline -
-  // this screen's rows sit in an edge-to-edge list, not a stack of cards.
-  rowContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    // The thinnest line the device can render - Linear's own dividers are
-    // sub-pixel hairlines, not a flat 1pt rule.
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.gray[200],
-    borderRadius: 0,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+  // Kept as StyleSheet entries rather than inline objects: an object literal in
+  // render is a new style on every pass, which defeats the row's memo() and
+  // re-uploads the style to the native side for nothing.
+  suggestedRow: {
+    backgroundColor: colors.blue.tint,
+  },
+  suggestionShell: {
+    padding: 6,
+    paddingBottom: 0,
+    backgroundColor: colors.blue.tint,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  // Regular weight, distinct from the section header's bold title - the app
-  // only ships a regular/bold pair of fonts, so weight is the one lever that
-  // actually separates "section" from "item" in the hierarchy.
-  title: {
-    fontSize: 14,
-    fontFamily: fontFamily.regular,
-    color: colors.ink.base,
-    flex: 1,
   },
   statusLabel: {
     ...textStyles.metaLabel,

@@ -4,15 +4,9 @@ import { colors, radius, space, textStyles, touch } from '@/styles'
 export const styles = StyleSheet.create({
   footer: {
     backgroundColor: colors.white,
-    borderTopWidth: 1,
-    borderTopColor: colors.gray[200],
     paddingHorizontal: space.xl,
     paddingTop: space.sm,
     paddingBottom: space.lg,
-    shadowColor: colors.ink.base,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
     elevation: 8,
   },
   actions: {

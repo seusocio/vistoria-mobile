@@ -1,47 +1,42 @@
-import { MotiView } from 'moti'
-import { Pressable, StyleSheet, Text } from 'react-native'
+import { useCallback } from 'react'
+import { Pressable } from 'react-native'
 import { CircularProgress } from '@/components/CircularProgress'
-import { Icon } from '@/components/Icon'
-import { colors, textStyles } from '@/styles'
+import { Collapsible } from '@/components/Collapsible'
+import { colors } from '@/styles'
 import { haptics } from '@/utils/haptics'
 
 interface ApplicationItemGroupHeaderProps {
   title: string
   answered: number
   total: number
-  expanded: boolean
-  onToggle: () => void
   /** Fills every item in the group when it isn't fully done yet, clears them all when it is. */
   onToggleAll: () => void
 }
 
-/** Flat, full-bleed accordion header for one section (room/area) of checklist items. */
+/**
+ * The shared accordion header plus this screen's one extra: a tappable
+ * progress ring. Bar layout, title, count and chevron all come from
+ * Collapsible.Header, and the expanded state from its context - there is no
+ * second copy of that design here to drift out of sync with the rows below.
+ */
 export function ApplicationItemGroupHeader({
   title,
   answered,
   total,
-  expanded,
-  onToggle,
   onToggleAll,
 }: ApplicationItemGroupHeaderProps) {
   const complete = total > 0 && answered === total
 
+  const handleToggleAll = useCallback(() => {
+    haptics.selection()
+    onToggleAll()
+  }, [onToggleAll])
+
   return (
-    <Pressable
-      style={styles.container}
-      onPress={onToggle}
-      accessibilityLabel={`${expanded ? 'Recolher' : 'Expandir'} ${title}`}
-      accessibilityRole="button"
-    >
-      <Text style={styles.title} numberOfLines={1}>
-        {title}
-      </Text>
+    <Collapsible.Header title={title}>
       <Pressable
         hitSlop={10}
-        onPress={() => {
-          haptics.selection()
-          onToggleAll()
-        }}
+        onPress={handleToggleAll}
         accessibilityRole="button"
         accessibilityLabel={complete ? `Desmarcar ${title}` : `Concluir ${title}`}
       >
@@ -50,37 +45,9 @@ export function ApplicationItemGroupHeader({
           color={complete ? colors.success.base : colors.blue.base}
         />
       </Pressable>
-      <Text style={[styles.count, complete && styles.countComplete]}>
+      <Collapsible.HeaderCount complete={complete}>
         {answered}/{total}
-      </Text>
-      <MotiView
-        animate={{ rotate: expanded ? '90deg' : '0deg' }}
-        transition={{ type: 'timing', duration: 180 }}
-      >
-        <Icon name="chevron-right" size={14} color={colors.gray[400]} />
-      </MotiView>
-    </Pressable>
+      </Collapsible.HeaderCount>
+    </Collapsible.Header>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
-  },
-  title: {
-    ...textStyles.cardTitle,
-    flex: 1,
-  },
-  count: {
-    ...textStyles.metaLabel,
-  },
-  countComplete: {
-    color: colors.success.base,
-  },
-})
