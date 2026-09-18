@@ -11,7 +11,8 @@ function isItemUntouched(item: ApplicationItem) {
     item.quantity === null &&
     item.attachments.length === 0 &&
     item.tagsIds.length === 0 &&
-    !item.suggested
+    !item.suggested &&
+    !item.workflowStatus
   )
 }
 
@@ -70,6 +71,7 @@ export const resyncApplicationItemsFromChecklist = internalMutation({
           tagsIds: [...item.tagsIds],
           suggested: false,
           suggestionSource: null,
+          workflowStatus: null,
           createdAt: now,
           updatedAt: now,
           deletedAt: null,

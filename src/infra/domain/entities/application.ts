@@ -17,6 +17,9 @@ export interface Attachment {
 
 export type SuggestionSource = 'transcript' | 'previous_application'
 
+/** In-progress states derived from "not complete" - see `answer` for the completed/not-completed binary. */
+export type WorkflowStatus = 'in_progress' | 'in_review' | 'denied'
+
 export interface ApplicationItem {
   id: string
   position: number
@@ -38,6 +41,7 @@ export interface ApplicationItem {
   /** true while an answer/note came from a voice or previous-visit suggestion */
   suggested: boolean
   suggestionSource: SuggestionSource | null
+  workflowStatus: WorkflowStatus | null
   createdAt: string
   updatedAt: string
   deletedAt: string | null

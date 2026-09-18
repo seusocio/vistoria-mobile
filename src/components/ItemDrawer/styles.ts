@@ -69,6 +69,22 @@ export const styles = StyleSheet.create({
   fieldLabel: {
     ...textStyles.fieldLabel,
   },
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+  },
+  statusOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusOptionLabel: {
+    ...textStyles.body,
+  },
+  statusOptionLabelSelected: {
+    ...textStyles.bodyStrong,
+  },
   noteBox: {
     ...textStyles.inputValue,
     backgroundColor: colors.gray[100],

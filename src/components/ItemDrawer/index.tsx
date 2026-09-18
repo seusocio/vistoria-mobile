@@ -1,5 +1,6 @@
 import { BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet'
 import { Pressable, Text, View } from 'react-native'
+import { ItemCard, type ItemCompletionVariant } from '@/components/ItemCard'
 import { Attachment, Tag } from '@/infra/domain/entities'
 import { colors } from '@/styles'
 import { AppBottomSheet } from '../AppBottomSheet'
@@ -10,12 +11,22 @@ import { TagMultiSelect } from '../TagMultiSelect'
 import { useSheetFooterActions } from '../SheetFooterActions'
 import { styles } from './styles'
 
+const STATUS_OPTIONS: Array<{ variant: ItemCompletionVariant; label: string }> = [
+  { variant: 'idle', label: 'Não concluído' },
+  { variant: 'completed', label: 'Concluído' },
+  { variant: 'in_progress', label: 'Executando' },
+  { variant: 'in_review', label: 'Em revisão' },
+  { variant: 'denied', label: 'Negado na revisão' },
+]
+
 export interface ItemDrawerProps {
   visible: boolean
   onClose: () => void
   itemIndex: number
   itemsTotal: number
   title: string
+  completionVariant: ItemCompletionVariant
+  onSelectStatus: (variant: ItemCompletionVariant) => void
   note: string
   onNoteChange: (note: string) => void
   tagsIds: string[]
@@ -41,6 +52,8 @@ export function ItemDrawer({
   itemIndex,
   itemsTotal,
   title,
+  completionVariant,
+  onSelectStatus,
   note,
   onNoteChange,
   tagsIds,
@@ -103,6 +116,27 @@ export function ItemDrawer({
           >
             <Icon name="multiply" size={16} color={colors.ink.base} />
           </Pressable>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Status</Text>
+          <View style={styles.statusRow}>
+            {STATUS_OPTIONS.map((option) => {
+              const selected = option.variant === completionVariant
+              return (
+                <View key={option.variant} style={styles.statusOption}>
+                  <ItemCard.StatusDot
+                    variant={option.variant}
+                    onPress={() => onSelectStatus(option.variant)}
+                    accessibilityLabel={option.label}
+                  />
+                  <Text style={[styles.statusOptionLabel, selected && styles.statusOptionLabelSelected]}>
+                    {option.label}
+                  </Text>
+                </View>
+              )
+            })}
+          </View>
         </View>
 
         <View style={styles.field}>

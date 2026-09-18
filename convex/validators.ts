@@ -58,6 +58,20 @@ export const applicationItem = v.object({
     v.literal('previous_application'),
     v.null(),
   ),
+  /**
+   * In-progress states derived from "not complete" (item.answer is still the
+   * completed/not-completed binary). Optional, like checklistItemId/parentId
+   * above, since it was added after existing application items were already
+   * stored — old rows simply don't have it yet.
+   */
+  workflowStatus: v.optional(
+    v.union(
+      v.literal('in_progress'),
+      v.literal('in_review'),
+      v.literal('denied'),
+      v.null(),
+    ),
+  ),
   createdAt: v.string(),
   updatedAt: v.string(),
   deletedAt: v.union(v.string(), v.null()),
@@ -74,6 +88,14 @@ export const applicationItemPatch = v.object({
     v.union(
       v.literal('transcript'),
       v.literal('previous_application'),
+      v.null(),
+    ),
+  ),
+  workflowStatus: v.optional(
+    v.union(
+      v.literal('in_progress'),
+      v.literal('in_review'),
+      v.literal('denied'),
       v.null(),
     ),
   ),

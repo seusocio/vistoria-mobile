@@ -17,6 +17,7 @@ export class AsyncStorageApplicationRepository
         attachments: item.attachments ?? [],
         tagsIds: item.tagsIds ?? [],
         suggestionSource: item.suggestionSource ?? null,
+        workflowStatus: item.workflowStatus ?? null,
       })),
     }
   }

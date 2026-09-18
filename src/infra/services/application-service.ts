@@ -37,6 +37,7 @@ export function buildApplicationItems(checklist: Checklist): ApplicationItem[] {
       tagsIds: [...item.tagsIds],
       suggested: false,
       suggestionSource: null,
+      workflowStatus: null,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -79,6 +80,9 @@ function cloneExtraItem(item: ApplicationItem, now: string): ApplicationItem {
     suggested: Boolean(item.answer),
     suggestionSource: item.answer ? 'previous_application' : null,
     answeredAt: item.answer ? now : null,
+    // A fresh visit starts its own in-progress state - carrying over the
+    // previous visit's "em revisão"/"negado" would be misleading here.
+    workflowStatus: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -195,6 +199,7 @@ export interface ApplicationItemPatch {
   tagsIds?: string[]
   suggested?: boolean
   suggestionSource?: ApplicationItem['suggestionSource']
+  workflowStatus?: ApplicationItem['workflowStatus']
 }
 
 export function applyApplicationItemPatch(
@@ -261,6 +266,7 @@ export async function addApplicationItem(
     tagsIds: input.tagsIds ?? [],
     suggested: false,
     suggestionSource: null,
+    workflowStatus: null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

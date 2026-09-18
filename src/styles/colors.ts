@@ -35,6 +35,11 @@ export const colors = {
     tint: '#E7F6EE',
   },
 
+  info: {
+    base: '#3B82F6',
+    tint: '#EAF2FF',
+  },
+
   danger: {
     base: '#D8433D',
     light: '#FBE9E8',

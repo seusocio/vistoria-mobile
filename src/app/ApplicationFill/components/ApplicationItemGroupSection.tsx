@@ -1,10 +1,11 @@
 import { AnimatePresence, MotiView } from 'moti'
 import { memo, useEffect, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { View } from 'react-native'
 import type { PanGesture } from 'react-native-gesture-handler'
 import { LinearTransition } from 'react-native-reanimated'
 import { NestedReorderableList, reorderItems } from 'react-native-reorderable-list'
 import { shallow } from 'zustand/shallow'
+import type { ItemCompletionVariant } from '@/components/ItemCard'
 import type { ApplicationItem, Checklist } from '@/infra/domain/entities'
 import { isItemAnswerComplete, reorderChecklistItems } from '@/infra/services'
 import { ApplicationItemGroupHeader } from './ApplicationItemGroupHeader'
@@ -12,9 +13,8 @@ import { ApplicationItemRow } from './ApplicationItemRow'
 
 interface ApplicationItemGroupSectionProps {
   title: string
-  /** the items to actually render here, already sorted by checklist order */
+  /** the items to actually render here, already sorted by checklist order, completed ones last */
   groupItems: ApplicationItem[]
-  /** total items this section represents - may exceed groupItems.length when completed ones moved to the "Concluídos" section */
   total: number
   answered: number
   checklist: Checklist
@@ -26,7 +26,8 @@ interface ApplicationItemGroupSectionProps {
   /** shared across every section so only one pan gesture is ever mounted for the whole screen */
   panGesture: PanGesture
   resolveTagLabel: (item: ApplicationItem) => string | undefined
-  onAnswerChange: (itemId: string, answer: string) => void
+  onToggleComplete: (itemId: string) => void
+  onToggleGroupComplete: (itemIds: string[], complete: boolean) => void
   onOpenDrawer: (itemId: string) => void
   onAcceptSuggestion: (itemId: string) => void
   onRejectSuggestion: (itemId: string) => void
@@ -56,11 +57,10 @@ function arePropsEqual(
 }
 
 /**
- * One accordion section (a room/area, the trailing "Outros itens" bucket for
- * ad-hoc items, or the global "Concluídos" bucket). Owns its own optimistic
- * reorder state so multiple sections can be expanded and reordered
- * independently, but shares one pan-gesture instance (passed down) with
- * every other section.
+ * One accordion section (a room/area, or the trailing "Outros itens" bucket
+ * for ad-hoc items). Owns its own optimistic reorder state so multiple
+ * sections can be expanded and reordered independently, but shares one
+ * pan-gesture instance (passed down) with every other section.
  */
 export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSection({
   title,
@@ -74,7 +74,8 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
   suggestionEnabled,
   panGesture,
   resolveTagLabel,
-  onAnswerChange,
+  onToggleComplete,
+  onToggleGroupComplete,
   onOpenDrawer,
   onAcceptSuggestion,
   onRejectSuggestion,
@@ -98,9 +99,16 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
   }, [optimisticItems, reorderPending, serverChildren])
 
   async function handleReorder({ from, to }: { from: number; to: number }) {
-    if (from === to) return
+    // Completed items are pinned to the tail (see the parent's `groups` memo) and
+    // are never drag sources (`canDrag` below), but an incomplete item could
+    // still be dropped past them without this clamp - keeping the invariant
+    // "completed items always come last within their group" intact.
+    const completedCount = items.filter((item) => isItemAnswerComplete(item, checklist)).length
+    const maxIndex = Math.max(items.length - completedCount - 1, 0)
+    const clampedTo = Math.min(to, maxIndex)
+    if (from === clampedTo) return
     const movedItem = items[from]
-    const targetItem = items[to]
+    const targetItem = items[clampedTo]
     if (!movedItem?.checklistItemId || !targetItem?.checklistItemId) return
     const templateFrom = checklist.items.findIndex(
       (item) => item.id === movedItem.checklistItemId,
@@ -111,7 +119,7 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
     if (templateFrom < 0 || templateTo < 0) return
 
     const previousItems = items
-    setOptimisticItems(reorderItems(previousItems, from, to))
+    setOptimisticItems(reorderItems(previousItems, from, clampedTo))
     setReorderPending(true)
     try {
       await reorderChecklistItems(checklist.id, templateFrom, templateTo)
@@ -122,43 +130,56 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
     }
   }
 
+  // Clicking the header's leading progress ring fills or unfills every item
+  // in the group at once, mirroring each row's own leading-dot toggle - a
+  // group that isn't fully done fills; a fully done group clears back out.
+  function handleToggleGroup() {
+    const allComplete = total > 0 && answered === total
+    onToggleGroupComplete(
+      items.map((item) => item.id),
+      !allComplete,
+    )
+  }
+
   return (
-    <View style={styles.section}>
+    <View>
       <ApplicationItemGroupHeader
         title={title}
         answered={answered}
         total={total}
         expanded={expanded}
         onToggle={() => onToggle(groupKey)}
+        onToggleAll={handleToggleGroup}
       />
       <AnimatePresence>
         {expanded && (
           <MotiView
-            from={{ opacity: 0, translateY: -8 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            exit={{ opacity: 0, translateY: -8 }}
+            from={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ type: 'timing', duration: 180 }}
-            style={styles.body}
           >
             <NestedReorderableList
               data={items}
               scrollable={false}
               scrollEnabled={false}
-              contentContainerStyle={styles.itemsList}
               panGesture={panGesture}
               itemLayoutAnimation={LinearTransition.duration(220)}
               keyExtractor={(item) => item.id}
               onReorder={handleReorder}
               renderItem={({ item }: { item: ApplicationItem }) => {
                 const complete = isItemAnswerComplete(item, checklist)
+                const completionVariant: ItemCompletionVariant = complete
+                  ? 'completed'
+                  : (item.workflowStatus ?? 'idle')
                 return (
                   <ApplicationItemRow
                     item={item}
                     canDrag={Boolean(item.checklistItemId) && !complete}
-                    options={checklist.options}
+                    completionVariant={completionVariant}
                     tagLabel={resolveTagLabel(item)}
                     suggestionEnabled={suggestionEnabled}
-                    onAnswerChange={onAnswerChange}
+                    onToggleComplete={onToggleComplete}
                     onOpenDrawer={onOpenDrawer}
                     onAcceptSuggestion={onAcceptSuggestion}
                     onRejectSuggestion={onRejectSuggestion}
@@ -172,15 +193,3 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
     </View>
   )
 }, arePropsEqual)
-
-const styles = StyleSheet.create({
-  section: {
-    gap: 8,
-  },
-  body: {
-    paddingLeft: 8,
-  },
-  itemsList: {
-    gap: 10,
-  },
-})

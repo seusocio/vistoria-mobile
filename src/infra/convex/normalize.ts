@@ -32,6 +32,7 @@ export function normalizeApplication(application: Application): Application {
       })),
       tagsIds: item.tagsIds ?? [],
       suggestionSource: item.suggestionSource ?? null,
+      workflowStatus: item.workflowStatus ?? null,
     })),
   }
 }

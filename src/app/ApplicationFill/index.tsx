@@ -17,6 +17,7 @@ import {
   VoiceCard,
 } from '@/components'
 import { Icon } from '@/components/Icon'
+import type { ItemCompletionVariant } from '@/components/ItemCard'
 import { ApplicationItemGroupSection } from './components/ApplicationItemGroupSection'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { VoiceState } from '@/components/VoiceCard'
@@ -36,7 +37,7 @@ import {
   NewApplicationItemFormValues,
   newApplicationItemSchema,
 } from '@/infra/domain/schemas'
-import type { ApplicationItem } from '@/infra/domain/entities'
+import type { ApplicationItem, WorkflowStatus } from '@/infra/domain/entities'
 import {
   applyPendingAnswers,
   useLocalAnswersStore,
@@ -169,23 +170,20 @@ export function ApplicationFill({
   }, [sortedItems, checklist])
   const groups = useMemo(
     () =>
-      groupItemsByTitlePrefix(sortedItems).map((group) => ({
-        key: group.label ?? 'ungrouped',
-        title: group.label ?? 'Outros itens',
-        total: group.children.length,
-        answered: group.children.reduce(
-          (count, item) => (completedIds.has(item.id) ? count + 1 : count),
-          0,
-        ),
-        // completed items move to the "Concluídos" section below instead of
-        // sinking within this list, so answering something never reshuffles
-        // the drag-reorderable list the user is currently looking at.
-        children: group.children.filter((item) => !completedIds.has(item.id)),
-      })),
-    [sortedItems, completedIds],
-  )
-  const completedItems = useMemo(
-    () => sortedItems.filter((item) => completedIds.has(item.id)),
+      groupItemsByTitlePrefix(sortedItems).map((group) => {
+        const incomplete = group.children.filter((item) => !completedIds.has(item.id))
+        const completed = group.children.filter((item) => completedIds.has(item.id))
+        return {
+          key: group.label ?? 'ungrouped',
+          title: group.label ?? 'Outros itens',
+          total: group.children.length,
+          answered: completed.length,
+          // Completed items sink to the end of their own group's list instead
+          // of moving to a separate section, so the group they belong to stays
+          // legible while still keeping them out of the way of active items.
+          children: [...incomplete, ...completed],
+        }
+      }),
     [sortedItems, completedIds],
   )
   const derivedState = applicationData
@@ -211,6 +209,65 @@ export function ApplicationFill({
       useLocalAnswersStore.getState().setAnswer(applicationId, itemId, answer)
     },
     [applicationId],
+  )
+  const positiveOptionLabel = checklist?.options.find(
+    (option) => option.semantic === 'positivo',
+  )?.label
+  // Persisted on the item itself (workflowStatus) so it survives navigation
+  // and app restarts, unlike the earlier screen-local prototype.
+  const handleSetWorkflowStatus = useCallback(
+    (itemId: string, workflowStatus: WorkflowStatus | null) => {
+      if (!applicationData) return
+      const updatedAt = new Date().toISOString()
+      void mutations
+        .patchItem({
+          applicationId: applicationData.id,
+          itemId,
+          patch: { workflowStatus },
+          updatedAt,
+        })
+        .catch(() => setApplicationError('Não foi possível atualizar o status'))
+    },
+    [applicationData, mutations],
+  )
+  const handleToggleComplete = useCallback(
+    (itemId: string) => {
+      if (!positiveOptionLabel) return
+      const item = applicationData?.items.find((candidate) => candidate.id === itemId)
+      const complete = item?.answer === positiveOptionLabel
+      handleAnswerChange(itemId, complete ? '' : positiveOptionLabel)
+      if (!complete && item?.workflowStatus) handleSetWorkflowStatus(itemId, null)
+    },
+    [applicationData, handleAnswerChange, handleSetWorkflowStatus, positiveOptionLabel],
+  )
+  const handleToggleGroupComplete = useCallback(
+    (itemIds: string[], complete: boolean) => {
+      if (complete && !positiveOptionLabel) return
+      for (const itemId of itemIds) {
+        handleAnswerChange(itemId, complete ? (positiveOptionLabel as string) : '')
+        if (complete) {
+          const item = applicationData?.items.find((candidate) => candidate.id === itemId)
+          if (item?.workflowStatus) handleSetWorkflowStatus(itemId, null)
+        }
+      }
+    },
+    [applicationData, handleAnswerChange, handleSetWorkflowStatus, positiveOptionLabel],
+  )
+  const handleSelectStatus = useCallback(
+    (itemId: string, status: ItemCompletionVariant) => {
+      if (status === 'completed' || status === 'idle') {
+        const item = applicationData?.items.find((candidate) => candidate.id === itemId)
+        const complete = item?.answer === positiveOptionLabel
+        const shouldComplete = status === 'completed'
+        if (complete !== shouldComplete && positiveOptionLabel) {
+          handleAnswerChange(itemId, shouldComplete ? positiveOptionLabel : '')
+        }
+        if (item?.workflowStatus) handleSetWorkflowStatus(itemId, null)
+        return
+      }
+      handleSetWorkflowStatus(itemId, status)
+    },
+    [applicationData, handleAnswerChange, handleSetWorkflowStatus, positiveOptionLabel],
   )
   const handleOpenItemDrawer = useCallback(
     (itemId: string) => {
@@ -479,6 +536,7 @@ export function ApplicationFill({
       tagsIds: [...values.tagsIds],
       suggested: false,
       suggestionSource: null,
+      workflowStatus: null,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
@@ -497,14 +555,17 @@ export function ApplicationFill({
     : null
   const editingItemContainer = editingItem
     ? (groups.find((group) => group.children.some((child) => child.id === editingItem.id))
-        ?.children ??
-      (completedItems.some((child) => child.id === editingItem.id) ? completedItems : null))
+        ?.children ?? null)
     : null
   const editingItemIndex = editingItemContainer
     ? editingItemContainer.findIndex((child) => child.id === editingItem?.id)
     : -1
   const editingItemsTotal = editingItemContainer?.length ?? 0
   const itemDraft = editingItem ? itemForm.watch() : null
+  const editingItemCompletionVariant: ItemCompletionVariant =
+    editingItem?.answer === positiveOptionLabel && positiveOptionLabel
+      ? 'completed'
+      : (editingItem?.workflowStatus ?? 'idle')
 
   const viewerAttachments = viewer
     ? (viewer.itemId === null
@@ -668,33 +729,14 @@ export function ApplicationFill({
             suggestionEnabled={FEATURE_FLAG.suggestion}
             panGesture={panGesture}
             resolveTagLabel={resolveTagLabel}
-            onAnswerChange={handleAnswerChange}
+            onToggleComplete={handleToggleComplete}
+            onToggleGroupComplete={handleToggleGroupComplete}
             onOpenDrawer={handleOpenItemDrawer}
             onAcceptSuggestion={handleAcceptSuggestion}
             onRejectSuggestion={handleRejectSuggestion}
             onError={setApplicationError}
           />
         ))}
-        {completedItems.length > 0 ? (
-          <ApplicationItemGroupSection
-            title="Concluídos"
-            groupItems={completedItems}
-            total={completedItems.length}
-            answered={completedItems.length}
-            checklist={checklist}
-            expanded={expandedGroupIds.has('completed')}
-            groupKey="completed"
-            onToggle={toggleGroup}
-            suggestionEnabled={FEATURE_FLAG.suggestion}
-            panGesture={panGesture}
-            resolveTagLabel={resolveTagLabel}
-            onAnswerChange={handleAnswerChange}
-            onOpenDrawer={handleOpenItemDrawer}
-            onAcceptSuggestion={handleAcceptSuggestion}
-            onRejectSuggestion={handleRejectSuggestion}
-            onError={setApplicationError}
-          />
-        ) : null}
       </View>
 
       {editingItem && itemDraft && (
@@ -704,6 +746,8 @@ export function ApplicationFill({
           itemIndex={editingItemIndex + 1}
           itemsTotal={editingItemsTotal}
           title={editingItem.title}
+          completionVariant={editingItemCompletionVariant}
+          onSelectStatus={(status) => handleSelectStatus(editingItem.id, status)}
           note={itemDraft.note}
           onNoteChange={(note) =>
             itemForm.setValue('note', note, { shouldDirty: true })

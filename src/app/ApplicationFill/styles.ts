@@ -108,7 +108,10 @@ export const styles = StyleSheet.create({
     color: colors.blue.base,
   },
   groupsList: {
-    gap: 10,
+    // Cancels the Screen's own 20px horizontal padding so section dividers and
+    // rows bleed edge-to-edge, Linear-style - each row/header re-adds its own
+    // horizontal padding around its content.
+    marginHorizontal: -20,
   },
   completeButton: {
     flexDirection: 'row',
