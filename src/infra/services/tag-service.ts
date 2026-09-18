@@ -1,5 +1,6 @@
 import { normalizeTagLabel, Tag } from '@/infra/domain/entities'
 import { TagRepository } from '@/infra/domain/repositories'
+import { parseOrThrow, tagLabelSchema } from '@/infra/domain/schemas'
 import { generateId } from '@/infra/id'
 import { tagRepository } from '@/infra/storage'
 
@@ -29,10 +30,7 @@ export async function findOrCreateTagByLabel(
   label: string,
   repo: TagRepository = tagRepository,
 ): Promise<Tag> {
-  const trimmed = label.trim()
-  if (!trimmed) {
-    throw new Error('Nome da tag não pode ser vazio')
-  }
+  const trimmed = parseOrThrow(tagLabelSchema, label)
   const normalizedLabel = normalizeTagLabel(trimmed)
   const now = new Date().toISOString()
   return repo.create({

@@ -1,8 +1,10 @@
+import { forwardRef } from 'react'
 import {
   NativeSyntheticEvent,
-  Pressable,
   TargetedEvent,
+  Pressable,
   Text,
+  TextInput,
   View,
 } from 'react-native'
 import { SheetAwareTextInput } from '../../SheetAwareTextInput'
@@ -11,7 +13,7 @@ import { styles } from '../styles'
 import { InputFieldProps } from '../types'
 import { Icon } from './Icon'
 
-export function Field({
+export const Field = forwardRef<TextInput, InputFieldProps>(function Field({
   variant,
   state,
   style,
@@ -25,7 +27,7 @@ export function Field({
   step,
   disabled,
   ...props
-}: InputFieldProps) {
+}, ref) {
   const context = useInputContext()
   const finalVariant = variant || context.variant
 
@@ -107,6 +109,7 @@ export function Field({
 
   return (
     <SheetAwareTextInput
+      ref={ref}
       style={textInputStyle}
       placeholderTextColor={styles.placeholderText.color}
       keyboardType={
@@ -123,4 +126,4 @@ export function Field({
       {...props}
     />
   )
-}
+})

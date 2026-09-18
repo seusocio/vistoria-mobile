@@ -1,8 +1,10 @@
 import { memo } from 'react'
+import { Controller, useFieldArray } from 'react-hook-form'
+import type { Control } from 'react-hook-form'
 import { Pressable, TextInput, View } from 'react-native'
 import { Icon } from '@/components/Icon'
-import type { ChecklistFormApi } from '@/hooks/useChecklistForm'
 import type { ResponseSemantic } from '@/infra/domain/entities'
+import type { ChecklistFormValues } from '@/infra/domain/schemas'
 import { colors } from '@/styles'
 import { styles } from '../styles'
 
@@ -23,39 +25,51 @@ const NEXT_SEMANTIC: Record<ResponseSemantic, ResponseSemantic> = {
 }
 
 interface ResponseOptionsEditorProps {
-  form: ChecklistFormApi
+  control: Control<ChecklistFormValues>
   onRemoveOption: (index: number) => void
 }
 
 export const ResponseOptionsEditor = memo(function ResponseOptionsEditor({
-  form,
+  control,
   onRemoveOption,
 }: ResponseOptionsEditorProps) {
+  const { fields } = useFieldArray({ control, name: 'options' })
   return (
     <View style={styles.optionsRow}>
-      {form.options.map((option, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: options are positional and have no stable id before saving
-        <View key={index} style={styles.optionPill}>
-          <Pressable
-            hitSlop={8}
-            onPress={() =>
-              form.updateOptionSemantic(index, NEXT_SEMANTIC[option.semantic])
-            }
-            accessibilityLabel={`Significado da opção: ${SEMANTIC_LABEL[option.semantic]}. Toque para alternar`}
-          >
-            <View
-              style={[
-                styles.optionDot,
-                { backgroundColor: SEMANTIC_DOT_COLOR[option.semantic] },
-              ]}
-            />
-          </Pressable>
-          <TextInput
-            style={styles.optionInput}
-            value={option.label}
-            onChangeText={(value) => form.updateOptionLabel(index, value)}
-            placeholder="Rótulo"
-            placeholderTextColor={colors.gray[400]}
+      {fields.map((field, index) => (
+        <View key={field.id} style={styles.optionPill}>
+          <Controller
+            control={control}
+            name={`options.${index}.semantic`}
+            render={({ field: semanticField }) => (
+              <Pressable
+                hitSlop={8}
+                onPress={() =>
+                  semanticField.onChange(NEXT_SEMANTIC[semanticField.value])
+                }
+                accessibilityLabel={`Significado da opção: ${SEMANTIC_LABEL[semanticField.value]}. Toque para alternar`}
+              >
+                <View
+                  style={[
+                    styles.optionDot,
+                    { backgroundColor: SEMANTIC_DOT_COLOR[semanticField.value] },
+                  ]}
+                />
+              </Pressable>
+            )}
+          />
+          <Controller
+            control={control}
+            name={`options.${index}.label`}
+            render={({ field: labelField }) => (
+              <TextInput
+                style={styles.optionInput}
+                value={labelField.value}
+                onChangeText={labelField.onChange}
+                placeholder="Rótulo"
+                placeholderTextColor={colors.gray[400]}
+              />
+            )}
           />
           <Pressable
             style={({ pressed }) => pressed && { opacity: 0.7 }}

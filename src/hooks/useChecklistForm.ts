@@ -1,36 +1,17 @@
-import { useState } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useFieldArray, useForm } from 'react-hook-form'
 import {
   Checklist,
-  ChecklistItem,
   DEFAULT_RESPONSE_OPTIONS,
   ResponseOption,
-  ResponseSemantic,
 } from '@/infra/domain/entities'
-import { generateId } from '@/infra/id'
+import {
+  ChecklistFormValues,
+  ChecklistItemFormValues,
+  checklistFormSchema,
+} from '@/infra/domain/schemas'
 
-export interface ChecklistFormItemState {
-  key: string
-  id?: string
-  title: string
-  description: string
-  tagsIds: string[]
-}
-
-function itemFromChecklist(item: ChecklistItem): ChecklistFormItemState {
-  return {
-    key: item.id,
-    id: item.id,
-    title: item.title,
-    description: item.description,
-    tagsIds: item.tagsIds,
-  }
-}
-
-export interface ChecklistItemValues {
-  title: string
-  description: string
-  tagsIds: string[]
-}
+export type ChecklistFormItemState = ChecklistItemFormValues & { key: string }
 
 export interface ApplyTemplateInput {
   title: string
@@ -39,79 +20,48 @@ export interface ApplyTemplateInput {
   itemTitles: string[]
 }
 
+export function checklistToFormValues(checklist?: Checklist): ChecklistFormValues {
+  return {
+    title: checklist?.title ?? '',
+    tagsIds: checklist?.tagsIds ?? [],
+    options: checklist?.options ?? DEFAULT_RESPONSE_OPTIONS,
+    items: checklist
+      ? checklist.items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          tagsIds: item.tagsIds,
+        }))
+      : [],
+  }
+}
+
 export function useChecklistForm(initial?: Checklist) {
-  const [title, setTitle] = useState(initial?.title ?? '')
-  const [tagsIds, setTagsIds] = useState<string[]>(initial?.tagsIds ?? [])
-  const [options, setOptions] = useState<ResponseOption[]>(
-    initial?.options ?? DEFAULT_RESPONSE_OPTIONS,
-  )
-  const [items, setItems] = useState<ChecklistFormItemState[]>(
-    initial ? initial.items.map(itemFromChecklist) : [],
-  )
-
-  function addOption() {
-    setOptions((prev) => [...prev, { label: '', semantic: 'neutro' }])
-  }
-  function updateOptionLabel(index: number, label: string) {
-    setOptions((prev) =>
-      prev.map((option, i) => (i === index ? { ...option, label } : option)),
-    )
-  }
-  function updateOptionSemantic(index: number, semantic: ResponseSemantic) {
-    setOptions((prev) =>
-      prev.map((option, i) => (i === index ? { ...option, semantic } : option)),
-    )
-  }
-  function removeOption(index: number) {
-    setOptions((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  function addItem(values: ChecklistItemValues) {
-    const key = generateId('formitem_')
-    setItems((prev) => [...prev, { key, ...values }])
-    return key
-  }
-  function updateItem(key: string, patch: Partial<ChecklistFormItemState>) {
-    setItems((prev) =>
-      prev.map((item) => (item.key === key ? { ...item, ...patch } : item)),
-    )
-  }
-  function removeItem(key: string) {
-    setItems((prev) => prev.filter((item) => item.key !== key))
-  }
+  const form = useForm<ChecklistFormValues>({
+    resolver: zodResolver(checklistFormSchema),
+    defaultValues: checklistToFormValues(initial),
+  })
+  const optionsArray = useFieldArray({ control: form.control, name: 'options' })
+  const itemsArray = useFieldArray({
+    control: form.control,
+    name: 'items',
+    keyName: 'key',
+  })
 
   function applyTemplate(template: ApplyTemplateInput) {
-    setTitle(template.title)
-    setTagsIds(template.tagsIds)
-    setOptions(template.options)
-    setItems(
-      template.itemTitles.map((itemTitle) => ({
-        key: generateId('formitem_'),
+    form.reset({
+      title: template.title,
+      tagsIds: template.tagsIds,
+      options: template.options,
+      items: template.itemTitles.map((itemTitle) => ({
         title: itemTitle,
         description: '',
         tagsIds: [],
       })),
-    )
+    })
   }
 
-  return {
-    title,
-    setTitle,
-    tagsIds,
-    setTagsIds,
-    options,
-    setOptions,
-    addOption,
-    updateOptionLabel,
-    updateOptionSemantic,
-    removeOption,
-    items,
-    setItems,
-    addItem,
-    updateItem,
-    removeItem,
-    applyTemplate,
-  }
+  return { form, optionsArray, itemsArray, applyTemplate }
 }
 
 export type ChecklistFormApi = ReturnType<typeof useChecklistForm>

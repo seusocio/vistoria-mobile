@@ -8,6 +8,11 @@ import {
   ApplicationRepository,
   ChecklistRepository,
 } from '@/infra/domain/repositories'
+import {
+  checklistTitleSchema,
+  minChecklistItemsSchema,
+  parseOrThrow,
+} from '@/infra/domain/schemas'
 import { generateId } from '@/infra/id'
 import { applicationRepository, checklistRepository } from '@/infra/storage'
 
@@ -63,13 +68,10 @@ export async function createChecklist(
   input: CreateChecklistInput,
   repo: ChecklistRepository = checklistRepository,
 ): Promise<Checklist> {
-  const title = input.title.trim()
-  if (!title) throw new Error('Nome do checklist é obrigatório')
+  const title = parseOrThrow(checklistTitleSchema, input.title.trim())
 
   const validItems = input.items.filter((item) => item.title.trim().length > 0)
-  if (validItems.length === 0) {
-    throw new Error('O checklist deve ter ao menos um item')
-  }
+  parseOrThrow(minChecklistItemsSchema, validItems)
 
   const now = new Date().toISOString()
   const checklist: Checklist = {
@@ -96,8 +98,7 @@ export async function updateChecklist(
   const existing = await repo.findById(id)
   if (!existing) throw new Error('Checklist não encontrado')
 
-  const title = input.title.trim()
-  if (!title) throw new Error('Nome do checklist é obrigatório')
+  const title = parseOrThrow(checklistTitleSchema, input.title.trim())
 
   const now = new Date().toISOString()
   const existingById = new Map(existing.items.map((item) => [item.id, item]))
@@ -119,9 +120,7 @@ export async function updateChecklist(
       return buildItem(item, index)
     })
 
-  if (items.length === 0) {
-    throw new Error('O checklist deve ter ao menos um item')
-  }
+  parseOrThrow(minChecklistItemsSchema, items)
 
   const updated: Checklist = {
     ...existing,

@@ -1,12 +1,13 @@
-import { BottomSheetTextInput, BottomSheetView } from '@gorhom/bottom-sheet'
-import { useState } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { BottomSheetView } from '@gorhom/bottom-sheet'
+import { useCallback, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { Pressable, Text, View } from 'react-native'
-import { NestedReorderableList, reorderItems } from 'react-native-reorderable-list'
+import { NestedReorderableList } from 'react-native-reorderable-list'
 import {
   AppBottomSheet,
   ConfirmBottomSheet,
-  Input,
-  TagMultiSelect,
+  Form,
   useUndoToast,
 } from '@/components'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
@@ -15,6 +16,10 @@ import { ChecklistFormApi, ChecklistFormItemState } from '@/hooks/useChecklistFo
 import { useReorderablePanGesture } from '@/hooks/useReorderablePanGesture'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { ChecklistTemplate } from '@/infra/data/templates'
+import {
+  ChecklistItemFormValues,
+  checklistItemFormSchema,
+} from '@/infra/domain/schemas'
 import { colors } from '@/styles'
 import { haptics } from '@/utils/haptics'
 import { ChecklistItemRow } from './components/ChecklistItemRow'
@@ -33,7 +38,7 @@ export interface ChecklistFormViewProps {
   error?: string | null
 }
 export function ChecklistFormView({
-  form,
+  form: formApi,
   tagsCatalog,
   templates,
   selectedTemplateId,
@@ -41,79 +46,74 @@ export function ChecklistFormView({
   onSelectTemplate,
   error,
 }: ChecklistFormViewProps) {
+  const { form, optionsArray, itemsArray } = formApi
   const { activeTags, tagsById, createTag, resolveLabels } = tagsCatalog
   const panGesture = useReorderablePanGesture()
   const { show } = useUndoToast()
   const [itemSheet, setItemSheet] = useState<
-    { mode: 'new' } | { mode: 'edit'; key: string } | null
+    { mode: 'new' } | { mode: 'edit'; index: number } | null
   >(null)
-  const [draftTitle, setDraftTitle] = useState('')
-  const [draftDescription, setDraftDescription] = useState('')
-  const [draftTagsIds, setDraftTagsIds] = useState<string[]>([])
-  const [itemError, setItemError] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<
-    { type: 'item'; key: string } | { type: 'option'; index: number } | null
+    { type: 'item' | 'option'; index: number } | null
   >(null)
+  const itemSheetForm = useForm<ChecklistItemFormValues>({
+    resolver: zodResolver(checklistItemFormSchema),
+    defaultValues: { title: '', description: '', tagsIds: [] },
+  })
 
   function openAddItem() {
-    setDraftTitle('')
-    setDraftDescription('')
-    setDraftTagsIds([])
-    setItemError(null)
+    itemSheetForm.reset({ title: '', description: '', tagsIds: [] })
     setItemSheet({ mode: 'new' })
   }
 
-  function openEditItem(item: ChecklistFormItemState) {
-    setDraftTitle(item.title)
-    setDraftDescription(item.description)
-    setDraftTagsIds(item.tagsIds)
-    setItemError(null)
-    setItemSheet({ mode: 'edit', key: item.key })
+  function openEditItem(item: ChecklistFormItemState, index: number) {
+    itemSheetForm.reset({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      tagsIds: item.tagsIds,
+    })
+    setItemSheet({ mode: 'edit', index })
   }
   function removeOptionWithUndo(index: number) {
-    const snapshot = form.options
-    form.removeOption(index)
+    const removedOption = form.getValues(`options.${index}`)
+    optionsArray.remove(index)
     show({
       message: 'Opção removida',
       onCommit: () => {},
-      onUndo: () => form.setOptions(snapshot),
+      onUndo: () => optionsArray.insert(index, removedOption),
     })
   }
 
-  function removeItemWithUndo(key: string) {
-    const snapshot = form.items
-    form.removeItem(key)
+  function removeItemWithUndo(index: number) {
+    const removedItem = form.getValues(`items.${index}`)
+    itemsArray.remove(index)
     show({
       message: 'Item removido',
       onCommit: () => {},
-      onUndo: () => form.setItems(snapshot),
+      onUndo: () => itemsArray.insert(index, removedItem),
     })
   }
 
+  const handleRemoveOption = useCallback(
+    (index: number) => setPendingDelete({ type: 'option', index }),
+    [],
+  )
 
-  function handleSaveItem() {
-    if (!draftTitle.trim()) {
-      haptics.error()
-      setItemError('Informe um título para o item')
-      return
-    }
-    const values = {
-      title: draftTitle.trim(),
-      description: draftDescription.trim(),
-      tagsIds: draftTagsIds,
-    }
+  function handleSaveItem(values: ChecklistItemFormValues) {
     if (itemSheet?.mode === 'edit') {
-      form.updateItem(itemSheet.key, values)
+      itemsArray.update(itemSheet.index, values)
     } else {
-      form.addItem(values)
+      itemsArray.append(values)
     }
     setItemSheet(null)
   }
   const footerComponent = useSheetFooterActions({
     confirmLabel: itemSheet?.mode === 'edit' ? 'Salvar' : 'Adicionar',
-    onConfirm: handleSaveItem,
+    onConfirm: itemSheetForm.handleSubmit(handleSaveItem, () =>
+      haptics.error(),
+    ),
   })
-
 
   return (
     <View style={styles.container}>
@@ -128,20 +128,20 @@ export function ChecklistFormView({
 
       <View style={styles.section}>
         <Text style={styles.fieldLabel}>Nome do checklist</Text>
-        <Input
+        <Form.TextField
+          control={form.control}
+          name="title"
           placeholder="Ex.: Vistoria de entrega"
-          value={form.title}
-          onChangeValue={(value) => form.setTitle(String(value))}
         />
       </View>
 
       <View style={styles.section}>
         <Text style={styles.fieldLabel}>Tags do checklist</Text>
-        <TagMultiSelect
-          selectedIds={form.tagsIds}
+        <Form.TagSelect
+          control={form.control}
+          name="tagsIds"
           availableTags={activeTags}
           allTagsById={tagsById}
-          onChange={form.setTagsIds}
           onCreateTag={createTag}
         />
       </View>
@@ -149,15 +149,15 @@ export function ChecklistFormView({
       <View style={styles.section}>
         <Text style={styles.fieldLabel}>Opções de resposta</Text>
         <ResponseOptionsEditor
-          form={form}
-          onRemoveOption={(index) => setPendingDelete({ type: 'option', index })}
+          control={form.control}
+          onRemoveOption={handleRemoveOption}
         />
         <Pressable
           style={({ pressed }) => [
             styles.addOptionButton,
             pressed && { opacity: 0.7 },
           ]}
-          onPress={form.addOption}
+          onPress={() => optionsArray.append({ label: '', semantic: 'neutro' })}
         >
           <Icon name="plus" size={12} color={colors.blue.base} />
           <Text style={styles.addOptionText}>Adicionar opção (ex: Não aplica)</Text>
@@ -167,27 +167,25 @@ export function ChecklistFormView({
       <View style={styles.section}>
         <View style={styles.itemsHeader}>
           <Text style={styles.fieldLabel}>Itens do checklist</Text>
-          <Text style={styles.itemsCount}>{form.items.length} itens</Text>
+          <Text style={styles.itemsCount}>{itemsArray.fields.length} itens</Text>
         </View>
-        {form.items.length > 0 && (
+        {itemsArray.fields.length > 0 && (
           <NestedReorderableList
-            data={form.items}
+            data={itemsArray.fields}
             scrollable={false}
             scrollEnabled={false}
             contentContainerStyle={styles.itemsList}
             panGesture={panGesture}
             itemLayoutAnimation={LinearTransition.duration(220)}
             keyExtractor={(item) => item.key}
-            onReorder={({ from, to }) =>
-              form.setItems(reorderItems(form.items, from, to))
-            }
+            onReorder={({ from, to }) => itemsArray.move(from, to)}
             renderItem={({ item, index }) => (
               <ChecklistItemRow
                 item={item}
                 index={index}
                 labels={resolveLabels(item.tagsIds)}
-                onEdit={() => openEditItem(item)}
-                onRemove={() => setPendingDelete({ type: 'item', key: item.key })}
+                onEdit={() => openEditItem(item, index)}
+                onRemove={() => setPendingDelete({ type: 'item', index })}
               />
             )}
           />
@@ -217,20 +215,23 @@ export function ChecklistFormView({
           </Text>
           <View style={styles.sheetField}>
             <Text style={styles.fieldLabel}>Título do item</Text>
-            <BottomSheetTextInput
+            <Form.SheetTextField
+              control={itemSheetForm.control}
+              name="title"
               autoFocus
-              value={draftTitle}
-              onChangeText={setDraftTitle}
               placeholder="Ex.: Pintura das paredes"
               placeholderTextColor={colors.gray[400]}
               style={styles.sheetInput}
             />
+            <Form.ErrorText
+              message={itemSheetForm.formState.errors.title?.message}
+            />
           </View>
           <View style={styles.sheetField}>
             <Text style={styles.fieldLabel}>Descrição (opcional)</Text>
-            <BottomSheetTextInput
-              value={draftDescription}
-              onChangeText={setDraftDescription}
+            <Form.SheetTextField
+              control={itemSheetForm.control}
+              name="description"
               placeholder="Detalhe o que deve ser verificado"
               placeholderTextColor={colors.gray[400]}
               style={[styles.sheetInput, styles.sheetTextarea]}
@@ -239,17 +240,16 @@ export function ChecklistFormView({
           </View>
           <View style={styles.sheetField}>
             <Text style={styles.fieldLabel}>Tags do item</Text>
-            <TagMultiSelect
-              selectedIds={draftTagsIds}
+            <Form.TagSelect
+              control={itemSheetForm.control}
+              name="tagsIds"
               availableTags={activeTags}
               allTagsById={tagsById}
-              onChange={setDraftTagsIds}
               onCreateTag={createTag}
               placeholder="Responsável padrão (opcional)"
               variant="muted"
             />
           </View>
-          {itemError ? <Text style={styles.error}>{itemError}</Text> : null}
         </BottomSheetView>
       </AppBottomSheet>
       <ConfirmBottomSheet
@@ -267,7 +267,7 @@ export function ChecklistFormView({
           if (pendingDelete?.type === 'option') {
             removeOptionWithUndo(pendingDelete.index)
           } else if (pendingDelete?.type === 'item') {
-            removeItemWithUndo(pendingDelete.key)
+            removeItemWithUndo(pendingDelete.index)
           }
           setPendingDelete(null)
         }}

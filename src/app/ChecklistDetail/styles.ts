@@ -93,10 +93,6 @@ export const styles = StyleSheet.create({
     borderTopColor: colors.gray[200],
     backgroundColor: colors.white,
   },
-  batchError: {
-    ...textStyles.body,
-    color: colors.danger.base,
-  },
   saveTagsButton: {
     alignItems: 'center',
     justifyContent: 'center',

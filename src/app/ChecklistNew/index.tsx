@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Pressable, Text } from 'react-native'
 import { ScrollViewContainer } from 'react-native-reorderable-list'
-import { Screen } from '@/components'
+import { ConfirmBottomSheet, Screen } from '@/components'
 import { Icon } from '@/components/Icon'
 import { useChecklistForm } from '@/hooks/useChecklistForm'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
+import { useUnsavedChangesGuard } from '@/hooks/useUnsavedChangesGuard'
 import { ChecklistTemplate, checklistTemplates } from '@/infra/data/templates'
+import { ChecklistFormValues } from '@/infra/domain/schemas'
 import { createChecklist } from '@/infra/services'
 import { StackRoutesProps } from '@/routes/types'
 import { colors } from '@/styles'
@@ -13,7 +15,8 @@ import { ChecklistFormView } from '../ChecklistForm/ChecklistFormView'
 import { styles } from './styles'
 
 export function ChecklistNew({ navigation }: StackRoutesProps<'checklistNew'>) {
-  const form = useChecklistForm()
+  const checklistForm = useChecklistForm()
+  const { form, applyTemplate } = checklistForm
   const tagsCatalog = useTagsCatalog()
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     null,
@@ -22,7 +25,10 @@ export function ChecklistNew({ navigation }: StackRoutesProps<'checklistNew'>) {
     null,
   )
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const unsavedGuard = useUnsavedChangesGuard(
+    form.formState.isDirty,
+    navigation,
+  )
 
   async function handleSelectTemplate(template: ChecklistTemplate) {
     if (loadingTemplateId) return
@@ -32,7 +38,7 @@ export function ChecklistNew({ navigation }: StackRoutesProps<'checklistNew'>) {
       const tags = await Promise.all(
         template.tagLabels.map((label) => tagsCatalog.createTag(label)),
       )
-      form.applyTemplate({
+      applyTemplate({
         title: template.title,
         tagsIds: tags.map((tag) => tag.id),
         options: template.options,
@@ -50,27 +56,16 @@ export function ChecklistNew({ navigation }: StackRoutesProps<'checklistNew'>) {
     }
   }
 
-  async function handleSubmit() {
+  async function onSubmit(values: ChecklistFormValues) {
     setError(null)
-    setSubmitting(true)
     try {
-      const checklist = await createChecklist({
-        title: form.title,
-        tagsIds: form.tagsIds,
-        options: form.options,
-        items: form.items.map((item) => ({
-          title: item.title,
-          description: item.description,
-          tagsIds: item.tagsIds,
-        })),
-      })
+      const checklist = await createChecklist(values)
+      form.reset(values)
       navigation.replace('checklistDetail', { checklistId: checklist.id })
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Erro ao salvar o checklist',
       )
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -87,24 +82,33 @@ export function ChecklistNew({ navigation }: StackRoutesProps<'checklistNew'>) {
             styles.saveButton,
             pressed && { opacity: 0.7 },
           ]}
-          onPress={handleSubmit}
-          disabled={submitting}
+          onPress={form.handleSubmit(onSubmit)}
+          disabled={form.formState.isSubmitting}
         >
           <Icon name="check" size={18} color={colors.white} />
           <Text style={styles.saveButtonText}>
-            {submitting ? 'Salvando...' : 'Criar checklist'}
+            {form.formState.isSubmitting ? 'Salvando...' : 'Criar checklist'}
           </Text>
         </Pressable>
       }
     >
       <ChecklistFormView
-        form={form}
+        form={checklistForm}
         tagsCatalog={tagsCatalog}
         templates={checklistTemplates}
         selectedTemplateId={selectedTemplateId}
         loadingTemplateId={loadingTemplateId}
         onSelectTemplate={handleSelectTemplate}
         error={error}
+      />
+      <ConfirmBottomSheet
+        visible={unsavedGuard.visible}
+        title="Descartar alterações?"
+        message="Suas alterações não salvas serão perdidas."
+        confirmLabel="Descartar"
+        cancelLabel="Continuar editando"
+        onCancel={unsavedGuard.onCancel}
+        onConfirm={unsavedGuard.onConfirm}
       />
     </Screen>
   )

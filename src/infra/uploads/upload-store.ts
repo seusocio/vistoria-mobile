@@ -53,15 +53,20 @@ async function processJob(job: UploadJob) {
   try {
     let storageId: string | null = null
     let lastError: unknown
+    let lastReportedBucket = 0
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
       try {
         storageId = await uploadImage(
           job.attachment.localUri ?? '',
           job.attachment.mimeType,
-          (fraction) =>
+          (fraction) => {
+            const bucket = Math.round(fraction * 20)
+            if (bucket === lastReportedBucket) return
+            lastReportedBucket = bucket
             useUploadStore.setState((state) => ({
               progress: { ...state.progress, [attachmentId]: fraction },
-            })),
+            }))
+          },
           job.uploadUrl,
         )
         break

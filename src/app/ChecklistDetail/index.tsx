@@ -1,18 +1,19 @@
+import { zodResolver } from '@hookform/resolvers/zod'
 import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { LegendList, type LegendListRenderItemProps } from '@legendapp/list/react-native'
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { Pressable, Text, View } from 'react-native'
-import {
-  AppBottomSheet,
-  ConfirmBottomSheet,
-  Screen,
-  TagMultiSelect,
-} from '@/components'
+import { AppBottomSheet, ConfirmBottomSheet, Form, Screen } from '@/components'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { Icon } from '@/components/Icon'
 import { useApplicationMutations } from '@/hooks/useApplicationMutations'
 import { useChecklistDetail } from '@/hooks/useChecklistDetail'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
+import {
+  BatchTagEditFormValues,
+  batchTagEditSchema,
+} from '@/infra/domain/schemas'
 import {
   buildRepeatedApplication,
   countNegativeAnswers,
@@ -59,9 +60,16 @@ export function ChecklistDetail({
   const [editingGroup, setEditingGroup] = useState<
     (typeof groups)[number] | null
   >(null)
-  const [draftGroupTags, setDraftGroupTags] = useState<string[]>([])
-  const [batchError, setBatchError] = useState<string | null>(null)
-  const [savingBatch, setSavingBatch] = useState(false)
+  const {
+    control,
+    handleSubmit,
+    reset,
+    setError,
+    formState: { isSubmitting, errors },
+  } = useForm<BatchTagEditFormValues>({
+    resolver: zodResolver(batchTagEditSchema),
+    defaultValues: { tagsIds: [] },
+  })
 
   const completedCount = applications.filter(
     (application) => application.status === 'completed',
@@ -92,36 +100,30 @@ export function ChecklistDetail({
 
   const handleOpenBatchEdit = useCallback(
     (group: (typeof groups)[number]) => {
+      reset({ tagsIds: group.tagsIds })
       setEditingGroup(group)
-      setDraftGroupTags(group.tagsIds)
-      setBatchError(null)
     },
-    [],
+    [reset],
   )
 
-  function handleSaveBatchEdit() {
-    if (!editingGroup) return
-    if (draftGroupTags.length === 0) {
-      setBatchError('Selecione ao menos uma tag')
-      return
-    }
-    setSavingBatch(true)
-    setBatchError(null)
+  function handleSaveBatchEdit(values: BatchTagEditFormValues) {
+    if (!editingGroup) return Promise.resolve()
     const updatedAt = new Date().toISOString()
-    void mutations
+    return mutations
       .setTagsForMany({
         applicationIds: editingGroup.applications.map((application) => application.id),
-        tagsIds: draftGroupTags,
+        tagsIds: values.tagsIds,
         updatedAt,
       })
       .then(() => setEditingGroup(null))
-      .catch(() => setBatchError('Não foi possível salvar as tags'))
-      .finally(() => setSavingBatch(false))
+      .catch(() =>
+        setError('root', { message: 'Não foi possível salvar as tags' }),
+      )
   }
   const footerComponent = useSheetFooterActions({
-    confirmLabel: savingBatch ? 'Salvando...' : 'Aplicar às aplicações',
-    onConfirm: handleSaveBatchEdit,
-    confirming: savingBatch,
+    confirmLabel: isSubmitting ? 'Salvando...' : 'Aplicar às aplicações',
+    onConfirm: handleSubmit(handleSaveBatchEdit),
+    confirming: isSubmitting,
   })
 
 
@@ -136,9 +138,7 @@ export function ChecklistDetail({
       if (!checklist || submitted.current || groupApplications.length === 0) return
       submitted.current = true
       const newApplication = buildRepeatedApplication(groupApplications[0], checklist)
-      void mutations
-        .create({ entity: newApplication })
-        .catch(() => setBatchError('Não foi possível repetir a aplicação'))
+      void mutations.create({ entity: newApplication }).catch(() => {})
       navigation.navigate('applicationFill', {
         checklistId,
         applicationId: newApplication.id,
@@ -243,14 +243,16 @@ export function ChecklistDetail({
               <Text style={styles.batchHelpText}>
                 As tags selecionadas serão aplicadas a todas as aplicações deste grupo.
               </Text>
-              <TagMultiSelect
-                selectedIds={draftGroupTags}
+              <Form.TagSelect
+                control={control}
+                name="tagsIds"
                 availableTags={activeTags}
                 allTagsById={tagsById}
-                onChange={setDraftGroupTags}
                 onCreateTag={createTag}
               />
-              {batchError ? <Text style={styles.batchError}>{batchError}</Text> : null}
+              <Form.ErrorText
+                message={errors.tagsIds?.message ?? errors.root?.message}
+              />
             </BottomSheetView>
           </AppBottomSheet>
           <ConfirmBottomSheet

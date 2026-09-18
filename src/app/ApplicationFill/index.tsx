@@ -1,19 +1,19 @@
+import { zodResolver } from '@hookform/resolvers/zod'
 import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useForm } from 'react-hook-form'
 import { Pressable, Text, View } from 'react-native'
 import { ScrollViewContainer } from 'react-native-reorderable-list'
 import {
   AppBottomSheet,
   Badge,
   ConfirmBottomSheet,
-  DatePickerField,
-  Input,
+  Form,
   ItemDrawer,
   PhotoViewer,
   ProgressBar,
   Screen,
   TagChipList,
-  TagMultiSelect,
   VoiceCard,
 } from '@/components'
 import { Icon } from '@/components/Icon'
@@ -28,6 +28,14 @@ import { useAttachPhotos } from '@/hooks/useAttachPhotos'
 import { useReorderablePanGesture } from '@/hooks/useReorderablePanGesture'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
+import {
+  ApplicationItemDraftFormValues,
+  ApplicationMetaFormValues,
+  applicationItemDraftSchema,
+  applicationMetaSchema,
+  NewApplicationItemFormValues,
+  newApplicationItemSchema,
+} from '@/infra/domain/schemas'
 import { generateId } from '@/infra/id'
 import {
   generateSuggestions,
@@ -74,19 +82,21 @@ export function ApplicationFill({
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
   const [generatingSuggestions, setGeneratingSuggestions] = useState(false)
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
-  const [editingItemDraft, setEditingItemDraft] = useState<{
-    note: string
-    tagsIds: string[]
-    quantity: number | null
-  } | null>(null)
+  const itemForm = useForm<ApplicationItemDraftFormValues>({
+    resolver: zodResolver(applicationItemDraftSchema),
+    defaultValues: { note: '', tagsIds: [], quantity: null },
+  })
   const [editingApplication, setEditingApplication] = useState(false)
-  const [draftTagsIds, setDraftTagsIds] = useState<string[]>([])
-  const [draftDate, setDraftDate] = useState('')
+  const metaForm = useForm<ApplicationMetaFormValues>({
+    resolver: zodResolver(applicationMetaSchema),
+    defaultValues: { tagsIds: [], date: '' },
+  })
   const [applicationError, setApplicationError] = useState<string | null>(null)
   const [addingItem, setAddingItem] = useState(false)
-  const [newItemTitle, setNewItemTitle] = useState('')
-  const [newItemTagsIds, setNewItemTagsIds] = useState<string[]>([])
-  const [newItemError, setNewItemError] = useState<string | null>(null)
+  const newItemForm = useForm<NewApplicationItemFormValues>({
+    resolver: zodResolver(newApplicationItemSchema),
+    defaultValues: { title: '', tagsIds: [] },
+  })
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] =
     useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -146,11 +156,15 @@ export function ApplicationFill({
   }
   const renderEditApplicationFooter = useSheetFooterActions({
     confirmLabel: 'Salvar',
-    onConfirm: handleSaveApplication,
+    onConfirm: metaForm.handleSubmit(handleSaveApplication, () =>
+      haptics.error(),
+    ),
   })
   const renderAddItemFooter = useSheetFooterActions({
     confirmLabel: 'Adicionar',
-    onConfirm: handleSaveNewItem,
+    onConfirm: newItemForm.handleSubmit(handleSaveNewItem, () =>
+      haptics.error(),
+    ),
   })
   if (loading || !checklist || !applicationData) {
     return (
@@ -178,19 +192,18 @@ export function ApplicationFill({
   }
 
   function handleAddPhoto(itemId: string) {
-    if (editingItemId === itemId && editingItemDraft) {
+    if (editingItemId === itemId && itemForm.formState.isDirty) {
       const updatedAt = new Date().toISOString()
       void mutations
         .patchItem({
           applicationId: application.id,
           itemId,
-          patch: editingItemDraft,
+          patch: itemForm.getValues(),
           updatedAt,
         })
         .catch(() => setApplicationError('Não foi possível salvar o item'))
     }
     setEditingItemId(null)
-    setEditingItemDraft(null)
     navigation.navigate('photoCapture', { applicationId: application.id, itemId })
   }
 
@@ -366,24 +379,18 @@ export function ApplicationFill({
   }
 
   function handleOpenEditApplication() {
-    setDraftTagsIds(application.tagsIds)
-    setDraftDate(application.date)
+    metaForm.reset({ tagsIds: application.tagsIds, date: application.date })
     setApplicationError(null)
     setEditingApplication(true)
   }
 
-  function handleSaveApplication() {
-    if (draftTagsIds.length === 0) {
-      haptics.error()
-      setApplicationError('Selecione ao menos uma tag')
-      return
-    }
+  function handleSaveApplication(values: ApplicationMetaFormValues) {
     const updatedAt = new Date().toISOString()
     void mutations
       .updateMeta({
         applicationId: application.id,
-        tagsIds: draftTagsIds,
-        date: draftDate,
+        tagsIds: values.tagsIds,
+        date: values.date,
         updatedAt,
       })
       .catch(() => setApplicationError('Não foi possível salvar a aplicação'))
@@ -391,31 +398,24 @@ export function ApplicationFill({
   }
 
   function handleOpenAddItem() {
-    setNewItemTitle('')
-    setNewItemTagsIds([])
-    setNewItemError(null)
+    newItemForm.reset({ title: '', tagsIds: [] })
     setAddingItem(true)
   }
 
-  function handleSaveNewItem() {
-    if (!newItemTitle.trim()) {
-      haptics.error()
-      setNewItemError('Informe um título para o item')
-      return
-    }
+  function handleSaveNewItem(values: NewApplicationItemFormValues) {
     const now = new Date().toISOString()
     const item = {
       id: generateId('aitem_'),
       position: application.items.length,
       checklistItemId: null,
-      title: newItemTitle.trim(),
+      title: values.title,
       description: '',
       answer: '',
       answeredAt: null,
       note: '',
       quantity: null,
       attachments: [],
-      tagsIds: [...newItemTagsIds],
+      tagsIds: [...values.tagsIds],
       suggested: false,
       suggestionSource: null,
       createdAt: now,
@@ -424,13 +424,17 @@ export function ApplicationFill({
     }
     void mutations
       .addItem({ applicationId: application.id, item, updatedAt: now })
-      .catch(() => setNewItemError('Não foi possível adicionar o item'))
+      .catch(() =>
+        newItemForm.setError('root', {
+          message: 'Não foi possível adicionar o item',
+        }),
+      )
     setAddingItem(false)
   }
   function handleOpenItemDrawer(itemId: string) {
     const item = application.items.find((candidate) => candidate.id === itemId)
     if (!item) return
-    setEditingItemDraft({
+    itemForm.reset({
       note: item.note,
       tagsIds: [...item.tagsIds],
       quantity: item.quantity,
@@ -450,11 +454,7 @@ export function ApplicationFill({
     ? editingItemContainer.findIndex((child) => child.id === editingItem?.id)
     : -1
   const editingItemsTotal = editingItemContainer?.length ?? 0
-  const itemDraft = editingItem && editingItemDraft
-    ? editingItemDraft
-    : editingItem
-      ? { note: editingItem.note, tagsIds: editingItem.tagsIds, quantity: editingItem.quantity }
-      : null
+  const itemDraft = editingItem ? itemForm.watch() : null
 
   const viewerAttachments = viewer
     ? (viewer.itemId === null
@@ -645,42 +645,27 @@ export function ApplicationFill({
         ) : null}
       </View>
 
-      {editingItem && (
+      {editingItem && itemDraft && (
         <ItemDrawer
           visible={Boolean(editingItem)}
-          onClose={() => {
-            setEditingItemId(null)
-            setEditingItemDraft(null)
-          }}
+          onClose={() => setEditingItemId(null)}
           itemIndex={editingItemIndex + 1}
           itemsTotal={editingItemsTotal}
           title={editingItem.title}
-          note={itemDraft?.note ?? editingItem.note}
+          note={itemDraft.note}
           onNoteChange={(note) =>
-            setEditingItemDraft((current) => ({
-              note,
-              tagsIds: current?.tagsIds ?? editingItem.tagsIds,
-              quantity: current?.quantity ?? editingItem.quantity,
-            }))
+            itemForm.setValue('note', note, { shouldDirty: true })
           }
-          tagsIds={itemDraft?.tagsIds ?? editingItem.tagsIds}
+          tagsIds={itemDraft.tagsIds}
           availableTags={tagsCatalog.activeTags}
           allTagsById={tagsCatalog.tagsById}
           onChangeTags={(tagsIds) =>
-            setEditingItemDraft((current) => ({
-              note: current?.note ?? editingItem.note,
-              tagsIds,
-              quantity: current?.quantity ?? editingItem.quantity,
-            }))
+            itemForm.setValue('tagsIds', tagsIds, { shouldDirty: true })
           }
           onCreateTag={tagsCatalog.createTag}
-          quantity={itemDraft?.quantity ?? editingItem.quantity}
+          quantity={itemDraft.quantity}
           onQuantityChange={(quantity) =>
-            setEditingItemDraft((current) => ({
-              note: current?.note ?? editingItem.note,
-              tagsIds: current?.tagsIds ?? editingItem.tagsIds,
-              quantity,
-            }))
+            itemForm.setValue('quantity', quantity, { shouldDirty: true })
           }
           attachments={editingItem.attachments}
           uploadProgress={uploadProgress}
@@ -692,20 +677,18 @@ export function ApplicationFill({
             retryItemAttachment(editingItem.id, attachmentId)
           }
           onOpenPhoto={(index) => setViewer({ itemId: editingItem.id, index })}
-          onSave={() => {
-            if (!itemDraft) return
+          onSave={itemForm.handleSubmit((values) => {
             const updatedAt = new Date().toISOString()
             void mutations
               .patchItem({
                 applicationId: application.id,
                 itemId: editingItem.id,
-                patch: itemDraft,
+                patch: values,
                 updatedAt,
               })
               .catch(() => setApplicationError('Não foi possível salvar o item'))
             setEditingItemId(null)
-            setEditingItemDraft(null)
-          }}
+          })}
         />
       )}
 
@@ -730,18 +713,21 @@ export function ApplicationFill({
         <BottomSheetView style={styles.sheetContent}>
           <View style={styles.modalField}>
             <Text style={styles.modalFieldLabel}>Tags da aplicação</Text>
-            <TagMultiSelect
-              selectedIds={draftTagsIds}
+            <Form.TagSelect
+              control={metaForm.control}
+              name="tagsIds"
               availableTags={tagsCatalog.activeTags}
               allTagsById={tagsCatalog.tagsById}
-              onChange={setDraftTagsIds}
               onCreateTag={tagsCatalog.createTag}
+            />
+            <Form.ErrorText
+              message={metaForm.formState.errors.tagsIds?.message}
             />
           </View>
 
           <View style={styles.modalField}>
             <Text style={styles.modalFieldLabel}>Data da visita</Text>
-            <DatePickerField value={draftDate} onChange={setDraftDate} />
+            <Form.DateField control={metaForm.control} name="date" />
           </View>
 
           {applicationError ? (
@@ -759,27 +745,27 @@ export function ApplicationFill({
         <BottomSheetView style={styles.sheetContent}>
           <View style={styles.modalField}>
             <Text style={styles.modalFieldLabel}>Título do item</Text>
-            <Input
+            <Form.TextField
+              control={newItemForm.control}
+              name="title"
               placeholder="Ex.: Base de shaft 5"
-              value={newItemTitle}
-              onChangeValue={(value) => setNewItemTitle(String(value))}
             />
           </View>
 
           <View style={styles.modalField}>
             <Text style={styles.modalFieldLabel}>Tags do item</Text>
-            <TagMultiSelect
-              selectedIds={newItemTagsIds}
+            <Form.TagSelect
+              control={newItemForm.control}
+              name="tagsIds"
               availableTags={tagsCatalog.activeTags}
               allTagsById={tagsCatalog.tagsById}
-              onChange={setNewItemTagsIds}
               onCreateTag={tagsCatalog.createTag}
             />
           </View>
 
-          {newItemError ? (
-            <Text style={styles.modalError}>{newItemError}</Text>
-          ) : null}
+          <Form.ErrorText
+            message={newItemForm.formState.errors.root?.message}
+          />
         </BottomSheetView>
       </AppBottomSheet>
       <ConfirmBottomSheet

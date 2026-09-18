@@ -1,6 +1,6 @@
 import { CameraView, useCameraPermissions, type CameraType, type FlashMode } from 'expo-camera'
 import { useQuery } from 'convex-helpers/react/cache'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Linking, Pressable, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ConfirmBottomSheet, PhotoGalleryRow, PhotoViewer } from '@/components'
@@ -53,12 +53,16 @@ export function PhotoCapture({ navigation, route }: StackRoutesProps<'photoCaptu
     | Application
     | null
     | undefined
-  const application = rawApplication ? normalizeApplication(rawApplication) : null
+  const application = useMemo(
+    () => (rawApplication ? normalizeApplication(rawApplication) : null),
+    [rawApplication],
+  )
 
   const cameraRef = useRef<CameraView>(null)
   const cancelledRef = useRef<Set<string>>(new Set())
+  const captureChainRef = useRef<Promise<void>>(Promise.resolve())
+  const sessionOffsetRef = useRef(0)
   const [ready, setReady] = useState(false)
-  const [capturing, setCapturing] = useState(false)
   const [facing, setFacing] = useState<CameraType>('back')
   const [flash, setFlash] = useState<FlashMode>('off')
   const [availableLenses, setAvailableLenses] = useState<string[]>([])
@@ -94,42 +98,57 @@ export function PhotoCapture({ navigation, route }: StackRoutesProps<'photoCaptu
     return source.find((attachment) => attachment.id === id) ?? null
   }
 
-  async function handleShutter() {
-    if (!ready || !cameraRef.current || capturing) return
-    setCapturing(true)
-    haptics.impact()
-    try {
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-        skipProcessing: true,
-        exif: false,
-      })
-      if (!photo) return
+  function nextPosition(): number {
+    const position = activeCount() + sessionOffsetRef.current
+    sessionOffsetRef.current += 1
+    return position
+  }
 
-      const attachmentId = beginAttachment()
-      const position = activeCount() + strip.length
-      setStrip((current) => [...current, { id: attachmentId, uri: photo.uri, failed: false }])
-      void commitAsset({
-        attachmentId,
-        applicationId,
-        itemId,
-        uri: photo.uri,
-        width: photo.width,
-        height: photo.height,
-        position,
-        isCancelled: () => cancelledRef.current.has(attachmentId),
-      }).catch(() => markFailed(attachmentId))
-    } finally {
-      setCapturing(false)
-    }
+  /**
+   * The shutter must never look/feel disabled while a previous shot is still
+   * being captured — each tap enqueues a takePictureAsync call onto a chain
+   * so native captures still run one at a time (required by the camera
+   * hardware), while the button itself stays instantly tappable.
+   */
+  function handleShutter() {
+    if (!ready || !cameraRef.current) return
+    haptics.impact()
+    const attachmentId = beginAttachment()
+    const position = nextPosition()
+
+    captureChainRef.current = captureChainRef.current.then(async () => {
+      if (!cameraRef.current) return
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          skipProcessing: true,
+          exif: false,
+        })
+        if (!photo) return
+
+        setStrip((current) => [...current, { id: attachmentId, uri: photo.uri, failed: false }])
+        void commitAsset({
+          attachmentId,
+          applicationId,
+          itemId,
+          uri: photo.uri,
+          width: photo.width,
+          height: photo.height,
+          position,
+          isCancelled: () => cancelledRef.current.has(attachmentId),
+        }).catch(() => markFailed(attachmentId))
+      } catch {
+        // Nothing was added to the strip yet, so there's nothing to mark failed.
+      }
+    })
   }
 
   async function handlePickLibrary() {
     const assets = await pickPhotos('library')
     if (assets.length === 0) return
-    assets.forEach((asset, offset) => {
+    assets.forEach((asset) => {
       const attachmentId = beginAttachment()
-      const position = activeCount() + strip.length + offset
+      const position = nextPosition()
       setStrip((current) => [...current, { id: attachmentId, uri: asset.uri, failed: false }])
       void commitAsset({
         attachmentId,
@@ -315,9 +334,9 @@ export function PhotoCapture({ navigation, route }: StackRoutesProps<'photoCaptu
           </Pressable>
 
           <Pressable
-            style={[styles.shutterOuter, (!ready || capturing) && styles.shutterOuterDisabled]}
-            onPress={() => void handleShutter()}
-            disabled={!ready || capturing}
+            style={[styles.shutterOuter, !ready && styles.shutterOuterDisabled]}
+            onPress={handleShutter}
+            disabled={!ready}
             accessibilityLabel="Tirar foto"
           >
             <View style={styles.shutterInner} />

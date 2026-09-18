@@ -5,6 +5,11 @@ import {
   Checklist,
 } from '@/infra/domain/entities'
 import { ApplicationRepository } from '@/infra/domain/repositories'
+import {
+  applicationMetaSchema,
+  newApplicationItemSchema,
+  parseOrThrow,
+} from '@/infra/domain/schemas'
 import { generateId } from '@/infra/id'
 import { applicationRepository } from '@/infra/storage'
 
@@ -42,12 +47,10 @@ export function buildApplication(
   input: CreateApplicationInput,
   checklist: Checklist,
 ): Application {
-  if (input.tagsIds.length === 0) {
-    throw new Error('Selecione ao menos uma tag para a aplicação')
-  }
-  if (!input.date) {
-    throw new Error('Data da visita é obrigatória')
-  }
+  parseOrThrow(applicationMetaSchema, {
+    tagsIds: input.tagsIds,
+    date: input.date,
+  })
 
   const now = new Date().toISOString()
   return {
@@ -239,10 +242,10 @@ export async function addApplicationItem(
   input: AddApplicationItemInput,
   repo: ApplicationRepository = applicationRepository,
 ): Promise<Application> {
-  const title = input.title.trim()
-  if (!title) {
-    throw new Error('Título do item é obrigatório')
-  }
+  const { title } = parseOrThrow(newApplicationItemSchema, {
+    title: input.title,
+    tagsIds: input.tagsIds ?? [],
+  })
   const now = new Date().toISOString()
   const item: ApplicationItem = {
     id: generateId('aitem_'),

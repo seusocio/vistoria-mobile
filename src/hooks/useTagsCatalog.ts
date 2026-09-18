@@ -2,6 +2,7 @@ import { useMutation } from 'convex/react'
 import { useQuery } from 'convex-helpers/react/cache'
 import { useCallback, useMemo } from 'react'
 import { Tag, normalizeTagLabel } from '@/infra/domain/entities'
+import { tagLabelSchema } from '@/infra/domain/schemas'
 import { generateId } from '@/infra/id'
 import { resolveTagLabels } from '@/infra/services'
 import { api } from '../../convex/_generated/api'
@@ -34,8 +35,11 @@ export function useTagsCatalog() {
 
   const createTag = useCallback(
     (label: string) => {
-      const trimmed = label.trim()
-      if (!trimmed) return Promise.reject(new Error('Nome da tag não pode ser vazio'))
+      const result = tagLabelSchema.safeParse(label)
+      if (!result.success) {
+        return Promise.reject(new Error(result.error.issues[0]?.message))
+      }
+      const trimmed = result.data
       const now = new Date().toISOString()
       return createTagMutation({
         entity: {

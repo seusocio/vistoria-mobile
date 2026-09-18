@@ -20,10 +20,6 @@ export const styles = StyleSheet.create({
     ...textStyles.metaLabel,
     flex: 1,
   },
-  error: {
-    ...textStyles.body,
-    color: colors.danger.base,
-  },
   startButton: {
     flexDirection: 'row',
     alignItems: 'center',
