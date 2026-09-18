@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { BottomSheetView } from '@gorhom/bottom-sheet'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Pressable, Text, View } from 'react-native'
 import { ScrollViewContainer } from 'react-native-reorderable-list'
@@ -36,6 +36,11 @@ import {
   NewApplicationItemFormValues,
   newApplicationItemSchema,
 } from '@/infra/domain/schemas'
+import type { ApplicationItem } from '@/infra/domain/entities'
+import {
+  applyPendingAnswers,
+  useLocalAnswersStore,
+} from '@/infra/applications/local-answers-store'
 import { generateId } from '@/infra/id'
 import {
   generateSuggestions,
@@ -66,9 +71,18 @@ export function ApplicationFill({
   route,
 }: StackRoutesProps<'applicationFill'>) {
   const { checklistId, applicationId } = route.params
-  const { checklist, application: applicationData, loading } = useApplicationFill(
+  const { checklist, application: serverApplication, loading } = useApplicationFill(
     checklistId,
     applicationId,
+  )
+  // Answers are held locally and synced in batches, so a tap never waits on
+  // Convex (not even its optimistic-update pass). See local-answers-store.
+  const pendingAnswers = useLocalAnswersStore((state) => state.pending[applicationId])
+  const answerSyncError = useLocalAnswersStore((state) => state.error[applicationId])
+  const applicationData = useMemo(
+    () =>
+      serverApplication ? applyPendingAnswers(serverApplication, pendingAnswers) : null,
+    [serverApplication, pendingAnswers],
   )
   const mutations = useApplicationMutations()
   const { removeAttachment: removeAttachmentPipeline } = useAttachPhotos()
@@ -116,44 +130,133 @@ export function ApplicationFill({
     // the actual transcription attempt.
     if (FEATURE_FLAG.voice) void prepareTranscriber()
   }, [])
+  useEffect(() => {
+    // Retire pending answers only once the server data actually carries them,
+    // so the overlay never lifts onto stale values mid-sync.
+    if (serverApplication) {
+      useLocalAnswersStore.getState().reconcile(applicationId, serverApplication)
+    }
+  }, [applicationId, serverApplication])
+  useEffect(() => {
+    // Leaving by any route (back button, swipe, hardware back) syncs whatever
+    // is still batched instead of waiting out the debounce.
+    return () => {
+      void useLocalAnswersStore.getState().flush(applicationId)
+    }
+  }, [applicationId])
 
   const panGesture = useReorderablePanGesture()
   const progress = useMemo(
     () => (applicationData ? getProgress(applicationData) : { answered: 0, total: 0 }),
     [applicationData],
   )
-  const groups = useMemo(() => {
-    if (!applicationData || !checklist) return []
-    const sortedAllItems = sortItemsByChecklistOrder(applicationData.items, checklist)
-    return groupItemsByTitlePrefix(sortedAllItems).map((group) => ({
-      key: group.label ?? 'ungrouped',
-      title: group.label ?? 'Outros itens',
-      total: group.children.length,
-      answered: group.children.filter((item) => isItemAnswerComplete(item, checklist))
-        .length,
-      // completed items move to the "Concluídos" section below instead of
-      // sinking within this list, so answering something never reshuffles
-      // the drag-reorderable list the user is currently looking at.
-      children: group.children.filter((item) => !isItemAnswerComplete(item, checklist)),
-    }))
-  }, [applicationData, checklist])
-  const completedItems = useMemo(() => {
-    if (!applicationData || !checklist) return []
-    return sortItemsByChecklistOrder(applicationData.items, checklist).filter((item) =>
-      isItemAnswerComplete(item, checklist),
-    )
-  }, [applicationData, checklist])
+  // One sort and one completeness pass feed both lists below, instead of each
+  // re-sorting every item and re-deriving completeness on every answer tap.
+  const sortedItems = useMemo(
+    () =>
+      applicationData && checklist
+        ? sortItemsByChecklistOrder(applicationData.items, checklist)
+        : [],
+    [applicationData, checklist],
+  )
+  const completedIds = useMemo(() => {
+    if (!checklist) return new Set<string>()
+    const ids = new Set<string>()
+    for (const item of sortedItems) {
+      if (isItemAnswerComplete(item, checklist)) ids.add(item.id)
+    }
+    return ids
+  }, [sortedItems, checklist])
+  const groups = useMemo(
+    () =>
+      groupItemsByTitlePrefix(sortedItems).map((group) => ({
+        key: group.label ?? 'ungrouped',
+        title: group.label ?? 'Outros itens',
+        total: group.children.length,
+        answered: group.children.reduce(
+          (count, item) => (completedIds.has(item.id) ? count + 1 : count),
+          0,
+        ),
+        // completed items move to the "Concluídos" section below instead of
+        // sinking within this list, so answering something never reshuffles
+        // the drag-reorderable list the user is currently looking at.
+        children: group.children.filter((item) => !completedIds.has(item.id)),
+      })),
+    [sortedItems, completedIds],
+  )
+  const completedItems = useMemo(
+    () => sortedItems.filter((item) => completedIds.has(item.id)),
+    [sortedItems, completedIds],
+  )
   const derivedState = applicationData
     ? getDerivedState(applicationData)
     : 'not_started'
-  function toggleGroup(groupKey: string) {
+  // Every prop handed to the memoized sections/rows below is stabilized here,
+  // otherwise their memo() never holds and one tap re-renders every row.
+  const toggleGroup = useCallback((groupKey: string) => {
     setExpandedGroupIds((current) => {
       const next = new Set(current)
       if (next.has(groupKey)) next.delete(groupKey)
       else next.add(groupKey)
       return next
     })
-  }
+  }, [])
+  const resolveTagLabels = tagsCatalog.resolveLabels
+  const resolveTagLabel = useCallback(
+    (item: ApplicationItem) => resolveTagLabels(item.tagsIds)[0],
+    [resolveTagLabels],
+  )
+  const handleAnswerChange = useCallback(
+    (itemId: string, answer: string) => {
+      useLocalAnswersStore.getState().setAnswer(applicationId, itemId, answer)
+    },
+    [applicationId],
+  )
+  const handleOpenItemDrawer = useCallback(
+    (itemId: string) => {
+      const item = applicationData?.items.find((candidate) => candidate.id === itemId)
+      if (!item) return
+      itemForm.reset({
+        note: item.note,
+        tagsIds: [...item.tagsIds],
+        quantity: item.quantity,
+      })
+      setEditingItemId(itemId)
+    },
+    [applicationData, itemForm],
+  )
+  const patchItem = mutations.patchItem
+  const handleAcceptSuggestion = useCallback(
+    (itemId: string) => {
+      if (!FEATURE_FLAG.suggestion || !applicationData) return
+      const updatedAt = new Date().toISOString()
+      void patchItem({
+        applicationId: applicationData.id,
+        itemId,
+        patch: { suggested: false, suggestionSource: null },
+        updatedAt,
+      }).catch(() => setApplicationError('Não foi possível aceitar a sugestão'))
+    },
+    [applicationData, patchItem],
+  )
+  const handleRejectSuggestion = useCallback(
+    (itemId: string) => {
+      if (!FEATURE_FLAG.suggestion || !applicationData) return
+      const updatedAt = new Date().toISOString()
+      void patchItem({
+        applicationId: applicationData.id,
+        itemId,
+        patch: {
+          suggested: false,
+          suggestionSource: null,
+          answer: '',
+          note: '',
+        },
+        updatedAt,
+      }).catch(() => setApplicationError('Não foi possível rejeitar a sugestão'))
+    },
+    [applicationData, patchItem],
+  )
   const renderEditApplicationFooter = useSheetFooterActions({
     confirmLabel: 'Salvar',
     onConfirm: metaForm.handleSubmit(handleSaveApplication, () =>
@@ -179,18 +282,6 @@ export function ApplicationFill({
     )
   }
   const application = applicationData
-  function handleAnswerChange(itemId: string, answer: string) {
-    const updatedAt = new Date().toISOString()
-    void mutations
-      .patchItem({
-        applicationId: application.id,
-        itemId,
-        patch: { answer, suggested: false, suggestionSource: null },
-        updatedAt,
-      })
-      .catch(() => setApplicationError('Não foi possível salvar a resposta'))
-  }
-
   function handleAddPhoto(itemId: string) {
     if (editingItemId === itemId && itemForm.formState.isDirty) {
       const updatedAt = new Date().toISOString()
@@ -317,40 +408,10 @@ export function ApplicationFill({
     }
   }
 
-  function handleAcceptSuggestion(itemId: string) {
-    if (!FEATURE_FLAG.suggestion) return
-    const updatedAt = new Date().toISOString()
-    void mutations
-      .patchItem({
-        applicationId: application.id,
-        itemId,
-        patch: { suggested: false, suggestionSource: null },
-        updatedAt,
-      })
-      .catch(() => setApplicationError('Não foi possível aceitar a sugestão'))
-  }
-
-  function handleRejectSuggestion(itemId: string) {
-    if (!FEATURE_FLAG.suggestion) return
-    const updatedAt = new Date().toISOString()
-    void mutations
-      .patchItem({
-        applicationId: application.id,
-        itemId,
-        patch: {
-          suggested: false,
-          suggestionSource: null,
-          answer: '',
-          note: '',
-        },
-        updatedAt,
-      })
-      .catch(() => setApplicationError('Não foi possível rejeitar a sugestão'))
-  }
-
   function handleComplete() {
     if (submitted.current) return
     submitted.current = true
+    void useLocalAnswersStore.getState().flush(application.id)
     const updatedAt = new Date().toISOString()
     void mutations
       .updateMeta({
@@ -431,17 +492,6 @@ export function ApplicationFill({
       )
     setAddingItem(false)
   }
-  function handleOpenItemDrawer(itemId: string) {
-    const item = application.items.find((candidate) => candidate.id === itemId)
-    if (!item) return
-    itemForm.reset({
-      note: item.note,
-      tagsIds: [...item.tagsIds],
-      quantity: item.quantity,
-    })
-    setEditingItemId(itemId)
-  }
-
   const editingItem = editingItemId
     ? application.items.find((item) => item.id === editingItemId)
     : null
@@ -532,8 +582,8 @@ export function ApplicationFill({
           {progress.answered}/{progress.total} respondidos ·{' '}
           {DERIVED_STATE_LABEL[derivedState]}
         </Text>
-        {applicationError ? (
-          <Text style={styles.modalError}>{applicationError}</Text>
+        {applicationError ?? answerSyncError ? (
+          <Text style={styles.modalError}>{applicationError ?? answerSyncError}</Text>
         ) : null}
         <ProgressBar
           progress={progress.total > 0 ? progress.answered / progress.total : 0}
@@ -613,10 +663,11 @@ export function ApplicationFill({
             answered={group.answered}
             checklist={checklist}
             expanded={expandedGroupIds.has(group.key)}
-            onToggle={() => toggleGroup(group.key)}
+            groupKey={group.key}
+            onToggle={toggleGroup}
             suggestionEnabled={FEATURE_FLAG.suggestion}
             panGesture={panGesture}
-            resolveTagLabel={(item) => tagsCatalog.resolveLabels(item.tagsIds)[0]}
+            resolveTagLabel={resolveTagLabel}
             onAnswerChange={handleAnswerChange}
             onOpenDrawer={handleOpenItemDrawer}
             onAcceptSuggestion={handleAcceptSuggestion}
@@ -632,10 +683,11 @@ export function ApplicationFill({
             answered={completedItems.length}
             checklist={checklist}
             expanded={expandedGroupIds.has('completed')}
-            onToggle={() => toggleGroup('completed')}
+            groupKey="completed"
+            onToggle={toggleGroup}
             suggestionEnabled={FEATURE_FLAG.suggestion}
             panGesture={panGesture}
-            resolveTagLabel={(item) => tagsCatalog.resolveLabels(item.tagsIds)[0]}
+            resolveTagLabel={resolveTagLabel}
             onAnswerChange={handleAnswerChange}
             onOpenDrawer={handleOpenItemDrawer}
             onAcceptSuggestion={handleAcceptSuggestion}

@@ -513,12 +513,24 @@ export function getDerivedState(
   return answered === 0 ? 'not_started' : 'in_progress'
 }
 
+/**
+ * Keyed on the checklist object, so a new query result rebuilds the set and a
+ * stale one can never be served. isItemAnswerComplete runs once per item per
+ * render pass on the fill screen - building this set on every call showed up
+ * as hundreds of throwaway Sets per answer tap.
+ */
+const positiveAnswerLabelsCache = new WeakMap<Checklist, Set<string>>()
+
 function positiveAnswerLabels(checklist: Checklist): Set<string> {
-  return new Set(
+  const cached = positiveAnswerLabelsCache.get(checklist)
+  if (cached) return cached
+  const labels = new Set(
     checklist.options
       .filter((option) => option.semantic === 'positivo')
       .map((option) => option.label),
   )
+  positiveAnswerLabelsCache.set(checklist, labels)
+  return labels
 }
 
 export function isItemAnswerComplete(

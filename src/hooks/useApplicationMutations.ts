@@ -1,5 +1,7 @@
-import { useMutation } from 'convex/react'
-import type { OptimisticLocalStore } from 'convex/browser'
+import { useMutation, type ReactMutation } from 'convex/react'
+import type { OptimisticLocalStore, OptimisticUpdate } from 'convex/browser'
+import type { FunctionArgs, FunctionReference } from 'convex/server'
+import { useMemo, useRef } from 'react'
 import type { Application, Attachment } from '@/infra/domain/entities'
 import {
   applyApplicationItemPatch,
@@ -175,11 +177,32 @@ function seedApplicationEverywhere(
   }
 }
 
+/**
+ * `useMutation(...)` is stable but `.withOptimisticUpdate(...)` returns a fresh
+ * function on every call, so calling it during render hands consumers a new
+ * mutation each time — which breaks any useCallback/memo built on top of it.
+ * Bind the update once and read the latest closure through a ref instead.
+ */
+function useOptimisticMutation<Mutation extends FunctionReference<'mutation'>>(
+  mutation: Mutation,
+  update: OptimisticUpdate<FunctionArgs<Mutation>>,
+): ReactMutation<Mutation> {
+  const base = useMutation(mutation)
+  const updateRef = useRef(update)
+  updateRef.current = update
+  return useMemo(
+    () => base.withOptimisticUpdate((store, args) => updateRef.current(store, args)),
+    [base],
+  )
+}
+
 export function useApplicationMutations() {
-  const create = useMutation(api.applications.create).withOptimisticUpdate(
+  const create = useOptimisticMutation(
+    api.applications.create,
     (store, { entity }) => seedApplicationEverywhere(store, entity as Application),
   )
-  const patchItem = useMutation(api.applications.patchItem).withOptimisticUpdate(
+  const patchItem = useOptimisticMutation(
+    api.applications.patchItem,
     (store, { applicationId, itemId, patch, updatedAt }) =>
       patchAppEverywhere(store, applicationId, (application) =>
         applyApplicationItemPatch(
@@ -190,7 +213,8 @@ export function useApplicationMutations() {
         ),
       ),
   )
-  const patchItems = useMutation(api.applications.patchItems).withOptimisticUpdate(
+  const patchItems = useOptimisticMutation(
+    api.applications.patchItems,
     (store, { applicationId, patches, updatedAt }) =>
       patchAppEverywhere(store, applicationId, (application) =>
         patches.reduce(
@@ -205,7 +229,8 @@ export function useApplicationMutations() {
         ),
       ),
   )
-  const addItem = useMutation(api.applications.addItem).withOptimisticUpdate(
+  const addItem = useOptimisticMutation(
+    api.applications.addItem,
     (store, { applicationId, item, updatedAt }) =>
       patchAppEverywhere(store, applicationId, (application) => ({
         ...application,
@@ -213,7 +238,8 @@ export function useApplicationMutations() {
         updatedAt,
       })),
   )
-  const addAttachment = useMutation(api.applications.addAttachment).withOptimisticUpdate(
+  const addAttachment = useOptimisticMutation(
+    api.applications.addAttachment,
     (store, { applicationId, itemId, attachment, updatedAt }) =>
       patchAppEverywhere(store, applicationId, (application) =>
         addAttachmentToApplication(
@@ -224,38 +250,40 @@ export function useApplicationMutations() {
         ),
       ),
   )
-  const setAttachmentUploaded = useMutation(
+  const setAttachmentUploaded = useOptimisticMutation(
     api.applications.setAttachmentUploaded,
-  ).withOptimisticUpdate((store, { applicationId, attachmentId, storageId, updatedAt }) =>
-    patchAppEverywhere(store, applicationId, (application) =>
-      updateAttachment(
-        application,
-        attachmentId,
-        (attachment) => ({
-          ...attachment,
-          storageId,
-          uploadStatus: 'uploaded',
-        }),
-        updatedAt,
+    (store, { applicationId, attachmentId, storageId, updatedAt }) =>
+      patchAppEverywhere(store, applicationId, (application) =>
+        updateAttachment(
+          application,
+          attachmentId,
+          (attachment) => ({
+            ...attachment,
+            storageId,
+            uploadStatus: 'uploaded',
+          }),
+          updatedAt,
+        ),
       ),
-    ),
   )
-  const setAttachmentDeletedAt = useMutation(
+  const setAttachmentDeletedAt = useOptimisticMutation(
     api.applications.setAttachmentDeletedAt,
-  ).withOptimisticUpdate((store, { applicationId, itemId, attachmentId, deletedAt, updatedAt }) =>
-    patchAppEverywhere(store, applicationId, (application) =>
-      itemId === null
-        ? updateAttachment(application, attachmentId, (attachment) => ({ ...attachment, deletedAt }), updatedAt)
-        : updateItemAttachment(application, itemId, attachmentId, (attachment) => ({ ...attachment, deletedAt }), updatedAt),
-    ),
+    (store, { applicationId, itemId, attachmentId, deletedAt, updatedAt }) =>
+      patchAppEverywhere(store, applicationId, (application) =>
+        itemId === null
+          ? updateAttachment(application, attachmentId, (attachment) => ({ ...attachment, deletedAt }), updatedAt)
+          : updateItemAttachment(application, itemId, attachmentId, (attachment) => ({ ...attachment, deletedAt }), updatedAt),
+      ),
   )
-  const purgeAttachment = useMutation(api.applications.purgeAttachment).withOptimisticUpdate(
+  const purgeAttachment = useOptimisticMutation(
+    api.applications.purgeAttachment,
     (store, { applicationId, itemId, attachmentId }) =>
       patchAppEverywhere(store, applicationId, (application) =>
         removeAttachmentFromApplication(application, itemId, attachmentId),
       ),
   )
-  const updateMeta = useMutation(api.applications.updateMeta).withOptimisticUpdate(
+  const updateMeta = useOptimisticMutation(
+    api.applications.updateMeta,
     (store, { applicationId, updatedAt, ...meta }) =>
       patchAppEverywhere(store, applicationId, (application) => ({
         ...application,
@@ -263,7 +291,8 @@ export function useApplicationMutations() {
         updatedAt,
       })),
   )
-  const setTagsForMany = useMutation(api.applications.setTagsForMany).withOptimisticUpdate(
+  const setTagsForMany = useOptimisticMutation(
+    api.applications.setTagsForMany,
     (store, { applicationIds, tagsIds, updatedAt }) => {
       for (const applicationId of applicationIds) {
         patchAppEverywhere(store, applicationId, (application) => ({
@@ -274,25 +303,41 @@ export function useApplicationMutations() {
       }
     },
   )
-  const softDelete = useMutation(api.applications.softDelete).withOptimisticUpdate(
+  const softDelete = useOptimisticMutation(
+    api.applications.softDelete,
     (store, { id, deletedAt }) =>
       patchAppEverywhere(store, id, (application) => ({ ...application, deletedAt })),
   )
 
-  return {
-    create,
-    patchItem,
-    patchItems,
-    addItem,
-    addAttachment,
-    setAttachmentUploaded,
-    setAttachmentDeletedAt,
-    purgeAttachment,
-    updateMeta,
-    setTagsForMany,
-    softDelete,
-    createAttachment,
-  }
+  return useMemo(
+    () => ({
+      create,
+      patchItem,
+      patchItems,
+      addItem,
+      addAttachment,
+      setAttachmentUploaded,
+      setAttachmentDeletedAt,
+      purgeAttachment,
+      updateMeta,
+      setTagsForMany,
+      softDelete,
+      createAttachment,
+    }),
+    [
+      create,
+      patchItem,
+      patchItems,
+      addItem,
+      addAttachment,
+      setAttachmentUploaded,
+      setAttachmentDeletedAt,
+      purgeAttachment,
+      updateMeta,
+      setTagsForMany,
+      softDelete,
+    ],
+  )
 }
 
 export type { AttachmentInput }
