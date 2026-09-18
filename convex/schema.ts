@@ -1,68 +1,6 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
-
-const responseOption = v.object({
-  label: v.string(),
-  semantic: v.union(
-    v.literal('positivo'),
-    v.literal('negativo'),
-    v.literal('neutro'),
-  ),
-})
-
-const attachment = v.object({
-  id: v.string(),
-  name: v.string(),
-  position: v.number(),
-  createdAt: v.string(),
-  deletedAt: v.union(v.string(), v.null()),
-  storageId: v.optional(v.string()),
-  localUri: v.optional(v.string()),
-  uploadStatus: v.optional(
-    v.union(v.literal('pending'), v.literal('uploaded'), v.literal('failed')),
-  ),
-  mimeType: v.optional(v.string()),
-  width: v.optional(v.number()),
-  height: v.optional(v.number()),
-})
-
-const checklistItem = v.object({
-  id: v.string(),
-  position: v.number(),
-  title: v.string(),
-  description: v.string(),
-  tagsIds: v.array(v.string()),
-  /** id of the group/section header item this belongs to; null for top-level items (including the headers themselves) */
-  parentId: v.optional(v.union(v.string(), v.null())),
-  createdAt: v.string(),
-  updatedAt: v.string(),
-  deletedAt: v.union(v.string(), v.null()),
-})
-
-const applicationItem = v.object({
-  id: v.string(),
-  position: v.number(),
-  checklistItemId: v.optional(v.union(v.string(), v.null())),
-  /** id of the group/section header item this belongs to; null for top-level items (including the headers themselves) */
-  parentId: v.optional(v.union(v.string(), v.null())),
-  title: v.string(),
-  description: v.string(),
-  answer: v.string(),
-  answeredAt: v.union(v.string(), v.null()),
-  note: v.string(),
-  quantity: v.union(v.number(), v.null()),
-  attachments: v.array(attachment),
-  tagsIds: v.array(v.string()),
-  suggested: v.boolean(),
-  suggestionSource: v.union(
-    v.literal('transcript'),
-    v.literal('previous_application'),
-    v.null(),
-  ),
-  createdAt: v.string(),
-  updatedAt: v.string(),
-  deletedAt: v.union(v.string(), v.null()),
-})
+import { applicationItem, attachment, checklistItem, responseOption } from './validators'
 
 export default defineSchema({
   tags: defineTable({
@@ -74,7 +12,8 @@ export default defineSchema({
     deletedAt: v.union(v.string(), v.null()),
   })
     .index('by_external_id', ['id'])
-    .index('by_normalized_label', ['normalizedLabel']),
+    .index('by_normalized_label', ['normalizedLabel'])
+    .index('by_deleted_at', ['deletedAt']),
   checklists: defineTable({
     id: v.string(),
     title: v.string(),
@@ -85,7 +24,9 @@ export default defineSchema({
     createdAt: v.string(),
     updatedAt: v.string(),
     deletedAt: v.union(v.string(), v.null()),
-  }).index('by_external_id', ['id']),
+  })
+    .index('by_external_id', ['id'])
+    .index('by_deleted_at', ['deletedAt']),
   applications: defineTable({
     id: v.string(),
     checklistId: v.string(),
@@ -102,5 +43,6 @@ export default defineSchema({
     deletedAt: v.union(v.string(), v.null()),
   })
     .index('by_external_id', ['id'])
-    .index('by_checklist_id', ['checklistId']),
+    .index('by_checklist_id_and_deleted_at', ['checklistId', 'deletedAt'])
+    .index('by_deleted_at', ['deletedAt']),
 })

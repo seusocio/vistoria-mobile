@@ -1,6 +1,12 @@
 import { v } from 'convex/values'
 import type { Doc, Id } from './_generated/dataModel'
 import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/server'
+import {
+  applicationDoc,
+  applicationItem,
+  applicationItemPatch,
+  attachment as attachmentValidator,
+} from './validators'
 
 type ApplicationDocument = Doc<'applications'>
 type PersistedAttachment = ApplicationDocument['attachments'][number]
@@ -53,8 +59,9 @@ export const listByChecklistId = query({
   handler: async (ctx, { checklistId }) =>
     ctx.db
       .query('applications')
-      .withIndex('by_checklist_id', (q) => q.eq('checklistId', checklistId))
-      .filter((q) => q.eq(q.field('deletedAt'), null))
+      .withIndex('by_checklist_id_and_deleted_at', (q) =>
+        q.eq('checklistId', checklistId).eq('deletedAt', null),
+      )
       .collect(),
 })
 
@@ -63,7 +70,7 @@ export const listAll = query({
   handler: async (ctx) =>
     ctx.db
       .query('applications')
-      .filter((q) => q.eq(q.field('deletedAt'), null))
+      .withIndex('by_deleted_at', (q) => q.eq('deletedAt', null))
       .collect(),
 })
 
@@ -81,7 +88,7 @@ export const findById = query({
 })
 
 export const create = mutation({
-  args: { entity: v.any() },
+  args: { entity: applicationDoc },
   handler: async (ctx, { entity }) => {
     const existing = await getApp(ctx, entity.id)
     if (!existing) await ctx.db.insert('applications', entity)
@@ -93,7 +100,7 @@ export const patchItem = mutation({
   args: {
     applicationId: v.string(),
     itemId: v.string(),
-    patch: v.any(),
+    patch: applicationItemPatch,
     updatedAt: v.string(),
   },
   handler: async (ctx, { applicationId, itemId, patch, updatedAt }) => {
@@ -108,7 +115,7 @@ export const patchItem = mutation({
       }
       return next
     })
-    await ctx.db.patch(application._id, { items, updatedAt })
+    await ctx.db.patch('applications', application._id, { items, updatedAt })
     return null
   },
 })
@@ -116,7 +123,7 @@ export const patchItem = mutation({
 export const patchItems = mutation({
   args: {
     applicationId: v.string(),
-    patches: v.array(v.object({ itemId: v.string(), patch: v.any() })),
+    patches: v.array(v.object({ itemId: v.string(), patch: applicationItemPatch })),
     updatedAt: v.string(),
   },
   handler: async (ctx, { applicationId, patches, updatedAt }) => {
@@ -133,7 +140,7 @@ export const patchItems = mutation({
       }
       return next
     })
-    await ctx.db.patch(application._id, { items, updatedAt })
+    await ctx.db.patch('applications', application._id, { items, updatedAt })
     return null
   },
 })
@@ -141,13 +148,13 @@ export const patchItems = mutation({
 export const addItem = mutation({
   args: {
     applicationId: v.string(),
-    item: v.any(),
+    item: applicationItem,
     updatedAt: v.string(),
   },
   handler: async (ctx, { applicationId, item, updatedAt }) => {
     const application = await getApp(ctx, applicationId)
     if (application) {
-      await ctx.db.patch(application._id, {
+      await ctx.db.patch('applications', application._id, {
         items: [...application.items, item],
         updatedAt,
       })
@@ -160,20 +167,20 @@ export const addAttachment = mutation({
   args: {
     applicationId: v.string(),
     itemId: v.union(v.string(), v.null()),
-    attachment: v.any(),
+    attachment: attachmentValidator,
     updatedAt: v.string(),
   },
   handler: async (ctx, { applicationId, itemId, attachment, updatedAt }) => {
     const application = await getApp(ctx, applicationId)
     if (!application) return null
     if (itemId === null) {
-      await ctx.db.patch(application._id, {
+      await ctx.db.patch('applications', application._id, {
         attachments: [...application.attachments, attachment],
         updatedAt,
       })
       return null
     }
-    await ctx.db.patch(application._id, {
+    await ctx.db.patch('applications', application._id, {
       items: application.items.map((item) =>
         item.id === itemId
           ? {
@@ -203,7 +210,7 @@ export const setAttachmentUploaded = mutation({
       attachment.id === attachmentId
         ? { ...attachment, storageId, uploadStatus: 'uploaded' as const }
         : attachment
-    await ctx.db.patch(application._id, {
+    await ctx.db.patch('applications', application._id, {
       attachments: application.attachments.map(update),
       items: application.items.map((item) => ({
         ...item,
@@ -227,7 +234,7 @@ export const setAttachmentDeletedAt = mutation({
     const application = await getApp(ctx, applicationId)
     if (!application) return null
     if (itemId === null) {
-      await ctx.db.patch(application._id, {
+      await ctx.db.patch('applications', application._id, {
         attachments: application.attachments.map((attachment) =>
           attachment.id === attachmentId ? { ...attachment, deletedAt } : attachment,
         ),
@@ -235,7 +242,7 @@ export const setAttachmentDeletedAt = mutation({
       })
       return null
     }
-    await ctx.db.patch(application._id, {
+    await ctx.db.patch('applications', application._id, {
       items: application.items.map((item) =>
         item.id === itemId
           ? {
@@ -281,9 +288,11 @@ export const purgeAttachment = mutation({
       list.filter((attachment) => attachment.id !== attachmentId)
 
     if (itemId === null) {
-      await ctx.db.patch(application._id, { attachments: drop(application.attachments) })
+      await ctx.db.patch('applications', application._id, {
+        attachments: drop(application.attachments),
+      })
     } else {
-      await ctx.db.patch(application._id, {
+      await ctx.db.patch('applications', application._id, {
         items: application.items.map((item) =>
           item.id === itemId ? { ...item, attachments: drop(item.attachments) } : item,
         ),
@@ -305,7 +314,7 @@ export const setAttachmentUploadStatus = mutation({
     if (!application) return null
     const update = (attachment: PersistedAttachment) =>
       attachment.id === attachmentId ? { ...attachment, uploadStatus } : attachment
-    await ctx.db.patch(application._id, {
+    await ctx.db.patch('applications', application._id, {
       attachments: application.attachments.map(update),
       items: application.items.map((item) => ({
         ...item,
@@ -329,7 +338,9 @@ export const updateMeta = mutation({
   },
   handler: async (ctx, { applicationId, updatedAt, ...meta }) => {
     const application = await getApp(ctx, applicationId)
-    if (application) await ctx.db.patch(application._id, { ...meta, updatedAt })
+    if (application) {
+      await ctx.db.patch('applications', application._id, { ...meta, updatedAt })
+    }
     return null
   },
 })
@@ -343,7 +354,9 @@ export const setTagsForMany = mutation({
   handler: async (ctx, { applicationIds, tagsIds, updatedAt }) => {
     for (const id of applicationIds) {
       const application = await getApp(ctx, id)
-      if (application) await ctx.db.patch(application._id, { tagsIds, updatedAt })
+      if (application) {
+        await ctx.db.patch('applications', application._id, { tagsIds, updatedAt })
+      }
     }
     return null
   },
@@ -366,6 +379,6 @@ export const softDelete = mutation({
         // já removido
       }
     }
-    await ctx.db.patch(application._id, { deletedAt })
+    await ctx.db.patch('applications', application._id, { deletedAt })
   },
 })

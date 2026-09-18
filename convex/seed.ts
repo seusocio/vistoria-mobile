@@ -314,7 +314,7 @@ async function ensureChecklist(
 		.first();
 
 	if (existing) {
-		await ctx.db.patch(existing._id, {
+		await ctx.db.patch("checklists", existing._id, {
 			title,
 			tagsIds: [categoryTagId],
 			items,

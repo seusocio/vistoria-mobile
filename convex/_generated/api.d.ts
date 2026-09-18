@@ -14,6 +14,7 @@ import type * as files from "../files.js";
 import type * as migrations from "../migrations.js";
 import type * as seed from "../seed.js";
 import type * as tags from "../tags.js";
+import type * as validators from "../validators.js";
 
 import type {
   ApiFromModules,
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   seed: typeof seed;
   tags: typeof tags;
+  validators: typeof validators;
 }>;
 
 /**

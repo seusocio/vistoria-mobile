@@ -29,7 +29,7 @@ export const resyncApplicationItemsFromChecklist = internalMutation({
   handler: async (ctx, { force }) => {
     const applications = await ctx.db
       .query('applications')
-      .filter((q) => q.eq(q.field('deletedAt'), null))
+      .withIndex('by_deleted_at', (q) => q.eq('deletedAt', null))
       .collect()
 
     let resynced = 0
@@ -75,7 +75,7 @@ export const resyncApplicationItemsFromChecklist = internalMutation({
           deletedAt: null,
         }))
 
-      await ctx.db.patch(application._id, { items, updatedAt: now })
+      await ctx.db.patch('applications', application._id, { items, updatedAt: now })
       resynced += 1
     }
 
@@ -93,7 +93,7 @@ export const backfillChecklistItemIds = internalMutation({
   handler: async (ctx) => {
     const applications = await ctx.db
       .query('applications')
-      .filter((q) => q.eq(q.field('deletedAt'), null))
+      .withIndex('by_deleted_at', (q) => q.eq('deletedAt', null))
       .collect()
 
     let updatedApplications = 0
@@ -123,7 +123,7 @@ export const backfillChecklistItemIds = internalMutation({
       })
 
       if (changed) {
-        await ctx.db.patch(application._id, { items })
+        await ctx.db.patch('applications', application._id, { items })
         updatedApplications += 1
       }
     }

@@ -1,12 +1,13 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
+import { checklistDoc } from './validators'
 
 export const list = query({
   args: {},
   handler: async (ctx) =>
     ctx.db
       .query('checklists')
-      .filter((q) => q.eq(q.field('deletedAt'), null))
+      .withIndex('by_deleted_at', (q) => q.eq('deletedAt', null))
       .collect(),
 })
 
@@ -22,14 +23,14 @@ export const findById = query({
 })
 
 export const save = mutation({
-  args: { id: v.string(), entity: v.any() },
+  args: { id: v.string(), entity: checklistDoc },
   handler: async (ctx, { id, entity }) => {
     const existing = await ctx.db
       .query('checklists')
       .withIndex('by_external_id', (q) => q.eq('id', id))
       .first()
     if (existing) {
-      await ctx.db.replace(existing._id, entity)
+      await ctx.db.replace('checklists', existing._id, entity)
       return entity
     }
     await ctx.db.insert('checklists', entity)
@@ -44,6 +45,6 @@ export const softDelete = mutation({
       .query('checklists')
       .withIndex('by_external_id', (q) => q.eq('id', id))
       .first()
-    if (checklist) await ctx.db.patch(checklist._id, { deletedAt })
+    if (checklist) await ctx.db.patch('checklists', checklist._id, { deletedAt })
   },
 })

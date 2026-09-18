@@ -1,12 +1,13 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
+import { tagDoc } from './validators'
 
 export const list = query({
   args: {},
   handler: async (ctx) =>
     ctx.db
       .query('tags')
-      .filter((q) => q.eq(q.field('deletedAt'), null))
+      .withIndex('by_deleted_at', (q) => q.eq('deletedAt', null))
       .collect(),
 })
 
@@ -38,7 +39,7 @@ export const findByNormalizedLabel = query({
 })
 
 export const create = mutation({
-  args: { entity: v.any() },
+  args: { entity: tagDoc },
   handler: async (ctx, { entity }) => {
     const existingById = await ctx.db
       .query('tags')
@@ -55,7 +56,7 @@ export const create = mutation({
     if (existingByLabel && !existingByLabel.deletedAt) return existingByLabel
 
     const documentId = await ctx.db.insert('tags', entity)
-    return await ctx.db.get(documentId)
+    return await ctx.db.get('tags', documentId)
   },
 })
 
@@ -66,6 +67,6 @@ export const softDelete = mutation({
       .query('tags')
       .withIndex('by_external_id', (q) => q.eq('id', id))
       .first()
-    if (tag) await ctx.db.patch(tag._id, { deletedAt })
+    if (tag) await ctx.db.patch('tags', tag._id, { deletedAt })
   },
 })
