@@ -2,6 +2,7 @@ import { useQuery } from 'convex-helpers/react/cache'
 import type { FunctionReference } from 'convex/server'
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { castConvex } from '@/infra/convex/cast'
 import { getOp } from './ops'
 import { useOutbox, type QueuedOp } from './queue.store'
 
@@ -19,13 +20,20 @@ export function applyOps<Entity>(entity: Entity | null, ops: QueuedOp[]): Entity
  * and stay durable across a restart — the outbox persists, and the overlay
  * re-applies it on every render until the server confirms and the op is
  * removed from the queue.
+ *
+ * Convex documents carry `_id`/`_creationTime`; `castConvex` strips them
+ * (same helper `src/infra/convex/*-repository.ts` used) before this value
+ * ever reaches an op's `applyLocal` — an op that re-sends the whole entity
+ * (like `checklists.save`) would otherwise ship those system fields back to
+ * a mutation validator that rejects them.
  */
 export function useEntity<Entity>(
   query: FunctionReference<'query'>,
   args: Record<string, unknown>,
   entityId: string,
 ): Entity | null | undefined {
-  const server = useQuery(query, args) as Entity | null | undefined
+  const raw = useQuery(query, args)
+  const server = raw === undefined ? undefined : castConvex<Entity | null>(raw)
   const pending = useOutbox(
     useShallow((state) => state.items.filter((item) => item.entityId === entityId)),
   )
@@ -48,7 +56,8 @@ export function useEntityList<Entity>(
   args: Record<string, unknown>,
   getId: (entity: Entity) => string,
 ): Entity[] | undefined {
-  const server = useQuery(query, args) as Entity[] | undefined
+  const raw = useQuery(query, args)
+  const server = raw === undefined ? undefined : castConvex<Entity[]>(raw)
   const pending = useOutbox(useShallow((state) => state.items))
 
   return useMemo(() => {
