@@ -92,6 +92,7 @@ export function ChecklistEdit({
     >
       <ChecklistFormView form={checklistForm} tagsCatalog={tagsCatalog} error={error} />
       <ConfirmBottomSheet
+      snapPoints={['25%']}
         visible={unsavedGuard.visible}
         title="Descartar alterações?"
         message="Suas alterações não salvas serão perdidas."

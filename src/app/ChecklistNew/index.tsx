@@ -102,6 +102,7 @@ export function ChecklistNew({ navigation }: StackRoutesProps<'checklistNew'>) {
         error={error}
       />
       <ConfirmBottomSheet
+      snapPoints={['25%']}
         visible={unsavedGuard.visible}
         title="Descartar alterações?"
         message="Suas alterações não salvas serão perdidas."

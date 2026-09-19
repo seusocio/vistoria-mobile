@@ -37,11 +37,15 @@ import {
 	newApplicationItemSchema,
 } from "@/infra/domain/schemas";
 import type { ApplicationItem, WorkflowStatus } from "@/infra/domain/entities";
-import {
-	applyPendingAnswers,
-	useLocalAnswersStore,
-} from "@/infra/applications/local-answers-store";
+import { useUnsavedChangesGuard } from "@/hooks/useUnsavedChangesGuard";
 import { generateId } from "@/infra/id";
+import {
+	applyItemEdits,
+	mergeItemEdit,
+	toItemPatches,
+	type ItemEdit,
+	type ItemEdits,
+} from "./itemEdits";
 import {
 	generateSuggestions,
 	getDerivedState,
@@ -74,21 +78,21 @@ export function ApplicationFill({
 		application: serverApplication,
 		loading,
 	} = useApplicationFill(checklistId, applicationId);
-	// Answers are held locally and synced in batches, so a tap never waits on
-	// Convex (not even its optimistic-update pass). See local-answers-store.
-	const pendingAnswers = useLocalAnswersStore(
-		(state) => state.pending[applicationId],
-	);
-	const answerSyncError = useLocalAnswersStore(
-		(state) => state.error[applicationId],
-	);
+	// Item fields are edited here and saved in one request, like the checklist
+	// form - so tapping through a group never touches the network, and never
+	// lands a Convex transition in the middle of a navigation.
+	const [itemEdits, setItemEdits] = useState<ItemEdits>({});
+	const isDirty = Object.keys(itemEdits).length > 0;
 	const applicationData = useMemo(
 		() =>
-			serverApplication
-				? applyPendingAnswers(serverApplication, pendingAnswers)
-				: null,
-		[serverApplication, pendingAnswers],
+			serverApplication ? applyItemEdits(serverApplication, itemEdits) : null,
+		[serverApplication, itemEdits],
 	);
+	const editItem = useCallback((itemId: string, edit: ItemEdit) => {
+		const editedAt = new Date().toISOString();
+		setItemEdits((current) => mergeItemEdit(current, itemId, edit, editedAt));
+	}, []);
+	const unsavedGuard = useUnsavedChangesGuard(isDirty, navigation);
 	const mutations = useApplicationMutations();
 	const { removeAttachment: removeAttachmentPipeline } = useAttachPhotos();
 	const tagsCatalog = useTagsCatalog();
@@ -120,6 +124,7 @@ export function ApplicationFill({
 	const [deleteConfirmationVisible, setDeleteConfirmationVisible] =
 		useState(false);
 	const [deleting, setDeleting] = useState(false);
+	const [completing, setCompleting] = useState(false);
 	const submitted = useRef(false);
 	const currentApplicationId = applicationData?.id;
 	const currentTranscript = applicationData?.transcript;
@@ -133,22 +138,19 @@ export function ApplicationFill({
 		// the actual transcription attempt.
 		if (FEATURE_FLAG.voice) void prepareTranscriber();
 	}, []);
+	// Concluding and deleting both clear the edits and leave, but `beforeRemove`
+	// still holds the closure from the render before that - navigating in the
+	// same tick would pop the discard sheet on the way out. So the screen asks
+	// to leave, and the exit happens on the render where it is already clean.
+	const [exit, setExit] = useState<"completed" | "deleted" | null>(null);
 	useEffect(() => {
-		// Retire pending answers only once the server data actually carries them,
-		// so the overlay never lifts onto stale values mid-sync.
-		if (serverApplication) {
-			useLocalAnswersStore
-				.getState()
-				.reconcile(applicationId, serverApplication);
+		if (!exit || isDirty) return;
+		if (exit === "completed") {
+			navigation.navigate("checklistDetail", { checklistId });
+		} else {
+			navigation.replace("checklistDetail", { checklistId });
 		}
-	}, [applicationId, serverApplication]);
-	useEffect(() => {
-		// Leaving by any route (back button, swipe, hardware back) syncs whatever
-		// is still batched instead of waiting out the debounce.
-		return () => {
-			void useLocalAnswersStore.getState().flush(applicationId);
-		};
-	}, [applicationId]);
+	}, [exit, isDirty, checklistId, navigation]);
 
 	const progress = useMemo(
 		() =>
@@ -210,9 +212,9 @@ export function ApplicationFill({
 	);
 	const handleAnswerChange = useCallback(
 		(itemId: string, answer: string) => {
-			useLocalAnswersStore.getState().setAnswer(applicationId, itemId, answer);
+			editItem(itemId, { answer, suggested: false, suggestionSource: null });
 		},
-		[applicationId],
+		[editItem],
 	);
 	const positiveOptionLabel = checklist?.options.find(
 		(option) => option.semantic === "positivo",
@@ -221,20 +223,9 @@ export function ApplicationFill({
 	// and app restarts, unlike the earlier screen-local prototype.
 	const handleSetWorkflowStatus = useCallback(
 		(itemId: string, workflowStatus: WorkflowStatus | null) => {
-			if (!applicationData) return;
-			const updatedAt = new Date().toISOString();
-			void mutations
-				.patchItem({
-					applicationId: applicationData.id,
-					itemId,
-					patch: { workflowStatus },
-					updatedAt,
-				})
-				.catch(() =>
-					setApplicationError("Não foi possível atualizar o status"),
-				);
+			editItem(itemId, { workflowStatus });
 		},
-		[applicationData, mutations],
+		[editItem],
 	);
 	const handleToggleComplete = useCallback(
 		(itemId: string) => {
@@ -315,41 +306,24 @@ export function ApplicationFill({
 		},
 		[applicationData, itemForm],
 	);
-	const patchItem = mutations.patchItem;
 	const handleAcceptSuggestion = useCallback(
 		(itemId: string) => {
-			if (!FEATURE_FLAG.suggestion || !applicationData) return;
-			const updatedAt = new Date().toISOString();
-			void patchItem({
-				applicationId: applicationData.id,
-				itemId,
-				patch: { suggested: false, suggestionSource: null },
-				updatedAt,
-			}).catch(() =>
-				setApplicationError("Não foi possível aceitar a sugestão"),
-			);
+			if (!FEATURE_FLAG.suggestion) return;
+			editItem(itemId, { suggested: false, suggestionSource: null });
 		},
-		[applicationData, patchItem],
+		[editItem],
 	);
 	const handleRejectSuggestion = useCallback(
 		(itemId: string) => {
-			if (!FEATURE_FLAG.suggestion || !applicationData) return;
-			const updatedAt = new Date().toISOString();
-			void patchItem({
-				applicationId: applicationData.id,
-				itemId,
-				patch: {
-					suggested: false,
-					suggestionSource: null,
-					answer: "",
-					note: "",
-				},
-				updatedAt,
-			}).catch(() =>
-				setApplicationError("Não foi possível rejeitar a sugestão"),
-			);
+			if (!FEATURE_FLAG.suggestion) return;
+			editItem(itemId, {
+				suggested: false,
+				suggestionSource: null,
+				answer: "",
+				note: "",
+			});
 		},
-		[applicationData, patchItem],
+		[editItem],
 	);
 	const renderEditApplicationFooter = useSheetFooterActions({
 		confirmLabel: "Salvar",
@@ -378,15 +352,7 @@ export function ApplicationFill({
 	const application = applicationData;
 	function handleAddPhoto(itemId: string) {
 		if (editingItemId === itemId && itemForm.formState.isDirty) {
-			const updatedAt = new Date().toISOString();
-			void mutations
-				.patchItem({
-					applicationId: application.id,
-					itemId,
-					patch: itemForm.getValues(),
-					updatedAt,
-				})
-				.catch(() => setApplicationError("Não foi possível salvar o item"));
+			editItem(itemId, itemForm.getValues());
 		}
 		setEditingItemId(null);
 		navigation.navigate("photoCapture", {
@@ -497,46 +463,52 @@ export function ApplicationFill({
 		setGeneratingSuggestions(true);
 		try {
 			const suggestions = await generateSuggestions(checklist!, application);
-			const updatedAt = new Date().toISOString();
-			void mutations
-				.patchItems({
-					applicationId: application.id,
-					patches: suggestions.map((suggestion) => ({
-						itemId: suggestion.itemId,
-						patch: {
-							answer: suggestion.answer,
-							note: suggestion.note ?? "",
-							suggested: true,
-							suggestionSource: "transcript" as const,
-						},
-					})),
-					updatedAt,
-				})
-				.catch(() =>
-					setApplicationError("Não foi possível salvar as sugestões"),
-				);
+			for (const suggestion of suggestions) {
+				editItem(suggestion.itemId, {
+					answer: suggestion.answer,
+					note: suggestion.note ?? "",
+					suggested: true,
+					suggestionSource: "transcript" as const,
+				});
+			}
 		} finally {
 			setGeneratingSuggestions(false);
 		}
 	}
 
-	function handleComplete() {
+	/** Saves every pending item edit and closes the visit, in one round trip. */
+	async function handleComplete() {
 		if (submitted.current) return;
 		submitted.current = true;
-		void useLocalAnswersStore.getState().flush(application.id);
+		setCompleting(true);
+		setApplicationError(null);
 		const updatedAt = new Date().toISOString();
-		void mutations
-			.updateMeta({
+		try {
+			if (isDirty) {
+				await mutations.patchItems({
+					applicationId: application.id,
+					patches: toItemPatches(itemEdits),
+					updatedAt,
+				});
+			}
+			await mutations.updateMeta({
 				applicationId: application.id,
 				status: "completed",
 				completedAt: updatedAt,
 				updatedAt,
-			})
-			.catch(() =>
-				setApplicationError("Não foi possível concluir a aplicação"),
+			});
+		} catch {
+			// Nothing was cleared, so the edits are still on screen to retry with.
+			submitted.current = false;
+			setCompleting(false);
+			setApplicationError(
+				"Não foi possível concluir a aplicação. Verifique a conexão e tente de novo.",
 			);
+			return;
+		}
 		haptics.success();
-		navigation.navigate("checklistDetail", { checklistId });
+		setItemEdits({});
+		setExit("completed");
 	}
 
 	function handleDelete() {
@@ -550,7 +522,10 @@ export function ApplicationFill({
 			.softDelete({ id: application.id, deletedAt: new Date().toISOString() })
 			.catch(() => setApplicationError("Não foi possível excluir a aplicação"));
 		setDeleteConfirmationVisible(false);
-		navigation.replace("checklistDetail", { checklistId });
+		// Dropped along with the application, and cleared before leaving so the
+		// discard sheet doesn't ask about edits that are being thrown away anyway.
+		setItemEdits({});
+		setExit("deleted");
 	}
 
 	function handleOpenEditApplication() {
@@ -674,10 +649,13 @@ export function ApplicationFill({
 							styles.completeButton,
 							pressed && { opacity: 0.7 },
 						]}
-						onPress={handleComplete}
+						onPress={() => void handleComplete()}
+						disabled={completing}
 					>
 						<Icon name="check" size={18} color={colors.white} />
-						<Text style={styles.completeButtonText}>Concluir aplicação</Text>
+						<Text style={styles.completeButtonText}>
+							{completing ? "Concluindo..." : "Concluir aplicação"}
+						</Text>
 					</Pressable>
 				</View>
 			}
@@ -702,10 +680,8 @@ export function ApplicationFill({
 					{progress.answered}/{progress.total} respondidos ·{" "}
 					{DERIVED_STATE_LABEL[derivedState]}
 				</Text>
-				{(applicationError ?? answerSyncError) ? (
-					<Text style={styles.modalError}>
-						{applicationError ?? answerSyncError}
-					</Text>
+				{applicationError ? (
+					<Text style={styles.modalError}>{applicationError}</Text>
 				) : null}
 				<ProgressBar
 					progress={progress.total > 0 ? progress.answered / progress.total : 0}
@@ -833,17 +809,7 @@ export function ApplicationFill({
 					}
 					onOpenPhoto={(index) => setViewer({ itemId: editingItem.id, index })}
 					onSave={itemForm.handleSubmit((values) => {
-						const updatedAt = new Date().toISOString();
-						void mutations
-							.patchItem({
-								applicationId: application.id,
-								itemId: editingItem.id,
-								patch: values,
-								updatedAt,
-							})
-							.catch(() =>
-								setApplicationError("Não foi possível salvar o item"),
-							);
+						editItem(editingItem.id, values);
 						setEditingItemId(null);
 					})}
 				/>
@@ -934,6 +900,17 @@ export function ApplicationFill({
 				confirming={deleting}
 				onCancel={() => setDeleteConfirmationVisible(false)}
 				onConfirm={confirmDelete}
+			/>
+
+			<ConfirmBottomSheet
+				snapPoints={["25%"]}
+				visible={unsavedGuard.visible}
+				title="Descartar alterações?"
+				message="Suas alterações não salvas serão perdidas."
+				confirmLabel="Descartar"
+				cancelLabel="Continuar editando"
+				onCancel={unsavedGuard.onCancel}
+				onConfirm={unsavedGuard.onConfirm}
 			/>
 		</Screen>
 	);
