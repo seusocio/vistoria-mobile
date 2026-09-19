@@ -10,7 +10,7 @@ import { useOutbox, type QueuedOp } from './queue.store'
 export function applyOps<Entity>(entity: Entity | null, ops: QueuedOp[]): Entity | null {
   return ops.reduce<Entity | null>((current, item) => {
     const op = getOp(item.type)
-    return op.applyLocal(current, item.args) as Entity
+    return op.applyLocal(current, item.args) as Entity | null
   }, entity)
 }
 

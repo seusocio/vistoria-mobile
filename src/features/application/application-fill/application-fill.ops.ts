@@ -1,4 +1,4 @@
-import { defineOp } from '@/lib/offline-queue'
+import { defineOp } from '@/lib/offline-queue/ops'
 import type { Application, Attachment } from '@/infra/domain/entities'
 import { applyApplicationItemPatch, type ApplicationItemPatch } from '@/infra/services'
 import { api } from '../../../../convex/_generated/api'
@@ -20,8 +20,10 @@ export const patchItem = defineOp<
   Application
 >('applications.patchItem', {
   mutation: api.applications.patchItem,
-  applyLocal: (entity, args) =>
-    applyApplicationItemPatch(entity as Application, args.itemId, args.patch, args.updatedAt),
+  applyLocal: (entity, args) => {
+    if (!entity) return null
+    return applyApplicationItemPatch(entity, args.itemId, args.patch, args.updatedAt)
+  },
   entityId: (args) => args.applicationId,
 })
 
@@ -31,9 +33,9 @@ export const addItem = defineOp<
 >('applications.addItem', {
   mutation: api.applications.addItem,
   applyLocal: (entity, args) => {
-    const application = entity as Application
-    if (application.items.some((item) => item.id === args.item.id)) return application
-    return { ...application, items: [...application.items, args.item], updatedAt: args.updatedAt }
+    if (!entity) return null
+    if (entity.items.some((item) => item.id === args.item.id)) return entity
+    return { ...entity, items: [...entity.items, args.item], updatedAt: args.updatedAt }
   },
   entityId: (args) => args.applicationId,
 })
@@ -44,20 +46,20 @@ export const addAttachment = defineOp<
 >('applications.addAttachment', {
   mutation: api.applications.addAttachment,
   applyLocal: (entity, args) => {
-    const application = entity as Application
+    if (!entity) return null
     if (args.itemId === null) {
-      if (application.attachments.some((a) => a.id === args.attachment.id)) return application
+      if (entity.attachments.some((a) => a.id === args.attachment.id)) return entity
       return {
-        ...application,
-        attachments: [...application.attachments, args.attachment],
+        ...entity,
+        attachments: [...entity.attachments, args.attachment],
         updatedAt: args.updatedAt,
       }
     }
-    const item = findItem(application, args.itemId)
-    if (!item || item.attachments.some((a) => a.id === args.attachment.id)) return application
+    const item = findItem(entity, args.itemId)
+    if (!item || item.attachments.some((a) => a.id === args.attachment.id)) return entity
     return {
-      ...application,
-      items: application.items.map((current) =>
+      ...entity,
+      items: entity.items.map((current) =>
         current.id === args.itemId
           ? { ...current, attachments: [...current.attachments, args.attachment], updatedAt: args.updatedAt }
           : current,
@@ -80,15 +82,15 @@ export const setAttachmentDeletedAt = defineOp<
 >('applications.setAttachmentDeletedAt', {
   mutation: api.applications.setAttachmentDeletedAt,
   applyLocal: (entity, args) => {
-    const application = entity as Application
+    if (!entity) return null
     const update = (attachment: Attachment) =>
       attachment.id === args.attachmentId ? { ...attachment, deletedAt: args.deletedAt } : attachment
     if (args.itemId === null) {
-      return { ...application, attachments: application.attachments.map(update), updatedAt: args.updatedAt }
+      return { ...entity, attachments: entity.attachments.map(update), updatedAt: args.updatedAt }
     }
     return {
-      ...application,
-      items: application.items.map((item) =>
+      ...entity,
+      items: entity.items.map((item) =>
         item.id === args.itemId
           ? { ...item, attachments: item.attachments.map(update), updatedAt: args.updatedAt }
           : item,
@@ -105,15 +107,15 @@ export const purgeAttachment = defineOp<
 >('applications.purgeAttachment', {
   mutation: api.applications.purgeAttachment,
   applyLocal: (entity, args) => {
-    const application = entity as Application
+    if (!entity) return null
     const drop = (attachments: Attachment[]) =>
       attachments.filter((attachment) => attachment.id !== args.attachmentId)
     if (args.itemId === null) {
-      return { ...application, attachments: drop(application.attachments) }
+      return { ...entity, attachments: drop(entity.attachments) }
     }
     return {
-      ...application,
-      items: application.items.map((item) =>
+      ...entity,
+      items: entity.items.map((item) =>
         item.id === args.itemId ? { ...item, attachments: drop(item.attachments) } : item,
       ),
     }
@@ -135,8 +137,9 @@ export const updateMeta = defineOp<
 >('applications.updateMeta', {
   mutation: api.applications.updateMeta,
   applyLocal: (entity, args) => {
+    if (!entity) return null
     const { applicationId: _applicationId, ...meta } = args
-    return { ...(entity as Application), ...meta }
+    return { ...entity, ...meta }
   },
   entityId: (args) => args.applicationId,
 })
@@ -145,7 +148,10 @@ export const softDelete = defineOp<{ id: string; deletedAt: string }, Applicatio
   'applications.softDelete',
   {
     mutation: api.applications.softDelete,
-    applyLocal: (entity, args) => ({ ...(entity as Application), deletedAt: args.deletedAt }),
+    applyLocal: (entity, args) => {
+      if (!entity) return null
+      return { ...entity, deletedAt: args.deletedAt }
+    },
     entityId: (args) => args.id,
   },
 )

@@ -48,4 +48,26 @@ describe('applyOps', () => {
     const server: FakeItem = { id: 'item-2', answer: 'Sim', updatedAt: '2026-01-01T00:00:00.000Z' }
     expect(applyOps(server, [])).toBe(server)
   })
+
+  test('a patch-style op given a null entity returns null instead of crashing', () => {
+    // Regression: a real device crash ("Cannot read property 'items' of
+    // null"). The entity a patch targets can genuinely not exist yet on the
+    // server (a create still in flight, a slow reconnect) — a patch-style
+    // applyLocal must mirror the Convex handler's own `if (!entity) return
+    // null` guard instead of casting `entity as Entity` and touching its
+    // fields, which turns that ordinary condition into a crash.
+    defineOp<{ answer: string }, FakeItem>('overlay-test.patch-on-missing', {
+      mutation: {} as never,
+      applyLocal: (entity, args) => {
+        if (!entity) return null
+        return { ...entity, answer: args.answer }
+      },
+      entityId: () => 'item-missing',
+    })
+
+    const result = applyOps<FakeItem>(null, [
+      op('op-4', 'overlay-test.patch-on-missing', { answer: 'Sim' }, 'item-missing'),
+    ])
+    expect(result).toBeNull()
+  })
 })

@@ -1,4 +1,4 @@
-import { defineOp } from '@/lib/offline-queue'
+import { defineOp } from '@/lib/offline-queue/ops'
 import type { Checklist } from '@/infra/domain/entities'
 import { api } from '../../../../convex/_generated/api'
 
