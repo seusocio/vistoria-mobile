@@ -6,12 +6,21 @@ const LONG_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
 
 const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR')
 
+/**
+ * `Intl.DateTimeFormat.format` throws "Invalid time value" on an invalid
+ * Date, not just returns a placeholder — and an empty/malformed `iso` is a
+ * real possibility here (an unsaved draft's default value, an old row from
+ * before a field existed), not corrupt data. These are display helpers, not
+ * validators; a blank label beats crashing the whole screen.
+ */
 export function formatBrDate(iso: string): string {
-  return LONG_DATE_FORMATTER.format(new Date(iso))
+  const date = new Date(iso)
+  return Number.isNaN(date.getTime()) ? '' : LONG_DATE_FORMATTER.format(date)
 }
 
 export function formatBrDateShort(iso: string): string {
-  return SHORT_DATE_FORMATTER.format(new Date(iso))
+  const date = new Date(iso)
+  return Number.isNaN(date.getTime()) ? '' : SHORT_DATE_FORMATTER.format(date)
 }
 
 export function todayIso(): string {

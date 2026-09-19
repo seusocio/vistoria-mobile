@@ -70,7 +70,7 @@ export function DatePickerField({
         accessibilityLabel={accessibilityLabel}
       >
         <Icon name="calendar" size={16} color={colors.gray[400]} />
-        <Text style={styles.value}>{formatBrDateShort(value)}</Text>
+        <Text style={styles.value}>{formatBrDateShort(date.toISOString())}</Text>
       </Pressable>
 
       <Modal
