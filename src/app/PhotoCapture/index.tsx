@@ -1,15 +1,15 @@
 import { CameraView, useCameraPermissions, type CameraType, type FlashMode } from 'expo-camera'
-import { useQuery } from 'convex-helpers/react/cache'
 import { useMemo, useRef, useState } from 'react'
 import { Linking, Pressable, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ConfirmBottomSheet, PhotoGalleryRow, PhotoViewer } from '@/components'
 import type { PhotoGalleryItem } from '@/components/PhotoGalleryRow'
 import { Icon } from '@/components/Icon'
-import { useAttachPhotos } from '@/hooks/useAttachPhotos'
+import { useAttachPhotos } from '@/features/application/shared/use-attach-photos'
 import { normalizeApplication, pickPhotos } from '@/infra/convex'
 import type { Application } from '@/infra/domain/entities'
 import { useUploadStore } from '@/infra/uploads/upload-store'
+import { useEntity } from '@/lib/offline-queue'
 import { StackRoutesProps } from '@/routes/types'
 import { colors } from '@/styles'
 import { haptics } from '@/utils/haptics'
@@ -49,10 +49,11 @@ export function PhotoCapture({ navigation, route }: StackRoutesProps<'photoCaptu
   const { beginAttachment, commitAsset, removeAttachment } = useAttachPhotos()
   const uploadProgress = useUploadStore((state) => state.progress)
 
-  const rawApplication = useQuery(api.applications.findById, { id: applicationId }) as
-    | Application
-    | null
-    | undefined
+  const rawApplication = useEntity<Application>(
+    api.applications.findById,
+    { id: applicationId },
+    applicationId,
+  )
   const application = useMemo(
     () => (rawApplication ? normalizeApplication(rawApplication) : null),
     [rawApplication],

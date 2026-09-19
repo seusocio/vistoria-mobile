@@ -1,10 +1,11 @@
 import { useUndoToast } from '@/components'
+import { enqueueOp } from '@/lib/offline-queue'
 import { deleteLocalUpload, prepareAssetQueued, type RawAsset } from '@/infra/convex/photo-picker'
 import type { Attachment } from '@/infra/domain/entities'
 import { generateId } from '@/infra/id'
 import { createAttachment } from '@/infra/services'
 import { useUploadStore } from '@/infra/uploads/upload-store'
-import { useApplicationMutations } from './useApplicationMutations'
+import { addAttachment, purgeAttachment, setAttachmentDeletedAt } from '../application-fill/application-fill.ops'
 
 interface CommitAssetParams extends RawAsset {
   attachmentId: string
@@ -18,17 +19,20 @@ interface RemoveAttachmentParams {
   applicationId: string
   itemId: string | null
   attachment: Attachment
-  onError?: () => void
 }
 
 /**
  * Shared pipeline for attaching and removing photos, used by both the
  * continuous-capture camera and the application/item galleries — keeps the
- * optimistic-update + background-upload + purge-on-commit invariants in one
+ * outbox-enqueue + background-upload + purge-on-commit invariants in one
  * place instead of duplicated per screen.
+ *
+ * Every write here goes through enqueueOp, which never rejects to the
+ * caller — it persists locally and drains when it can. There is no error
+ * path to report back for these anymore; a queued write always "succeeds"
+ * from the UI's perspective.
  */
 export function useAttachPhotos() {
-  const mutations = useApplicationMutations()
   const { show: showUndo } = useUndoToast()
 
   function beginAttachment(): string {
@@ -61,14 +65,12 @@ export function useAttachPhotos() {
       updatedAt,
     )
 
-    void mutations
-      .addAttachment({
-        applicationId: params.applicationId,
-        itemId: params.itemId,
-        attachment,
-        updatedAt,
-      })
-      .catch(() => undefined)
+    enqueueOp(addAttachment, {
+      applicationId: params.applicationId,
+      itemId: params.itemId,
+      attachment,
+      updatedAt,
+    })
 
     useUploadStore.getState().enqueue({
       applicationId: params.applicationId,
@@ -78,38 +80,32 @@ export function useAttachPhotos() {
   }
 
   function removeAttachment(params: RemoveAttachmentParams) {
-    const { applicationId, itemId, attachment, onError } = params
+    const { applicationId, itemId, attachment } = params
     const deletedAt = new Date().toISOString()
-    void mutations
-      .setAttachmentDeletedAt({
-        applicationId,
-        itemId,
-        attachmentId: attachment.id,
-        deletedAt,
-        updatedAt: deletedAt,
-      })
-      .catch(() => onError?.())
+    enqueueOp(setAttachmentDeletedAt, {
+      applicationId,
+      itemId,
+      attachmentId: attachment.id,
+      deletedAt,
+      updatedAt: deletedAt,
+    })
 
     showUndo({
       message: 'Foto removida',
       onUndo: () => {
         const updatedAt = new Date().toISOString()
-        void mutations
-          .setAttachmentDeletedAt({
-            applicationId,
-            itemId,
-            attachmentId: attachment.id,
-            deletedAt: null,
-            updatedAt,
-          })
-          .catch(() => onError?.())
+        enqueueOp(setAttachmentDeletedAt, {
+          applicationId,
+          itemId,
+          attachmentId: attachment.id,
+          deletedAt: null,
+          updatedAt,
+        })
       },
       onCommit: () => {
         useUploadStore.getState().cancel(attachment.id)
         void deleteLocalUpload(attachment.localUri)
-        void mutations
-          .purgeAttachment({ applicationId, itemId, attachmentId: attachment.id })
-          .catch(() => undefined)
+        enqueueOp(purgeAttachment, { applicationId, itemId, attachmentId: attachment.id })
       },
     })
   }
