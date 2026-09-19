@@ -1,62 +1,82 @@
-import { zodResolver } from '@hookform/resolvers/zod'
 import { BottomSheetView } from '@gorhom/bottom-sheet'
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useMemo } from 'react'
+import type { UseFieldArrayReturn, UseFormReturn } from 'react-hook-form'
 import { Pressable, Text, View } from 'react-native'
-import {
-  AppBottomSheet,
-  ConfirmBottomSheet,
-  Form,
-  useUndoToast,
-} from '@/components'
-import { useSheetFooterActions } from '@/components/SheetFooterActions'
+import { AppBottomSheet, ConfirmBottomSheet, Form } from '@/components'
 import { Icon } from '@/components/Icon'
-import { ChecklistFormApi, ChecklistFormItemState } from '@/hooks/useChecklistForm'
-import { useTagsCatalog } from '@/hooks/useTagsCatalog'
-import { ChecklistTemplate } from '@/infra/data/templates'
-import {
-  ChecklistItemFormValues,
-  checklistItemFormSchema,
-} from '@/infra/domain/schemas'
+import { useSheetFooterActions } from '@/components/SheetFooterActions'
+import type { useTagsCatalog } from '@/hooks/useTagsCatalog'
+import type { ChecklistTemplate } from '@/infra/data/templates'
 import { groupItemsByTitlePrefix } from '@/infra/services'
 import { colors } from '@/styles'
 import { haptics } from '@/utils/haptics'
+import { styles } from './checklist-form.styles'
+import type { ChecklistFormValues, ChecklistItemFormValues } from './checklist-form.schema'
 import { ChecklistItemGroupSection } from './components/ChecklistItemGroupSection'
 import { ResponseOptionsEditor } from './components/ResponseOptionsEditor'
 import { TemplatePicker } from './components/TemplatePicker'
-import { styles } from './styles'
+
+export type ItemSheetState = { mode: 'new' } | { mode: 'edit'; index: number } | null
+export type PendingDeleteState = { type: 'item' | 'option'; index: number } | null
 
 export interface ChecklistFormViewProps {
-  form: ChecklistFormApi
+  form: UseFormReturn<ChecklistFormValues>
+  itemsArray: UseFieldArrayReturn<ChecklistFormValues, 'items', 'key'>
   tagsCatalog: ReturnType<typeof useTagsCatalog>
   templates?: ChecklistTemplate[]
   selectedTemplateId?: string | null
   loadingTemplateId?: string | null
   onSelectTemplate?: (template: ChecklistTemplate) => void
   error?: string | null
+
+  onAddOption: () => void
+  onRemoveOption: (index: number) => void
+
+  onAddItem: () => void
+  onEditItemByKey: (key: string) => void
+  onRemoveItemByKey: (key: string) => void
+  onReorderItemsByKey: (fromKey: string, toKey: string) => void
+
+  itemSheet: ItemSheetState
+  itemSheetForm: UseFormReturn<ChecklistItemFormValues>
+  onCloseItemSheet: () => void
+  onSaveItem: (values: ChecklistItemFormValues) => void
+
+  pendingDelete: PendingDeleteState
+  onCancelPendingDelete: () => void
+  onConfirmPendingDelete: () => void
 }
+
+/**
+ * Pure view: every piece of state (the two forms, the item sheet, the
+ * pending-delete confirmation) is owned by the container and handed down as
+ * props. The only things computed here are `groups`/`showGroupHeaders` —
+ * presentational derivations of `itemsArray.fields` for rendering, not state.
+ */
 export function ChecklistFormView({
-  form: formApi,
+  form,
+  itemsArray,
   tagsCatalog,
   templates,
   selectedTemplateId,
   loadingTemplateId,
   onSelectTemplate,
   error,
+  onAddOption,
+  onRemoveOption,
+  onAddItem,
+  onEditItemByKey,
+  onRemoveItemByKey,
+  onReorderItemsByKey,
+  itemSheet,
+  itemSheetForm,
+  onCloseItemSheet,
+  onSaveItem,
+  pendingDelete,
+  onCancelPendingDelete,
+  onConfirmPendingDelete,
 }: ChecklistFormViewProps) {
-  const { form, optionsArray, itemsArray } = formApi
   const { activeTags, tagsById, createTag, resolveLabels } = tagsCatalog
-  const { show } = useUndoToast()
-  const [itemSheet, setItemSheet] = useState<
-    { mode: 'new' } | { mode: 'edit'; index: number } | null
-  >(null)
-  const [pendingDelete, setPendingDelete] = useState<
-    { type: 'item' | 'option'; index: number } | null
-  >(null)
-  const itemSheetForm = useForm<ChecklistItemFormValues>({
-    resolver: zodResolver(checklistItemFormSchema),
-    defaultValues: { title: '', description: '', tagsIds: [] },
-  })
 
   const groups = useMemo(
     () => groupItemsByTitlePrefix(itemsArray.fields),
@@ -68,101 +88,9 @@ export function ChecklistFormView({
   // are actually in use.
   const showGroupHeaders = !(groups.length === 1 && groups[0]?.label === null)
 
-  function openAddItem() {
-    itemSheetForm.reset({ title: '', description: '', tagsIds: [] })
-    setItemSheet({ mode: 'new' })
-  }
-
-  const openEditItem = useCallback(
-    (item: ChecklistFormItemState, index: number) => {
-      itemSheetForm.reset({
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        tagsIds: item.tagsIds,
-      })
-      setItemSheet({ mode: 'edit', index })
-    },
-    [itemSheetForm],
-  )
-
-  // Group sections only know each item's field-array `key`; groups are a
-  // derived view over the flat `items` array, so every edit/remove/reorder
-  // coming from a section resolves back to a flat index before touching it.
-  //
-  // The lookups read the array through a ref rather than closing over it, so
-  // the three callbacks below stay referentially stable for the lifetime of
-  // the screen. That's what lets the memoized sections and rows bail out:
-  // closing over `itemsArray` would hand every row a new callback on every
-  // render and defeat their memo() entirely.
-  const itemsArrayRef = useRef(itemsArray)
-  itemsArrayRef.current = itemsArray
-
-  const openEditItemByKey = useCallback(
-    (key: string) => {
-      const { fields } = itemsArrayRef.current
-      const index = fields.findIndex((field) => field.key === key)
-      const item = fields[index]
-      if (index < 0 || !item) return
-      openEditItem(item, index)
-    },
-    [openEditItem],
-  )
-
-  const removeItemByKey = useCallback((key: string) => {
-    const index = itemsArrayRef.current.fields.findIndex(
-      (field) => field.key === key,
-    )
-    if (index < 0) return
-    setPendingDelete({ type: 'item', index })
-  }, [])
-
-  const reorderItemsByKey = useCallback((fromKey: string, toKey: string) => {
-    const { fields, move } = itemsArrayRef.current
-    const fromIndex = fields.findIndex((field) => field.key === fromKey)
-    const toIndex = fields.findIndex((field) => field.key === toKey)
-    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return
-    move(fromIndex, toIndex)
-  }, [])
-
-  function removeOptionWithUndo(index: number) {
-    const removedOption = form.getValues(`options.${index}`)
-    optionsArray.remove(index)
-    show({
-      message: 'Opção removida',
-      onCommit: () => {},
-      onUndo: () => optionsArray.insert(index, removedOption),
-    })
-  }
-
-  function removeItemWithUndo(index: number) {
-    const removedItem = form.getValues(`items.${index}`)
-    itemsArray.remove(index)
-    show({
-      message: 'Item removido',
-      onCommit: () => {},
-      onUndo: () => itemsArray.insert(index, removedItem),
-    })
-  }
-
-  const handleRemoveOption = useCallback(
-    (index: number) => setPendingDelete({ type: 'option', index }),
-    [],
-  )
-
-  function handleSaveItem(values: ChecklistItemFormValues) {
-    if (itemSheet?.mode === 'edit') {
-      itemsArray.update(itemSheet.index, values)
-    } else {
-      itemsArray.append(values)
-    }
-    setItemSheet(null)
-  }
   const footerComponent = useSheetFooterActions({
     confirmLabel: itemSheet?.mode === 'edit' ? 'Salvar' : 'Adicionar',
-    onConfirm: itemSheetForm.handleSubmit(handleSaveItem, () =>
-      haptics.error(),
-    ),
+    onConfirm: itemSheetForm.handleSubmit(onSaveItem, () => haptics.error()),
   })
 
   return (
@@ -198,16 +126,13 @@ export function ChecklistFormView({
 
       <View style={styles.section}>
         <Text style={styles.fieldLabel}>Opções de resposta</Text>
-        <ResponseOptionsEditor
-          control={form.control}
-          onRemoveOption={handleRemoveOption}
-        />
+        <ResponseOptionsEditor control={form.control} onRemoveOption={onRemoveOption} />
         <Pressable
           style={({ pressed }) => [
             styles.addOptionButton,
             pressed && { opacity: 0.7 },
           ]}
-          onPress={() => optionsArray.append({ label: '', semantic: 'neutro' })}
+          onPress={onAddOption}
         >
           <Icon name="plus" size={12} color={colors.blue.base} />
           <Text style={styles.addOptionText}>Adicionar opção (ex: Não aplica)</Text>
@@ -230,9 +155,9 @@ export function ChecklistFormView({
                   items={group.children}
                   showHeader={showGroupHeaders}
                   resolveLabels={resolveLabels}
-                  onEdit={openEditItemByKey}
-                  onRemove={removeItemByKey}
-                  onReorder={reorderItemsByKey}
+                  onEdit={onEditItemByKey}
+                  onRemove={onRemoveItemByKey}
+                  onReorder={onReorderItemsByKey}
                 />
               )
             })}
@@ -243,7 +168,7 @@ export function ChecklistFormView({
             styles.addItemButton,
             pressed && { opacity: 0.7 },
           ]}
-          onPress={openAddItem}
+          onPress={onAddItem}
         >
           <Icon name="plus" size={14} color={colors.ink.base} />
           <Text style={styles.addItemButtonText}>Adicionar item</Text>
@@ -253,7 +178,7 @@ export function ChecklistFormView({
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <AppBottomSheet
         visible={Boolean(itemSheet)}
-        onClose={() => setItemSheet(null)}
+        onClose={onCloseItemSheet}
         snapPoints={['90%']}
         footerComponent={footerComponent}
       >
@@ -310,15 +235,8 @@ export function ChecklistFormView({
         }
         confirmLabel={pendingDelete?.type === 'option' ? 'Remover opção' : 'Remover item'}
         warning="Você poderá desfazer isso por alguns segundos depois de confirmar."
-        onCancel={() => setPendingDelete(null)}
-        onConfirm={() => {
-          if (pendingDelete?.type === 'option') {
-            removeOptionWithUndo(pendingDelete.index)
-          } else if (pendingDelete?.type === 'item') {
-            removeItemWithUndo(pendingDelete.index)
-          }
-          setPendingDelete(null)
-        }}
+        onCancel={onCancelPendingDelete}
+        onConfirm={onConfirmPendingDelete}
       />
     </View>
   )

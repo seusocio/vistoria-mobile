@@ -9,7 +9,7 @@ export function drainOutbox(): Promise<void> {
 }
 
 /** The single write entrypoint: persist the op, then try to send it right away. */
-export function enqueueOp<Args>(op: OpDefinition<Args, unknown>, args: Args): void {
+export function enqueueOp<Args, Entity>(op: OpDefinition<Args, Entity>, args: Args): void {
   useOutbox.getState().enqueue(op, args)
   void drainOutbox()
 }

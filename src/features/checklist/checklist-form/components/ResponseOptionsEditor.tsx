@@ -4,9 +4,9 @@ import type { Control } from 'react-hook-form'
 import { Pressable, TextInput, View } from 'react-native'
 import { Icon } from '@/components/Icon'
 import type { ResponseSemantic } from '@/infra/domain/entities'
-import type { ChecklistFormValues } from '@/infra/domain/schemas'
 import { colors } from '@/styles'
-import { styles } from '../styles'
+import type { ChecklistFormValues } from '../checklist-form.schema'
+import { styles } from '../checklist-form.styles'
 
 const SEMANTIC_DOT_COLOR: Partial<Record<ResponseSemantic, string>> = {
   positivo: colors.success.base,

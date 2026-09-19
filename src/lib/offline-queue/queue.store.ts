@@ -18,7 +18,7 @@ export interface QueuedOp {
 
 export interface OutboxState {
   items: QueuedOp[]
-  enqueue: <Args>(op: OpDefinition<Args, unknown>, args: Args) => void
+  enqueue: <Args, Entity>(op: OpDefinition<Args, Entity>, args: Args) => void
   /** The op landed on the server — drop it. */
   resolve: (id: string) => void
   /** The op failed but hasn't exhausted its attempts — keep it, bump the count. */

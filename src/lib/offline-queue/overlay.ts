@@ -1,4 +1,4 @@
-import { useQuery } from 'convex/react'
+import { useQuery } from 'convex-helpers/react/cache'
 import type { FunctionReference } from 'convex/server'
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'

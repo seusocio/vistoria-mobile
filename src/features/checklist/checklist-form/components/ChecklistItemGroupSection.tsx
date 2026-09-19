@@ -4,8 +4,8 @@ import {
   COLLAPSIBLE_ROW_TRANSITION,
   Collapsible,
 } from '@/components/Collapsible'
-import type { ChecklistFormItemState } from '@/hooks/useChecklistForm'
 import { useReorderablePanGesture } from '@/hooks/useReorderablePanGesture'
+import type { ChecklistFormItemState } from '../checklist-form.schema'
 import { ChecklistItemRow } from './ChecklistItemRow'
 
 interface ChecklistItemGroupSectionProps {

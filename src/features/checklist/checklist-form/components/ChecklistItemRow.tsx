@@ -3,8 +3,8 @@ import { useReorderableDrag } from 'react-native-reorderable-list'
 import { TagChipList } from '@/components'
 import { Collapsible } from '@/components/Collapsible'
 import { ItemCard } from '@/components/ItemCard'
-import type { ChecklistFormItemState } from '@/hooks/useChecklistForm'
 import { haptics } from '@/utils/haptics'
+import type { ChecklistFormItemState } from '../checklist-form.schema'
 
 interface ChecklistItemRowProps {
   item: ChecklistFormItemState

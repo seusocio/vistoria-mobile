@@ -1,54 +1,9 @@
-import {
-  Checklist,
-  ChecklistItem,
-  DEFAULT_RESPONSE_OPTIONS,
-  ResponseOption,
-} from '@/infra/domain/entities'
+import { Checklist } from '@/infra/domain/entities'
 import { ChecklistRepository } from '@/infra/domain/repositories'
-import {
-  checklistTitleSchema,
-  minChecklistItemsSchema,
-  parseOrThrow,
-} from '@/infra/domain/schemas'
 import { generateId } from '@/infra/id'
 import { checklistRepository } from '@/infra/storage'
 import { api } from '../../../convex/_generated/api'
 import { convexClient } from '@/infra/convex/client'
-
-export interface ChecklistItemInput {
-  id?: string
-  title: string
-  description?: string
-  tagsIds?: string[]
-}
-
-export interface CreateChecklistInput {
-  title: string
-  tagsIds: string[]
-  options: ResponseOption[]
-  items: ChecklistItemInput[]
-}
-
-export interface UpdateChecklistInput {
-  title: string
-  tagsIds: string[]
-  options: ResponseOption[]
-  items: ChecklistItemInput[]
-}
-
-function buildItem(input: ChecklistItemInput, position: number): ChecklistItem {
-  const now = new Date().toISOString()
-  return {
-    id: generateId('citem_'),
-    position,
-    title: input.title.trim(),
-    description: input.description?.trim() ?? '',
-    tagsIds: input.tagsIds ?? [],
-    createdAt: now,
-    updatedAt: now,
-    deletedAt: null,
-  }
-}
 
 export async function listChecklists(
   repo: ChecklistRepository = checklistRepository,
@@ -61,76 +16,6 @@ export async function getChecklist(
   repo: ChecklistRepository = checklistRepository,
 ): Promise<Checklist | null> {
   return repo.findById(id)
-}
-
-export async function createChecklist(
-  input: CreateChecklistInput,
-  repo: ChecklistRepository = checklistRepository,
-): Promise<Checklist> {
-  const title = parseOrThrow(checklistTitleSchema, input.title.trim())
-
-  const validItems = input.items.filter((item) => item.title.trim().length > 0)
-  parseOrThrow(minChecklistItemsSchema, validItems)
-
-  const now = new Date().toISOString()
-  const checklist: Checklist = {
-    id: generateId('checklist_'),
-    title,
-    tagsIds: input.tagsIds,
-    options:
-      input.options.length > 0 ? input.options : DEFAULT_RESPONSE_OPTIONS,
-    source: 'manual',
-    items: validItems.map(buildItem),
-    createdAt: now,
-    updatedAt: now,
-    deletedAt: null,
-  }
-
-  return repo.save(checklist)
-}
-
-export async function updateChecklist(
-  id: string,
-  input: UpdateChecklistInput,
-  repo: ChecklistRepository = checklistRepository,
-): Promise<Checklist> {
-  const existing = await repo.findById(id)
-  if (!existing) throw new Error('Checklist não encontrado')
-
-  const title = parseOrThrow(checklistTitleSchema, input.title.trim())
-
-  const now = new Date().toISOString()
-  const existingById = new Map(existing.items.map((item) => [item.id, item]))
-
-  const items: ChecklistItem[] = input.items
-    .filter((item) => item.title.trim().length > 0)
-    .map((item, index) => {
-      const prior = item.id ? existingById.get(item.id) : undefined
-      if (prior) {
-        return {
-          ...prior,
-          position: index,
-          title: item.title.trim(),
-          description: item.description?.trim() ?? prior.description,
-          tagsIds: item.tagsIds ?? prior.tagsIds,
-          updatedAt: now,
-        }
-      }
-      return buildItem(item, index)
-    })
-
-  parseOrThrow(minChecklistItemsSchema, items)
-
-  const updated: Checklist = {
-    ...existing,
-    title,
-    tagsIds: input.tagsIds,
-    options: input.options.length > 0 ? input.options : existing.options,
-    items,
-    updatedAt: now,
-  }
-
-  return repo.save(updated)
 }
 
 export async function reorderChecklistItems(

@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native'
 import { Icon, type IconName } from '@/components/Icon'
 import type { ChecklistTemplate } from '@/infra/data/templates'
 import { colors } from '@/styles'
-import { styles } from '../styles'
+import { styles } from '../checklist-form.styles'
 
 const TEMPLATE_ICON: Record<string, IconName> = {
   'template-vistoria-entrega': 'clipboard-check',
