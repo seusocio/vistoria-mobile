@@ -1,1 +1,1 @@
-export { ChecklistFormContainer } from './checklist-form.container'
+export { ChecklistFormView } from './checklist-form.view'

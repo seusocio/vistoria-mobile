@@ -1,13 +1,12 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { useQuery } from 'convex-helpers/react/cache'
-import { Screen } from '@/components'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import type { VoiceState } from '@/components/VoiceCard'
 import type { ItemCompletionVariant } from '@/components/ItemCard'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
-import type { ApplicationItem, Checklist, WorkflowStatus } from '@/infra/domain/entities'
+import type { Application, ApplicationItem, Checklist, WorkflowStatus } from '@/infra/domain/entities'
 import {
   applicationItemDraftSchema,
   applicationMetaSchema,
@@ -32,26 +31,63 @@ import { normalizeApplication } from '@/infra/convex'
 import { useUploadStore } from '@/infra/uploads/upload-store'
 import { enqueueOp, useEntity } from '@/lib/offline-queue'
 import { useDraft } from '@/lib/forms'
-import type { Application } from '@/infra/domain/entities'
 import type { StackRoutesList } from '@/routes/types'
 import { useAttachPhotos } from '../shared/use-attach-photos'
 import { addItem, patchItem, softDelete, updateMeta } from './application-fill.ops'
-import { ApplicationFillView } from './application-fill.view'
 import { api } from '../../../../convex/_generated/api'
 
 type Navigation = NativeStackNavigationProp<StackRoutesList, keyof StackRoutesList>
 
-export interface ApplicationFillContainerProps {
+export interface UseApplicationFillContainerProps {
   checklistId: string
   applicationId: string
   navigation: Navigation
 }
 
-export function ApplicationFillContainer({
+const EMPTY_CHECKLIST: Checklist = {
+  id: '',
+  title: '',
+  tagsIds: [],
+  options: [],
+  source: 'manual',
+  items: [],
+  createdAt: '',
+  updatedAt: '',
+  deletedAt: null,
+}
+
+const EMPTY_APPLICATION: Application = {
+  id: '',
+  checklistId: '',
+  tagsIds: [],
+  date: '',
+  status: 'draft',
+  items: [],
+  attachments: [],
+  gallerySourceApplicationId: null,
+  transcript: null,
+  createdAt: '',
+  updatedAt: '',
+  completedAt: null,
+  deletedAt: null,
+}
+
+/**
+ * All of application-fill's state and behavior, as a hook. Every hook call
+ * inside here runs unconditionally on every render — `loading` can flip
+ * from true to false across the lifetime of one mounted view, and hooks
+ * can't be called conditionally — so this falls back to an empty
+ * checklist/application while the real ones are still loading rather than
+ * gating any hook call on them being present. Nothing here reacts to user
+ * input until the view stops rendering the loading screen, so the empty
+ * fallbacks are never actually seen — they just keep every downstream
+ * useMemo/useCallback type-safe and rules-of-hooks-safe through that window.
+ */
+export function useApplicationFillContainer({
   checklistId,
   applicationId,
   navigation,
-}: ApplicationFillContainerProps) {
+}: UseApplicationFillContainerProps) {
   const checklistData = useQuery(api.checklists.findById, { id: checklistId }) as
     | Checklist
     | null
@@ -61,41 +97,19 @@ export function ApplicationFillContainer({
     { id: applicationId },
     applicationId,
   )
-  const application = useMemo(
+  const normalizedApplication = useMemo(
     () => (rawApplication ? normalizeApplication(rawApplication) : null),
     [rawApplication],
   )
-  const loading = checklistData === undefined || rawApplication === undefined
+  const loading =
+    checklistData === undefined ||
+    rawApplication === undefined ||
+    !checklistData ||
+    !normalizedApplication
 
-  if (loading || !checklistData || !application) {
-    return (
-      <Screen loading variant="nested" onBack={() => navigation.goBack()} title="Preenchimento" />
-    )
-  }
+  const checklist = checklistData ?? EMPTY_CHECKLIST
+  const application = normalizedApplication ?? EMPTY_APPLICATION
 
-  return (
-    <ApplicationFillReady
-      checklist={checklistData}
-      application={application}
-      checklistId={checklistId}
-      navigation={navigation}
-    />
-  )
-}
-
-interface ApplicationFillReadyProps {
-  checklist: Checklist
-  application: Application
-  checklistId: string
-  navigation: Navigation
-}
-
-function ApplicationFillReady({
-  checklist,
-  application,
-  checklistId,
-  navigation,
-}: ApplicationFillReadyProps) {
   const tagsCatalog = useTagsCatalog()
   const { removeAttachment: removeAttachmentPipeline } = useAttachPhotos()
   const { startRecording, stopRecording } = useVoiceRecorder()
@@ -486,71 +500,70 @@ function ApplicationFillReady({
     progress: uploadProgress[attachment.id] ?? 0,
   }))
 
-  return (
-    <ApplicationFillView
-      checklist={checklist}
-      application={application}
-      progress={progress}
-      derivedState={derivedState}
-      groups={groups}
-      resolveTagLabel={resolveTagLabel}
-      applicationError={applicationError}
-      tagsCatalog={tagsCatalog}
-      uploadProgress={uploadProgress}
-      voiceState={voiceState}
-      generatingSuggestions={generatingSuggestions}
-      viewer={viewer}
-      viewerPhotos={viewerPhotos}
-      editingApplication={editingApplication}
-      metaForm={metaDraft.form}
-      addingItem={addingItem}
-      newItemForm={newItemDraft.form}
-      deleteConfirmationVisible={deleteConfirmationVisible}
-      editingItem={editingItem ?? null}
-      editingItemIndex={editingItemIndex}
-      editingItemsTotal={editingItemsTotal}
-      itemDraftValues={itemDraftValues}
-      itemForm={itemDraft.form}
-      editingItemCompletionVariant={editingItemCompletionVariant}
-      onBack={() => navigation.goBack()}
-      onDelete={handleDelete}
-      onComplete={handleComplete}
-      onEditApplication={handleOpenEditApplication}
-      onAddApplicationPhoto={handleAddApplicationPhoto}
-      onRemoveApplicationAttachment={removeApplicationAttachment}
-      onRetryApplicationAttachment={retryApplicationAttachment}
-      onOpenPhoto={(itemId, index) => setViewer({ itemId, index })}
-      onStartRecording={handleStartRecording}
-      onStopRecording={handleStopRecording}
-      onGenerateSuggestions={handleGenerateSuggestions}
-      onOpenAddItem={handleOpenAddItem}
-      onToggleComplete={handleToggleComplete}
-      onToggleGroupComplete={handleToggleGroupComplete}
-      onOpenDrawer={handleOpenItemDrawer}
-      onAcceptSuggestion={handleAcceptSuggestion}
-      onRejectSuggestion={handleRejectSuggestion}
-      onError={setApplicationError}
-      onCloseItemDrawer={() => setEditingItemId(null)}
-      onSelectStatus={handleSelectStatus}
-      onAddPhoto={handleAddPhoto}
-      onRemoveItemAttachment={removeItemAttachment}
-      onRetryItemAttachment={retryItemAttachment}
-      onSaveItemDrawer={() => {
-        void itemDraft.commit()
-        setEditingItemId(null)
-      }}
-      onCloseViewer={() => setViewer(null)}
-      onDeletePhotoFromViewer={(attachmentId) => {
-        if (!viewer) return
-        if (viewer.itemId === null) removeApplicationAttachment(attachmentId)
-        else removeItemAttachment(viewer.itemId, attachmentId)
-      }}
-      onCloseEditApplication={() => setEditingApplication(false)}
-      onSaveApplication={handleSaveApplication}
-      onCloseAddItem={() => setAddingItem(false)}
-      onSaveNewItem={handleSaveNewItem}
-      onCancelDelete={() => setDeleteConfirmationVisible(false)}
-      onConfirmDelete={confirmDelete}
-    />
-  )
+  return {
+    loading,
+    checklist,
+    application,
+    progress,
+    derivedState,
+    groups,
+    resolveTagLabel,
+    applicationError,
+    tagsCatalog,
+    uploadProgress,
+    voiceState,
+    generatingSuggestions,
+    viewer,
+    viewerPhotos,
+    editingApplication,
+    metaForm: metaDraft.form,
+    addingItem,
+    newItemForm: newItemDraft.form,
+    deleteConfirmationVisible,
+    editingItem: editingItem ?? null,
+    editingItemIndex,
+    editingItemsTotal,
+    itemDraftValues,
+    itemForm: itemDraft.form,
+    editingItemCompletionVariant,
+    onBack: () => navigation.goBack(),
+    onDelete: handleDelete,
+    onComplete: handleComplete,
+    onEditApplication: handleOpenEditApplication,
+    onAddApplicationPhoto: handleAddApplicationPhoto,
+    onRemoveApplicationAttachment: removeApplicationAttachment,
+    onRetryApplicationAttachment: retryApplicationAttachment,
+    onOpenPhoto: (itemId: string | null, index: number) => setViewer({ itemId, index }),
+    onStartRecording: handleStartRecording,
+    onStopRecording: handleStopRecording,
+    onGenerateSuggestions: handleGenerateSuggestions,
+    onOpenAddItem: handleOpenAddItem,
+    onToggleComplete: handleToggleComplete,
+    onToggleGroupComplete: handleToggleGroupComplete,
+    onOpenDrawer: handleOpenItemDrawer,
+    onAcceptSuggestion: handleAcceptSuggestion,
+    onRejectSuggestion: handleRejectSuggestion,
+    onError: setApplicationError,
+    onCloseItemDrawer: () => setEditingItemId(null),
+    onSelectStatus: handleSelectStatus,
+    onAddPhoto: handleAddPhoto,
+    onRemoveItemAttachment: removeItemAttachment,
+    onRetryItemAttachment: retryItemAttachment,
+    onSaveItemDrawer: () => {
+      void itemDraft.commit()
+      setEditingItemId(null)
+    },
+    onCloseViewer: () => setViewer(null),
+    onDeletePhotoFromViewer: (attachmentId: string) => {
+      if (!viewer) return
+      if (viewer.itemId === null) removeApplicationAttachment(attachmentId)
+      else removeItemAttachment(viewer.itemId, attachmentId)
+    },
+    onCloseEditApplication: () => setEditingApplication(false),
+    onSaveApplication: handleSaveApplication,
+    onCloseAddItem: () => setAddingItem(false),
+    onSaveNewItem: handleSaveNewItem,
+    onCancelDelete: () => setDeleteConfirmationVisible(false),
+    onConfirmDelete: confirmDelete,
+  }
 }

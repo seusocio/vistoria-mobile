@@ -50,6 +50,15 @@ export interface UseDraftResult<Values extends FieldValues> {
   clearDraft: () => Promise<void>
   /** True once a persisted draft, if any, has been loaded and applied to the form. */
   hydrated: boolean
+  /**
+   * True once hydration found and applied an actual persisted draft (as
+   * opposed to just finishing the check and finding nothing). A container
+   * hook that also wants to reset the form to fresh server data once it
+   * loads needs this to know whether that reset would be safe — resetting
+   * to fresh data after a persisted draft already won would silently
+   * discard the user's own unsaved edits.
+   */
+  hasPersistedDraft: boolean
 }
 
 /**
@@ -80,6 +89,7 @@ export function useDraft<Values extends FieldValues>({
   })
   const [hydrated, setHydrated] = useState(false)
   const hydratedRef = useRef(false)
+  const [hasPersistedDraft, setHasPersistedDraft] = useState(false)
   // onCommit is typically an inline closure at the call site; reading the
   // latest one through a ref (ADR 0001-0008's established pattern in this
   // codebase for stable callback identity) keeps the watch subscription
@@ -93,6 +103,7 @@ export function useDraft<Values extends FieldValues>({
       .then((raw) => {
         if (cancelled || !raw) return
         form.reset(JSON.parse(raw) as Values)
+        setHasPersistedDraft(true)
       })
       .catch(() => undefined)
       .finally(() => {
@@ -153,8 +164,9 @@ export function useDraft<Values extends FieldValues>({
     clearTimeout(commitTimers.get(storageKey))
     persistTimers.delete(storageKey)
     commitTimers.delete(storageKey)
+    setHasPersistedDraft(false)
     await AsyncStorage.removeItem(storageKey).catch(() => undefined)
   }
 
-  return { form, commit, clearDraft, hydrated }
+  return { form, commit, clearDraft, hydrated, hasPersistedDraft }
 }

@@ -1,18 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
-import { Pressable, Text } from 'react-native'
-import { ScrollViewContainer } from 'react-native-reorderable-list'
-import { Screen, useUndoToast } from '@/components'
-import { Icon } from '@/components/Icon'
+import { useUndoToast } from '@/components'
 import { useTagsCatalog } from '@/hooks/useTagsCatalog'
 import type { Checklist } from '@/infra/domain/entities'
 import { checklistTemplates, type ChecklistTemplate } from '@/infra/data/templates'
-import { useEntity, enqueueOp } from '@/lib/offline-queue'
-import type { StackRoutesList } from '@/routes/types'
-import { colors } from '@/styles'
 import { useDraft } from '@/lib/forms'
+import { enqueueOp, useEntity } from '@/lib/offline-queue'
+import type { StackRoutesList } from '@/routes/types'
 import { api } from '../../../../convex/_generated/api'
 import {
   checklistFormSchema,
@@ -24,58 +20,32 @@ import {
 } from './checklist-form.schema'
 import { checklistSave } from './checklist-form.ops'
 import { buildChecklistEntity } from './checklist-form.utils'
-import { styles } from './checklist-form.styles'
-import { ChecklistFormView, type ItemSheetState, type PendingDeleteState } from './checklist-form.view'
+
+export type ItemSheetState = { mode: 'new' } | { mode: 'edit'; index: number } | null
+export type PendingDeleteState = { type: 'item' | 'option'; index: number } | null
 
 type Navigation = NativeStackNavigationProp<StackRoutesList, keyof StackRoutesList>
 
-export interface ChecklistFormContainerProps {
+export interface UseChecklistFormContainerProps {
   /** Omit to create a new checklist; pass to edit an existing one. */
   checklistId?: string
   navigation: Navigation
 }
 
-export function ChecklistFormContainer({ checklistId, navigation }: ChecklistFormContainerProps) {
+/**
+ * All of checklist-form's state and behavior, as a hook — the view calls
+ * this directly and renders from its return value. No container
+ * *component*, no props interface mirroring this hook's internals by hand.
+ */
+export function useChecklistFormContainer({ checklistId, navigation }: UseChecklistFormContainerProps) {
   const isEditing = Boolean(checklistId)
   const existing = useEntity<Checklist>(
     api.checklists.findById,
     { id: checklistId ?? '' },
     checklistId ?? '',
   )
+  const loading = isEditing && (existing === undefined || existing === null)
 
-  if (isEditing && (existing === undefined || existing === null)) {
-    return (
-      <Screen
-        loading
-        variant="nested"
-        navTitleTone="strong"
-        onBack={() => navigation.goBack()}
-        title="Editar checklist"
-      />
-    )
-  }
-
-  // Mounting fresh only once `existing` (or the absence of an id, for
-  // creation) is settled means useDraft's defaultValues are correct from
-  // the first render — no separate "reset once loaded" effect needed, and
-  // no race between that effect and useDraft's own AsyncStorage rehydration.
-  return (
-    <ChecklistFormReady
-      checklistId={checklistId}
-      existing={existing ?? null}
-      navigation={navigation}
-    />
-  )
-}
-
-interface ChecklistFormReadyProps {
-  checklistId?: string
-  existing: Checklist | null
-  navigation: Navigation
-}
-
-function ChecklistFormReady({ checklistId, existing, navigation }: ChecklistFormReadyProps) {
-  const isEditing = Boolean(checklistId)
   const tagsCatalog = useTagsCatalog()
   const { show } = useUndoToast()
 
@@ -85,16 +55,27 @@ function ChecklistFormReady({ checklistId, existing, navigation }: ChecklistForm
   const [itemSheet, setItemSheet] = useState<ItemSheetState>(null)
   const [pendingDelete, setPendingDelete] = useState<PendingDeleteState>(null)
 
-  const { form, commit, clearDraft } = useDraft<ChecklistFormValues>({
+  const { form, commit, clearDraft, hydrated, hasPersistedDraft } = useDraft<ChecklistFormValues>({
     key: `checklist:${checklistId ?? 'new'}`,
     schema: checklistFormSchema,
     defaultValues: checklistToFormValues(existing),
     autoCommit: isEditing,
     onCommit: (values) => {
       if (!checklistId) return
-      enqueueOp(checklistSave, { id: checklistId, entity: buildChecklistEntity(existing, values) })
+      enqueueOp(checklistSave, { id: checklistId, entity: buildChecklistEntity(existing ?? null, values) })
     },
   })
+  // useDraft is called unconditionally (it's a hook), so it can't wait for
+  // `existing` to load the way a two-component split used to. Once both the
+  // server data and useDraft's own AsyncStorage check have settled, reset to
+  // fresh server data — but only if hydration didn't already apply a real
+  // persisted draft, or this would silently discard the user's own unsaved
+  // edits regardless of which of the two async reads happened to win the race.
+  useEffect(() => {
+    if (!isEditing || !existing || !hydrated || hasPersistedDraft) return
+    form.reset(checklistToFormValues(existing))
+  }, [isEditing, existing, hydrated, hasPersistedDraft, form.reset])
+
   const optionsArray = useFieldArray({ control: form.control, name: 'options' })
   const itemsArray = useFieldArray({ control: form.control, name: 'items', keyName: 'key' })
 
@@ -210,53 +191,35 @@ function ChecklistFormReady({ checklistId, existing, navigation }: ChecklistForm
     navigation.replace('checklistDetail', { checklistId: entity.id })
   }
 
-  return (
-    <Screen
-      ScrollComponent={ScrollViewContainer}
-      variant="nested"
-      navTitleTone="strong"
-      onBack={() => navigation.goBack()}
-      title={isEditing ? 'Editar checklist' : 'Novo checklist'}
-      footer={
-        isEditing ? undefined : (
-          <Pressable
-            style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.7 }]}
-            onPress={handleCreate}
-            disabled={form.formState.isSubmitting}
-          >
-            <Icon name="check" size={18} color={colors.white} />
-            <Text style={styles.saveButtonText}>Criar checklist</Text>
-          </Pressable>
-        )
-      }
-    >
-      <ChecklistFormView
-        form={form}
-        itemsArray={itemsArray}
-        tagsCatalog={tagsCatalog}
-        templates={isEditing ? undefined : checklistTemplates}
-        selectedTemplateId={selectedTemplateId}
-        loadingTemplateId={loadingTemplateId}
-        onSelectTemplate={handleSelectTemplate}
-        error={templateError}
-        onAddOption={() => optionsArray.append({ label: '', semantic: 'neutro' })}
-        onRemoveOption={onRemoveOption}
-        onAddItem={openAddItem}
-        onEditItemByKey={onEditItemByKey}
-        onRemoveItemByKey={onRemoveItemByKey}
-        onReorderItemsByKey={onReorderItemsByKey}
-        itemSheet={itemSheet}
-        itemSheetForm={itemSheetForm}
-        onCloseItemSheet={() => setItemSheet(null)}
-        onSaveItem={onSaveItem}
-        pendingDelete={pendingDelete}
-        onCancelPendingDelete={() => setPendingDelete(null)}
-        onConfirmPendingDelete={() => {
-          if (pendingDelete?.type === 'option') removeOptionWithUndo(pendingDelete.index)
-          else if (pendingDelete?.type === 'item') removeItemWithUndo(pendingDelete.index)
-          setPendingDelete(null)
-        }}
-      />
-    </Screen>
-  )
+  return {
+    loading,
+    isEditing,
+    form,
+    itemsArray,
+    tagsCatalog,
+    templates: isEditing ? undefined : checklistTemplates,
+    selectedTemplateId,
+    loadingTemplateId,
+    templateError,
+    itemSheet,
+    itemSheetForm,
+    pendingDelete,
+    onBack: () => navigation.goBack(),
+    onSelectTemplate: handleSelectTemplate,
+    onAddOption: () => optionsArray.append({ label: '', semantic: 'neutro' }),
+    onRemoveOption,
+    onAddItem: openAddItem,
+    onEditItemByKey,
+    onRemoveItemByKey,
+    onReorderItemsByKey,
+    onCloseItemSheet: () => setItemSheet(null),
+    onSaveItem,
+    onCancelPendingDelete: () => setPendingDelete(null),
+    onConfirmPendingDelete: () => {
+      if (pendingDelete?.type === 'option') removeOptionWithUndo(pendingDelete.index)
+      else if (pendingDelete?.type === 'item') removeItemWithUndo(pendingDelete.index)
+      setPendingDelete(null)
+    },
+    onCreate: handleCreate,
+  }
 }
