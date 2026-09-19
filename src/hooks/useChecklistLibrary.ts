@@ -1,4 +1,3 @@
-import { useQuery } from 'convex-helpers/react/cache'
 import { normalizeApplication } from '@/infra/convex'
 import { Application, Checklist } from '@/infra/domain/entities'
 import { useEntityList } from '@/lib/offline-queue'
@@ -9,14 +8,16 @@ const EMPTY_APPLICATIONS: Application[] = []
 
 export function useChecklistLibrary() {
   const checklistsData = useEntityList<Checklist>(api.checklists.list, {}, (c) => c.id)
-  const applicationsData = useQuery(api.applications.listAll) as
-    | Application[]
-    | undefined
+  const applicationsData = useEntityList<Application>(
+    api.applications.listAll,
+    {},
+    (application) => application.id,
+  )
 
   const checklists = checklistsData ?? EMPTY_CHECKLISTS
-  const applications = (applicationsData ?? EMPTY_APPLICATIONS).map(
-    normalizeApplication,
-  )
+  const applications = (applicationsData ?? EMPTY_APPLICATIONS)
+    .filter((application) => !application.deletedAt)
+    .map(normalizeApplication)
   const loading = checklistsData === undefined || applicationsData === undefined
 
   return {
