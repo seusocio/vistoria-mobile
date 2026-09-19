@@ -52,7 +52,7 @@ delas. Se uma tela precisa de uma sexta, ou a peça é genérica (entra em `lib/
 | 2 | `outbox` | `src/lib/offline-queue/queue.store.ts` | Fila FIFO persistida. Único caminho para a rede |
 | 3 | `useEntity` / `useEntityList` | `src/lib/offline-queue/overlay.ts` | `useQuery` + ops pendentes aplicadas por cima. É o que faz o app ser instantâneo e sobreviver ao restart |
 | 4 | `useDraft` | `src/lib/forms/use-draft.ts` | RHF + zod + rascunho persistido, para o que ainda não virou entidade |
-| 5 | container/view | convenção de pasta | Container orquestra, view só renderiza |
+| 5 | `*.container.ts` + `*.view.tsx` | convenção de pasta | Container é um **hook** (`useXContainer`, sem JSX); a view é o **único componente**, chama o hook direto e renderiza a partir do retorno — sem interface de props espelhando o container à mão |
 
 ### Por que trocar `withOptimisticUpdate` pelo overlay da fila
 
@@ -89,18 +89,17 @@ O que já existe no repo e vira reuso direto:
 
 ```text
 src/
-├── app/                                  # SÓ rotas: cada arquivo renderiza um container
-│   ├── ApplicationFill.tsx               #   export default () => <ApplicationFillContainer .../>
+├── app/                                  # SÓ rotas: cada arquivo renderiza a view
+│   ├── ApplicationFill.tsx               #   export default () => <ApplicationFillView .../>
 │   └── …
 ├── features/
 │   ├── application/
 │   │   ├── application-fill/
-│   │   │   ├── index.ts                  # exporta só o container
-│   │   │   ├── application-fill.container.tsx
-│   │   │   ├── application-fill.view.tsx
+│   │   │   ├── index.ts                  # exporta só a view
+│   │   │   ├── application-fill.container.ts   # hook useApplicationFillContainer — sem JSX
+│   │   │   ├── application-fill.view.tsx       # único componente; chama o hook e renderiza
 │   │   │   ├── application-fill.schema.ts
-│   │   │   ├── components/               # ← move de src/app/ApplicationFill/components/
-│   │   │   └── hooks/
+│   │   │   └── components/               # ← move de src/app/ApplicationFill/components/
 │   │   ├── application-new/
 │   │   ├── photo-capture/
 │   │   └── shared/
@@ -287,6 +286,41 @@ Mudanças de comportamento:
 - **0008**: props da view por chave (`onEdit: (id) => void`), sem closure por linha, sem objeto
   literal inline, e o `arePropsEqual` com `shallow` do `ApplicationItemGroupSection` permanece.
 
+### Correção pós-Fase 5 — container é hook, não componente
+
+As Fases 4 e 5 acima, como implementadas, usaram **dois componentes**: um container que computava
+tudo e renderizava `<XView {...25 props} />`, e uma view recebendo tudo por uma interface de props
+espelhando o container à mão. Correção do usuário: "containers can be only a custom hook
+(x.container.ts) only components and the view should be .tsx we're abusing of prop and doing too
+much prop drilling." Essa interface era pura cerimônia — o único papel do container era entregar
+o próprio estado para um único chamador.
+
+Aplicado retroativamente às duas features e daqui para frente é o padrão:
+- `*.container.ts` — **hook** (`useXContainer`), sem JSX, sem componente. Retorna um objeto simples
+  de estado + handlers.
+- `*.view.tsx` — **único componente** da feature. Chama o hook direto e renderiza a partir do
+  retorno — inclusive o chrome do `Screen` (header/footer) e o gate de loading, que antes viviam
+  no componente container.
+- Rotas (`src/app/X.tsx`) renderizam a view direto, só com o que uma rota realmente tem (ids,
+  `navigation`) — não a superfície de props antiga da view.
+
+Uma consequência real: um hook não pode pular sua própria chamada de hook condicionalmente, então
+`useDraft` (e qualquer outro hook) tem que ser chamado **sempre**, mesmo durante o loading — o
+truque de dois componentes (um componente-gate fora, um componente-pronto dentro) que antes permitia
+só montar o formulário depois dos dados carregarem não existe mais. Duas soluções, dependendo do
+caso:
+- Quando o `defaultValues` do `useDraft` depende do dado assíncrono (caso do `checklist-form`): o
+  `useDraft` ganhou `hasPersistedDraft` (verdadeiro só quando a hidratação achou e aplicou um
+  rascunho real, não só quando terminou de checar) — um efeito de "resetar para o dado fresco do
+  servidor" no container pode então esperar por `hydrated && !hasPersistedDraft` antes de resetar,
+  correto independente de qual leitura assíncrona (AsyncStorage ou a query) resolve primeiro.
+- Quando o `defaultValues` é estático e só é preenchido depois por um reset ligado a uma ação do
+  usuário (caso dos 3 `useDraft` do `application-fill` — nenhum depende do dado carregar): basta um
+  `EMPTY_CHECKLIST`/`EMPTY_APPLICATION` de fallback, para todo `useMemo`/`useCallback` seguinte
+  continuar type-safe enquanto `loading` é verdadeiro.
+
+Salvo como preferência permanente em `memory/feedback_container-as-hook.md`.
+
 ### Fase 6 — Fotos offline de verdade
 
 O buraco: foto tirada offline não gera linha pendente no servidor, então `resumePending()` nunca a
@@ -328,7 +362,7 @@ porque as skills vendoradas assumem Expo Router + TanStack Query e vão enganar 
 .agents/skills/offline-first-form/
 ├── SKILL.md
 └── templates/
-    ├── feature.container.tsx.md
+    ├── feature.container.ts.md
     ├── feature.view.tsx.md
     ├── feature.ops.ts.md
     └── feature.schema.ts.md
