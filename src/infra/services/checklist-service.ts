@@ -4,17 +4,16 @@ import {
   DEFAULT_RESPONSE_OPTIONS,
   ResponseOption,
 } from '@/infra/domain/entities'
-import {
-  ApplicationRepository,
-  ChecklistRepository,
-} from '@/infra/domain/repositories'
+import { ChecklistRepository } from '@/infra/domain/repositories'
 import {
   checklistTitleSchema,
   minChecklistItemsSchema,
   parseOrThrow,
 } from '@/infra/domain/schemas'
 import { generateId } from '@/infra/id'
-import { applicationRepository, checklistRepository } from '@/infra/storage'
+import { checklistRepository } from '@/infra/storage'
+import { api } from '../../../convex/_generated/api'
+import { convexClient } from '@/infra/convex/client'
 
 export interface ChecklistItemInput {
   id?: string
@@ -191,14 +190,15 @@ export async function duplicateChecklist(
   return repo.save(duplicated)
 }
 
-export async function softDeleteChecklist(
-  id: string,
-  repo: ChecklistRepository = checklistRepository,
-  applicationRepo: ApplicationRepository = applicationRepository,
-): Promise<void> {
-  const applications = await applicationRepo.listByChecklistId(id)
-  await Promise.all(
-    applications.map((application) => applicationRepo.softDelete(application.id)),
-  )
-  await repo.softDelete(id)
+/**
+ * Deletes the checklist and every one of its applications in a single
+ * transaction (`checklists.softDeleteCascade`), instead of one
+ * `applications.softDelete` round trip per application followed by
+ * `checklists.softDelete`.
+ */
+export async function softDeleteChecklist(id: string): Promise<void> {
+  await convexClient.mutation(api.checklists.softDeleteCascade, {
+    id,
+    deletedAt: new Date().toISOString(),
+  })
 }

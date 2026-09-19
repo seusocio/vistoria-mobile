@@ -153,12 +153,12 @@ export const addItem = mutation({
   },
   handler: async (ctx, { applicationId, item, updatedAt }) => {
     const application = await getApp(ctx, applicationId)
-    if (application) {
-      await ctx.db.patch('applications', application._id, {
-        items: [...application.items, item],
-        updatedAt,
-      })
-    }
+    if (!application) return null
+    if (application.items.some((existing) => existing.id === item.id)) return null
+    await ctx.db.patch('applications', application._id, {
+      items: [...application.items, item],
+      updatedAt,
+    })
     return null
   },
 })
@@ -174,10 +174,17 @@ export const addAttachment = mutation({
     const application = await getApp(ctx, applicationId)
     if (!application) return null
     if (itemId === null) {
+      if (application.attachments.some((existing) => existing.id === attachment.id)) {
+        return null
+      }
       await ctx.db.patch('applications', application._id, {
         attachments: [...application.attachments, attachment],
         updatedAt,
       })
+      return null
+    }
+    const targetItem = application.items.find((item) => item.id === itemId)
+    if (targetItem?.attachments.some((existing) => existing.id === attachment.id)) {
       return null
     }
     await ctx.db.patch('applications', application._id, {
