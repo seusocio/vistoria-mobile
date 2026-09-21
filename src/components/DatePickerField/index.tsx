@@ -2,11 +2,14 @@ import DateTimePicker, {
   DateTimePickerAndroid,
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker'
+import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { useState } from 'react'
-import { Modal, Platform, Pressable, Text, View } from 'react-native'
+import { Platform, Pressable, Text } from 'react-native'
 import { colors } from '@/styles'
 import { formatBrDateShort } from '@/utils/date'
+import { AppBottomSheet } from '../AppBottomSheet'
 import { Icon } from '../Icon'
+import { useSheetFooterActions } from '../SheetFooterActions'
 import { styles } from './styles'
 
 export interface DatePickerFieldProps {
@@ -21,7 +24,7 @@ function toValidDate(value: string): Date {
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed
 }
 
-/** Opens the native calendar in a modal layer above screens and sheets. */
+/** Opens the native calendar (Android) or a real stacked bottom sheet (iOS). */
 export function DatePickerField({
   value,
   onChange,
@@ -61,6 +64,13 @@ export function DatePickerField({
     setVisible(false)
   }
 
+  const footerComponent = useSheetFooterActions({
+    confirmLabel: 'Aplicar',
+    onConfirm: confirmPicker,
+    cancelLabel: 'Cancelar',
+    onCancel: closePicker,
+  })
+
   return (
     <>
       <Pressable
@@ -73,56 +83,24 @@ export function DatePickerField({
         <Text style={styles.value}>{formatBrDateShort(date.toISOString())}</Text>
       </Pressable>
 
-      <Modal
+      <AppBottomSheet
         visible={visible}
-        transparent
-        animationType="slide"
-        onRequestClose={closePicker}
-        statusBarTranslucent
+        onClose={closePicker}
+        footerComponent={footerComponent}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecionar data</Text>
-              <Pressable
-                hitSlop={12}
-                onPress={closePicker}
-                accessibilityRole="button"
-                accessibilityLabel="Cancelar seleção de data"
-              >
-                <Icon name="multiply" size={20} color={colors.gray[600]} />
-              </Pressable>
-            </View>
-
-            <DateTimePicker
-              value={draftDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'inline' : 'default'}
-              onChange={handlePickerChange}
-              accentColor={colors.blue.base}
-              themeVariant="light"
-              style={styles.picker}
-            />
-
-            <View style={styles.modalActions}>
-              <Pressable
-                style={styles.cancelButton}
-                onPress={closePicker}
-                accessibilityRole="button"
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                style={styles.confirmButton}
-                onPress={confirmPicker}
-                accessibilityRole="button"
-              >
-                <Text style={styles.confirmButtonText}>Aplicar</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        <BottomSheetView style={styles.sheetContent}>
+          <Text style={styles.modalTitle}>Selecionar data</Text>
+          <DateTimePicker
+            value={draftDate}
+            mode="date"
+            display="inline"
+            onChange={handlePickerChange}
+            accentColor={colors.blue.base}
+            themeVariant="light"
+            style={styles.picker}
+          />
+        </BottomSheetView>
+      </AppBottomSheet>
     </>
   )
 }
