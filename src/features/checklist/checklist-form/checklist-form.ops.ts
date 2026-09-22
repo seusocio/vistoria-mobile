@@ -1,5 +1,5 @@
 import { defineOp } from '@/lib/offline-queue/ops'
-import type { Checklist } from '@/infra/domain/entities'
+import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { api } from '../../../../convex/_generated/api'
 
 export interface ChecklistSaveArgs {
@@ -14,7 +14,33 @@ export interface ChecklistSaveArgs {
  * either way — there is no merge to get wrong between the two cases.
  */
 export const checklistSave = defineOp<ChecklistSaveArgs, Checklist>('checklists.save', {
+  kind: 'checklist',
   mutation: api.checklists.save,
   applyLocal: (_entity, args) => args.entity,
+  entityId: (args) => args.id,
+})
+
+/**
+ * Deletes the checklist and every one of its applications in a single
+ * server-side transaction. Queued like every other write, so deleting
+ * offline is as durable as filling a vistoria offline — the previous
+ * direct `convexClient.mutation` call simply hung with no network and was
+ * lost on a kill.
+ *
+ * The overlay for this op only marks the *checklist* deleted; the
+ * applications it cascades into are a different `kind` and stay visible
+ * until the server confirms. `useChecklistLibrary` closes that gap by
+ * dropping applications whose checklist is no longer in the list.
+ */
+export const checklistSoftDeleteCascade = defineOp<
+  { id: string; deletedAt: string },
+  Checklist
+>('checklists.softDeleteCascade', {
+  kind: 'checklist',
+  mutation: api.checklists.softDeleteCascade,
+  applyLocal: (entity, args) => {
+    if (!entity) return null
+    return { ...entity, deletedAt: args.deletedAt }
+  },
   entityId: (args) => args.id,
 })

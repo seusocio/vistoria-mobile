@@ -27,10 +27,14 @@ const defaultScheduler: Scheduler = (run, delayMs) => {
  * throwaway store, a fake mutation runner, and a no-op scheduler.
  * `process-queue.ts` wires this to the real ones.
  *
- * Drains FIFO, one item at a time, oldest first. Stops on the first
- * failure instead of skipping ahead: a later op may target an entity this
- * one creates (`patchItems` after the `create` it patches), so order has
- * to survive retries, not just the happy path.
+ * Drains strictly FIFO: always the head of the queue, never a later item.
+ * A later op routinely depends on an earlier one — `patchItem` on the
+ * application the queued `create` hasn't inserted yet — and the server
+ * answers a patch against a missing row with `return null`, which loses the
+ * write in silence. So a head that has exhausted its attempts *blocks* the
+ * queue instead of being stepped over; `retryFailed()` (on reconnect,
+ * foreground or boot) is what unblocks it, and `SyncStatusBar` is what
+ * makes the block visible while it lasts.
  */
 export async function drainOutboxWith(
   outbox: Pick<StoreApi<OutboxState>, 'getState'>,
@@ -41,9 +45,17 @@ export async function drainOutboxWith(
   draining = true
   try {
     for (;;) {
-      const item = outbox.getState().items.find((candidate) => candidate.status === 'pending')
-      if (!item) return
+      const item = outbox.getState().items[0]
+      if (!item || item.status === 'failed') return
+
       const op = getOp(item.type)
+      if (!op) {
+        // A persisted op from a build that no longer defines it. Retrying
+        // can't help, and dropping it would delete a write the user made.
+        outbox.getState().fail(item.id)
+        return
+      }
+
       try {
         await runMutation(op.mutation, item.args as Record<string, unknown>)
         outbox.getState().resolve(item.id)

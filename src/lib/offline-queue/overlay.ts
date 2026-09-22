@@ -1,89 +1,199 @@
 import { useQuery } from 'convex-helpers/react/cache'
+import { useConvexConnectionState } from 'convex/react'
 import type { FunctionReference } from 'convex/server'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { castConvex } from '@/infra/convex/cast'
-import { getOp } from './ops'
+import { castConvex } from '@/lib/convex/cast'
+import { getOp, type EntityKind } from './ops'
 import { useOutbox, type QueuedOp } from './queue.store'
+import { snapshotKey, useSnapshots, writeSnapshot } from './snapshot.store'
 
-/** Applies every pending op, in enqueue order, on top of the server's copy. */
+/**
+ * Applies every pending op, in enqueue order, on top of the server's copy.
+ * An op whose definition is missing from this build is skipped rather than
+ * thrown on — this runs during render, and the drain already surfaces that
+ * op as failed.
+ */
 export function applyOps<Entity>(entity: Entity | null, ops: QueuedOp[]): Entity | null {
   return ops.reduce<Entity | null>((current, item) => {
     const op = getOp(item.type)
+    if (!op) return current
     return op.applyLocal(current, item.args) as Entity | null
   }, entity)
 }
 
 /**
- * Reads one entity: the server's copy via `useQuery`, with every pending
- * outbox op for it applied on top. This is what makes a write feel instant
- * and stay durable across a restart — the outbox persists, and the overlay
- * re-applies it on every render until the server confirms and the op is
- * removed from the queue.
+ * Decides what the overlay reads from, and whether "nothing" is an answer or
+ * a wait. Pure, because this is the decision that decides whether the app
+ * works at all with no network.
+ *
+ * `useQuery` resolves only when the socket does. With no network it stays
+ * `undefined` forever — so treating `undefined` as "still loading" is what
+ * leaves every screen on a spinner in airplane mode.
+ */
+export function resolveOverlayBase<Value>(input: {
+  /** The server's answer, `undefined` while it hasn't arrived. */
+  server: Value | undefined
+  /** The last answer we persisted for this query, if any. */
+  cached: Value | undefined
+  /** False until the on-disk snapshots have been read. */
+  snapshotsHydrated: boolean
+  connected: boolean
+}): { value: Value | undefined; settled: boolean } {
+  const { server, cached, snapshotsHydrated, connected } = input
+  if (server !== undefined) return { value: server, settled: true }
+  if (snapshotsHydrated && cached !== undefined) return { value: cached, settled: true }
+  // Nothing known yet. Only keep waiting while an answer can actually
+  // arrive — still reading from disk, or connected with a query in flight.
+  return { value: undefined, settled: snapshotsHydrated && !connected }
+}
+
+/**
+ * The base the overlay applies pending ops onto: the server's answer when
+ * there is one, otherwise the last answer we persisted for this query.
+ *
+ * The snapshot is also what survives a process kill: Convex's own query
+ * cache lives in the client's memory only, so after a restart there is
+ * nothing to read until the socket comes back.
+ */
+function useServerOrSnapshot<Value>(
+  query: FunctionReference<'query'>,
+  args: Record<string, unknown>,
+): { value: Value | undefined; settled: boolean } {
+  const raw = useQuery(query, args)
+  const key = snapshotKey(query, args)
+  // Selecting `undefined` while the server's answer is in hand keeps every
+  // snapshot write from re-rendering screens that aren't reading the cache.
+  const cached = useSnapshots((state) => (raw === undefined ? state.byKey[key] : undefined))
+  const snapshotsHydrated = useSnapshots((state) => state.hydrated)
+  const { isWebSocketConnected } = useConvexConnectionState()
+
+  useEffect(() => {
+    if (raw !== undefined) writeSnapshot(key, raw)
+  }, [raw, key])
+
+  return resolveOverlayBase<Value>({
+    server: raw as Value | undefined,
+    cached: cached as Value | undefined,
+    snapshotsHydrated,
+    connected: isWebSocketConnected,
+  })
+}
+
+/**
+ * Reads one entity: the server's copy (or the last one we saw), with every
+ * pending outbox op for it applied on top. This is what makes a write feel
+ * instant and stay durable across a restart — the outbox persists, and the
+ * overlay re-applies it on every render until the server confirms and the
+ * op is removed from the queue.
  *
  * Convex documents carry `_id`/`_creationTime`; `castConvex` strips them
- * (same helper `src/infra/convex/*-repository.ts` used) before this value
- * ever reaches an op's `applyLocal` — an op that re-sends the whole entity
- * (like `checklists.save`) would otherwise ship those system fields back to
- * a mutation validator that rejects them.
+ * before this value ever reaches an op's `applyLocal` — an op that re-sends
+ * the whole entity (like `checklists.save`) would otherwise ship those
+ * system fields back to a mutation validator that rejects them.
  */
 export function useEntity<Entity>(
   query: FunctionReference<'query'>,
   args: Record<string, unknown>,
   entityId: string,
+  kind: EntityKind,
 ): Entity | null | undefined {
-  const raw = useQuery(query, args)
-  const server = raw === undefined ? undefined : castConvex<Entity | null>(raw)
+  const { value, settled } = useServerOrSnapshot<unknown>(query, args)
+  const base = value === undefined ? undefined : castConvex<Entity | null>(value)
   const pending = useOutbox(
-    useShallow((state) => state.items.filter((item) => item.entityId === entityId)),
+    useShallow((state) =>
+      state.items.filter((item) => item.kind === kind && item.entityId === entityId),
+    ),
   )
+
   return useMemo(() => {
-    if (server === undefined) return undefined
-    return applyOps(server, pending)
-  }, [server, pending])
+    if (base !== undefined) return applyOps(base, pending)
+    // Never seen this entity. A pending `create` can still build it locally —
+    // that is a vistoria started offline, which has to open.
+    const local = applyOps<Entity>(null, pending)
+    if (local) return local
+    // Offline with nothing to show is an answer ("not here"), not a wait.
+    return settled ? null : undefined
+  }, [base, pending, settled])
+}
+
+export interface EntityListOptions<Entity> {
+  /** Only ops of this kind are applied — see `EntityKind`. */
+  kind: EntityKind
+  getId: (entity: Entity) => string
+  /**
+   * For a list the server already filters (`listByChecklistId`), says whether
+   * a locally-created entity belongs in *this* list. Without it, an entity
+   * created offline shows up in every list reading the same kind.
+   */
+  belongs?: (entity: Entity) => boolean
 }
 
 /**
- * Reads a list: the server's copy, with pending patches applied to the rows
- * it already has, plus a row prepended for every pending `create` the
- * server hasn't caught up with yet. Without that second part, something
- * created offline would not show up in a list screen until the create
- * actually reached the server — which is exactly the "feels slow" bug this
- * whole queue exists to remove.
+ * The list merge, as a pure function: the server's rows with pending patches
+ * folded in, plus a row for every pending entity the server doesn't have yet.
+ *
+ * `pending` must already be filtered to a single `kind`. Without that, a
+ * pending `checklists.save` looks exactly like "an entity this list doesn't
+ * have yet" and gets injected into the list of applications.
+ */
+export function mergePendingIntoList<Entity>(
+  server: Entity[],
+  pending: QueuedOp[],
+  options: EntityListOptions<Entity>,
+): Entity[] {
+  const { getId, belongs } = options
+  if (pending.length === 0) return server
+
+  const opsByEntity = new Map<string, QueuedOp[]>()
+  for (const item of pending) {
+    const existing = opsByEntity.get(item.entityId)
+    if (existing) existing.push(item)
+    else opsByEntity.set(item.entityId, [item])
+  }
+
+  const serverIds = new Set(server.map(getId))
+  const patched = server.map((entity) => {
+    const ops = opsByEntity.get(getId(entity))
+    return ops ? (applyOps(entity, ops) as Entity) : entity
+  })
+
+  const created: Entity[] = []
+  for (const [entityId, ops] of opsByEntity) {
+    if (serverIds.has(entityId)) continue
+    const entity = applyOps<Entity>(null, ops)
+    if (!entity) continue
+    if (belongs && !belongs(entity)) continue
+    created.push(entity)
+  }
+
+  return created.length === 0 ? patched : [...created, ...patched]
+}
+
+/**
+ * Reads a list: the server's copy (or the last one we saw), with pending
+ * patches applied to the rows it already has, plus a row prepended for every
+ * pending `create` the server hasn't caught up with yet. Without that second
+ * part, something created offline would not show up in a list screen until
+ * the create actually reached the server — which is exactly the "feels slow"
+ * bug this whole queue exists to remove.
+ *
+ * An empty list is a valid offline answer, so this resolves to `[]` rather
+ * than waiting forever when there is no cache and no socket: a first launch
+ * with no network opens on an empty Library instead of a spinner.
  */
 export function useEntityList<Entity>(
   query: FunctionReference<'query'>,
   args: Record<string, unknown>,
-  getId: (entity: Entity) => string,
+  options: EntityListOptions<Entity>,
 ): Entity[] | undefined {
-  const raw = useQuery(query, args)
-  const server = raw === undefined ? undefined : castConvex<Entity[]>(raw)
-  const pending = useOutbox(useShallow((state) => state.items))
+  const { kind, getId, belongs } = options
+  const { value, settled } = useServerOrSnapshot<unknown>(query, args)
+  const server = value === undefined ? undefined : castConvex<Entity[]>(value)
+  const pending = useOutbox(useShallow((state) => state.items.filter((item) => item.kind === kind)))
 
   return useMemo(() => {
-    if (server === undefined) return undefined
-    if (pending.length === 0) return server
-
-    const opsByEntity = new Map<string, QueuedOp[]>()
-    for (const item of pending) {
-      const existing = opsByEntity.get(item.entityId)
-      if (existing) existing.push(item)
-      else opsByEntity.set(item.entityId, [item])
-    }
-
-    const serverIds = new Set(server.map(getId))
-    const patched = server.map((entity) => {
-      const ops = opsByEntity.get(getId(entity))
-      return ops ? (applyOps(entity, ops) as Entity) : entity
-    })
-
-    const created: Entity[] = []
-    for (const [entityId, ops] of opsByEntity) {
-      if (serverIds.has(entityId)) continue
-      const entity = applyOps<Entity>(null, ops)
-      if (entity) created.push(entity)
-    }
-
-    return [...created, ...patched]
-  }, [server, pending, getId])
+    if (server === undefined && !settled) return undefined
+    return mergePendingIntoList(server ?? [], pending, { kind, getId, belongs })
+  }, [server, settled, pending, kind, getId, belongs])
 }

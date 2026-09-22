@@ -48,7 +48,9 @@ export function useUndoToast(): UndoToastContextValue {
 export function UndoToastProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<UndoAction | null>(null)
   const pendingRef = useRef<UndoAction | null>(null)
-  const timer = useRef<number | null>(null)
+  // `setTimeout` here is React Native's, which returns a Timeout object, not
+  // the DOM's numeric handle.
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const insets = useSafeAreaInsets()
 
   const clearTimer = useCallback(() => {

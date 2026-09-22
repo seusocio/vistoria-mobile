@@ -5,7 +5,7 @@ import {
   StyleProp,
   ViewStyle,
 } from 'react-native'
-import { DRAG_LONG_PRESS_DELAY } from '@/hooks/useReorderablePanGesture'
+import { DRAG_LONG_PRESS_DELAY } from '@/lib/gestures/use-reorderable-pan-gesture'
 
 export interface DraggableCardProps {
   style?: StyleProp<ViewStyle> | ((state: PressableStateCallbackType) => StyleProp<ViewStyle>)

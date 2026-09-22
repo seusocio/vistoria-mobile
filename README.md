@@ -1,72 +1,91 @@
-# Orçamento de Serviços (React Native)
+# App de Vistoria (React Native + Convex)
 
-Este projeto é um desafio para estudantes da Rocketseat. O objetivo é construir um app mobile para criação e gestão de orçamentos de serviços, aplicando boas práticas de UI, componentes reutilizáveis, tipagem com TypeScript e armazenamento local.
+App mobile para preencher vistorias prediais em campo: um **checklist** é o modelo, uma
+**aplicação** é uma visita preenchida a partir dele, e **tags** (torre, unidade, responsável)
+cruzam tudo nos relatórios.
 
-## 🚀 Tecnologias
+O requisito que manda na arquitetura é simples de dizer e difícil de cumprir: **o app é usado em
+subsolo, escada e casa de máquinas, onde não tem rede.** Nada pode esperar o backend e nada pode
+sumir se o iOS matar o processo.
 
-- React Native 0.81 (Hermes)
-- TypeScript
-- React Navigation
-- Async Storage (persistência local)
-- react-native-svg (ícones SVG)
-- PNPM
+## 🚀 Stack
+
+- React Native 0.81 (Hermes) + Expo 57
+- TypeScript estrito
+- **React Navigation** (não é Expo Router)
+- **Convex** — backend e fonte de verdade
+- zustand (fila offline, uploads) + AsyncStorage (persistência dessas filas)
+- react-hook-form + zod
+- `@gorhom/bottom-sheet`, `@legendapp/list`, reanimated, moti
+- Biome (lint/format), Bun (runtime de testes e scripts)
 
 ## 🧭 Como rodar
 
 ```bash
-pnpm install
-pnpm start
-# Em outro terminal
-pnpm android
-# ou
-pnpm ios
+bun install
+bunx convex dev        # publica as funções e mantém o deployment em sync
+bun run ios            # ou: bun run android
 ```
 
-### Seed manual do Convex
-
-Para publicar as funções e inserir as tags, apartamentos e checklists iniciais no deployment configurado:
+`bunx convex dev` precisa estar rodando (ou ter rodado uma vez) antes do app gravar qualquer coisa —
+uma tabela nova só aceita escrita depois que o schema foi publicado.
 
 ```bash
-bun run convex:seed
+bun run typecheck      # tsc --noEmit
+bun run lint           # biome
+bun test src           # funções puras (fila offline, datas, cast)
+bun run convex:seed    # tags, unidades e checklists iniciais (idempotente)
 ```
 
-O comando é idempotente: executar novamente não duplica as tags nem os checklists semeados.
+## 🏛️ Como o app grava
 
-## 📚 Documentação
+Toda escrita passa por uma **fila persistida** (`src/lib/offline-queue/`) e toda leitura aplica a
+fila por cima da resposta do servidor. Isso é a decisão central do projeto —
+[ADR 0009](./ADR/0009-offline-queue-as-the-only-write-path.md) explica o porquê, e
+`.agents/skills/offline-first-form/` é o guia prático para escrever tela nova.
 
-A documentação dos componentes e padrões do projeto está organizada na pasta `docs/`.
+Em uma tela:
 
-- Guia principal: [`docs/README.md`](./docs/README.md)
+```ts
+const application = useEntity<Application>(api.applications.findById, { id }, id, 'application')
+enqueueOp(patchItem, { applicationId: id, itemId, patch, updatedAt })
+```
 
-### Português (PT)
-- [Botão - Padrão Legado](./docs/pt/button-legacy-pattern.md)
-- [Botão - Padrão de Composição](./docs/pt/button-composition-pattern.md)
-- [Checkbox](./docs/pt/checkbox-guide.md)
-- [Input](./docs/pt/input-guide.md)
-- [Radio](./docs/pt/radio-guide.md)
-- [MoneyLabel](./docs/pt/money-label-guide.md)
-- [Ícones (SVG)](./docs/pt/icon-guide.md)
+`enqueueOp` é síncrono e nunca rejeita: persiste o op, pinta a tela na hora e drena quando dá. Por
+isso não existe botão "salvar", nem guard de alterações não salvas, nem sheet de descartar.
 
-### English (EN)
-- [Button - Legacy Pattern](./docs/en/button-legacy-pattern.md)
-- [Button - Composition Pattern](./docs/en/button-composition-pattern.md)
-- [Checkbox](./docs/en/checkbox-guide.md)
-- [Input](./docs/en/input-guide.md)
-- [Radio](./docs/en/radio-guide.md)
-- [MoneyLabel](./docs/en/money-label-guide.md)
-- [Icons (SVG)](./docs/en/icon-guide.md)
-
-## 📦 Estrutura (resumo)
+## 📦 Estrutura
 
 ```
 src/
-├── app/                # Telas e fluxos
-├── components/         # Componentes reutilizáveis
-├── assets/             # Ícones e imagens
-├── data/               # Seed, storage e dados mock
-└── styles/             # Tokens, tipografia, cores
+├── app/                  # rotas finas: uma por tela, renderiza a view da feature
+├── features/
+│   ├── application/      # application-fill, application-new, photo-capture, shared/
+│   ├── checklist/        # checklist-form, checklist-library, checklist-detail, shared/
+│   ├── report/           # report-overview, shared/
+│   ├── tag/shared/
+│   └── ops.ts            # registra todos os ops no boot
+├── lib/
+│   ├── offline-queue/    # defineOp, outbox, overlay, dreno, retry
+│   ├── forms/            # useDraft (RHF + zod + rascunho persistido)
+│   ├── uploads/          # fila de upload de fotos, também persistida
+│   ├── convex/           # client, normalize, file-storage, photo-picker
+│   └── legacy/           # import único dos builds pré-Convex
+├── components/           # componentes compartilhados entre features
+├── routes/  styles/  utils/
+convex/                   # schema, queries e mutations (idempotentes por id externo)
+ADR/                      # decisões de arquitetura, com o motivo
+plan/                     # planos de refatoração, incluindo os já executados
 ```
+
+Cada feature é `*.container.ts` (um **hook**, sem JSX) + `*.view.tsx` (o **único** componente).
+
+## 📚 Documentação
+
+- [ADRs](./ADR/README.md) — por que as coisas são como são
+- [`docs/README.md`](./docs/README.md) — guias dos componentes (pt/en)
+- [`plan/`](./plan/) — planos de refatoração com contexto e verificação
 
 ## 📝 Licença
 
-Uso educacional no contexto do desafio Rocketseat.
+Uso interno.

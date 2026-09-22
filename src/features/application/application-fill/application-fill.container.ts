@@ -1,39 +1,23 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
-import { useQuery } from 'convex-helpers/react/cache'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import type { VoiceState } from '@/components/VoiceCard'
 import type { ItemCompletionVariant } from '@/components/ItemCard'
-import { useTagsCatalog } from '@/hooks/useTagsCatalog'
-import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
-import type { Application, ApplicationItem, Checklist, WorkflowStatus } from '@/infra/domain/entities'
-import {
-  applicationItemDraftSchema,
-  applicationMetaSchema,
-  newApplicationItemSchema,
-  type ApplicationItemDraftFormValues,
-  type ApplicationMetaFormValues,
-  type NewApplicationItemFormValues,
-} from '@/infra/domain/schemas'
-import { generateId } from '@/infra/id'
-import {
-  generateSuggestions,
-  getDerivedState,
-  getProgress,
-  groupItemsByTitlePrefix,
-  isItemAnswerComplete,
-  prepareTranscriber,
-  sortItemsByChecklistOrder,
-  transcribeAudio,
-  type ApplicationItemPatch,
-} from '@/infra/services'
-import { normalizeApplication } from '@/infra/convex'
-import { useUploadStore } from '@/infra/uploads/upload-store'
+import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
+import { useVoiceRecorder } from '@/features/application/shared/use-voice-recorder'
+import type { Application, ApplicationItem, WorkflowStatus } from '@/features/application/shared/application.types'
+import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import { applicationItemDraftSchema, applicationMetaSchema, newApplicationItemSchema, type ApplicationItemDraftFormValues, type ApplicationMetaFormValues, type NewApplicationItemFormValues } from '@/features/application/shared/application.schema'
+import { generateId } from '@/lib/id'
+import { getDerivedState, getProgress, groupItemsByTitlePrefix, isItemAnswerComplete, sortItemsByChecklistOrder, type ApplicationItemPatch } from '@/features/application/shared/application.utils'
+import { generateSuggestions, prepareTranscriber, transcribeAudio } from '@/lib/voice/voice-service'
+import { normalizeApplication } from '@/lib/convex'
+import { useUploadStore } from '@/lib/uploads/upload-store'
 import { enqueueOp, useEntity } from '@/lib/offline-queue'
 import { useDraft } from '@/lib/forms'
 import type { StackRoutesList } from '@/routes/types'
 import { useAttachPhotos } from '../shared/use-attach-photos'
-import { addItem, patchItem, softDelete, updateMeta } from './application-fill.ops'
+import { addItem, patchItem, softDelete, updateMeta } from '../shared/application.ops'
 import { api } from '../../../../convex/_generated/api'
 
 type Navigation = NativeStackNavigationProp<StackRoutesList, keyof StackRoutesList>
@@ -88,14 +72,17 @@ export function useApplicationFillContainer({
   applicationId,
   navigation,
 }: UseApplicationFillContainerProps) {
-  const checklistData = useQuery(api.checklists.findById, { id: checklistId }) as
-    | Checklist
-    | null
-    | undefined
+  const checklistData = useEntity<Checklist>(
+    api.checklists.findById,
+    { id: checklistId },
+    checklistId,
+    'checklist',
+  )
   const rawApplication = useEntity<Application>(
     api.applications.findById,
     { id: applicationId },
     applicationId,
+    'application',
   )
   const normalizedApplication = useMemo(
     () => (rawApplication ? normalizeApplication(rawApplication) : null),
@@ -543,7 +530,6 @@ export function useApplicationFillContainer({
     onOpenDrawer: handleOpenItemDrawer,
     onAcceptSuggestion: handleAcceptSuggestion,
     onRejectSuggestion: handleRejectSuggestion,
-    onError: setApplicationError,
     onCloseItemDrawer: () => setEditingItemId(null),
     onSelectStatus: handleSelectStatus,
     onAddPhoto: handleAddPhoto,

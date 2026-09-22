@@ -8,71 +8,29 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { ConvexQueryCacheProvider } from 'convex-helpers/react/cache';
 import { ConvexProvider } from 'convex/react';
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SyncStatusBar, UndoToastProvider } from "@/components";
-import { convexClient } from '@/infra/convex'
-import { migrateLocalDataToConvex } from '@/infra/storage';
-import { registerBackgroundUploadTask } from '@/infra/uploads/background-task';
-import { subscribeToUploadRecovery } from '@/infra/uploads/upload-store';
+// Registers every offline-queue op before anything can drain the outbox.
+import "@/features/ops";
+import { convexClient } from '@/lib/convex'
+import { registerBackgroundUploadTask } from '@/lib/uploads/background-task';
+import { subscribeToUploadRecovery } from '@/lib/uploads/upload-store';
+import { migrateLocalDataToConvex } from '@/lib/legacy/migrate-to-convex';
+import { useOutboxLifecycle } from '@/lib/offline-queue';
 import { Routes } from "@/routes";
-import { colors } from "@/styles";
-
-const startupStyles = StyleSheet.create({
-	container: {
-		flex: 1,
-		alignItems: "center",
-		justifyContent: "center",
-		padding: 24,
-	},
-	title: {
-		fontSize: 20,
-		fontWeight: "700",
-		marginBottom: 8,
-		color: colors.ink.base,
-	},
-	message: {
-		color: colors.gray[600],
-		textAlign: "center",
-		marginBottom: 20,
-	},
-	retryButton: {
-		backgroundColor: colors.blue.base,
-		borderRadius: 12,
-		paddingHorizontal: 20,
-		paddingVertical: 13,
-	},
-	retryText: {
-		color: colors.white,
-		fontWeight: "700",
-	},
-});
 
 void SplashScreen.preventAutoHideAsync();
 
-function StartupError({
-	message,
-	onRetry,
-}: {
-	message: string;
-	onRetry: () => void;
-}) {
-	return (
-		<View style={startupStyles.container} accessibilityRole="alert">
-			<Text style={startupStyles.title}>Não foi possível carregar o app</Text>
-			<Text style={startupStyles.message}>{message}</Text>
-			<Pressable
-				onPress={onRetry}
-				accessibilityRole="button"
-				accessibilityLabel="Tentar carregar novamente"
-				style={startupStyles.retryButton}
-			>
-				<Text style={startupStyles.retryText}>Tentar novamente</Text>
-			</Pressable>
-		</View>
-	);
+/**
+ * Lives inside `ConvexProvider` because it reads the connection state, and
+ * renders nothing: its whole job is to drain the persisted outbox at boot,
+ * on reconnect and on foreground.
+ */
+function OutboxLifecycle() {
+	useOutboxLifecycle();
+	return null;
 }
 
 export default function App() {
@@ -80,54 +38,23 @@ export default function App() {
 		Lato_400Regular,
 		Lato_700Bold,
 	});
-	const [dataReady, setDataReady] = useState(false);
-	const [startupError, setStartupError] = useState<string | null>(null);
-	const [migrationAttempt, setMigrationAttempt] = useState(0);
 
-	// migrationAttempt intentionally re-runs startup after the user taps retry.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: state is a retry signal
+	// Legacy AsyncStorage import. Deliberately not awaited before render and
+	// deliberately silent on failure: gating the first paint on a network call
+	// is what used to leave a first launch with no connection stuck on an
+	// error screen instead of an empty (and perfectly usable) Library.
 	useEffect(() => {
-		let mounted = true;
-		setDataReady(false);
-		setStartupError(null);
-
-		migrateLocalDataToConvex()
-			.catch((error: unknown) => {
-				if (!mounted) return;
-				setStartupError(
-					error instanceof Error
-						? error.message
-						: "Verifique sua conexão e tente novamente.",
-				);
-			})
-			.finally(() => {
-				if (mounted) setDataReady(true);
-			});
-
-		return () => {
-			mounted = false;
-		};
-	}, [migrationAttempt]);
+		void migrateLocalDataToConvex().catch(() => undefined);
+	}, []);
 	useEffect(() => subscribeToUploadRecovery(), []);
 	useEffect(() => registerBackgroundUploadTask(), []);
 
 	useEffect(() => {
-		if (fontsLoaded && (dataReady || startupError)) {
-			void SplashScreen.hideAsync();
-		}
-	}, [fontsLoaded, dataReady, startupError]);
+		if (fontsLoaded) void SplashScreen.hideAsync();
+	}, [fontsLoaded]);
 
-	if (!fontsLoaded || (!dataReady && !startupError)) {
+	if (!fontsLoaded) {
 		return null;
-	}
-
-	if (startupError) {
-		return (
-			<StartupError
-				message={startupError}
-				onRetry={() => setMigrationAttempt((attempt) => attempt + 1)}
-			/>
-		);
 	}
 
 	return (
@@ -137,6 +64,7 @@ export default function App() {
           <BottomSheetModalProvider>
             <ConvexProvider client={convexClient}>
               <ConvexQueryCacheProvider>
+                <OutboxLifecycle />
                 <SyncStatusBar />
                 <Routes />
               </ConvexQueryCacheProvider>

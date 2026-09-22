@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { Icon, type IconName } from '@/components/Icon'
-import type { ChecklistTemplate } from '@/infra/data/templates'
+import type { ChecklistTemplate } from '@/features/checklist/shared/checklist.templates'
 import { colors } from '@/styles'
 import { styles } from '../checklist-form.styles'
 

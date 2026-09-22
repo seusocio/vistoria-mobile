@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react'
 import { PhotoGalleryRow } from '@/components'
-import type { Attachment } from '@/infra/domain/entities'
+import type { Attachment } from '@/features/application/shared/application.types'
 
 interface ApplicationGalleryProps {
   attachments: Attachment[]

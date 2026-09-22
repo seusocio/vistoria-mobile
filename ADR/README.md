@@ -19,6 +19,7 @@ items.
 | [0006](0006-remove-section-level-layout-animator.md) | Remove the section-level layout animator, keep the per-cell one | Accepted (amended) |
 | [0007](0007-single-pass-render-for-non-scrolling-lists.md) | Non-scrolling nested lists render in a single pass | Accepted |
 | [0008](0008-memoization-contract-for-sections-and-rows.md) | Sections and rows have an explicit memoization contract | Accepted |
+| [0009](0009-offline-queue-as-the-only-write-path.md) | The offline queue is the only write path | Accepted |
 
 ## A note on evidence
 

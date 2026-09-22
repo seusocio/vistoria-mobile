@@ -6,9 +6,13 @@ import {
   Collapsible,
 } from '@/components/Collapsible'
 import type { ItemCompletionVariant } from '@/components/ItemCard'
-import { useReorderablePanGesture } from '@/hooks/useReorderablePanGesture'
-import type { ApplicationItem, Checklist } from '@/infra/domain/entities'
-import { isItemAnswerComplete, reorderChecklistItems } from '@/infra/services'
+import { useReorderablePanGesture } from '@/lib/gestures/use-reorderable-pan-gesture'
+import type { ApplicationItem } from '@/features/application/shared/application.types'
+import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import { isItemAnswerComplete } from '@/features/application/shared/application.utils'
+import { checklistSave } from '@/features/checklist/checklist-form/checklist-form.ops'
+import { reorderChecklistItems } from '@/features/checklist/shared/checklist.utils'
+import { enqueueOp } from '@/lib/offline-queue'
 import { ApplicationItemGroupHeader } from './ApplicationItemGroupHeader'
 import { ApplicationItemRow } from './ApplicationItemRow'
 
@@ -26,7 +30,6 @@ interface ApplicationItemGroupSectionProps {
   onOpenDrawer: (itemId: string) => void
   onAcceptSuggestion: (itemId: string) => void
   onRejectSuggestion: (itemId: string) => void
-  onError: (message: string) => void
 }
 
 /**
@@ -70,7 +73,6 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
   onOpenDrawer,
   onAcceptSuggestion,
   onRejectSuggestion,
-  onError,
 }: ApplicationItemGroupSectionProps) {
   const [optimisticItems, setOptimisticItems] = useState<ApplicationItem[] | null>(null)
   const [reorderPending, setReorderPending] = useState(false)
@@ -98,7 +100,7 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
   }, [optimisticItems, reorderPending, serverChildren])
 
   const handleReorder = useCallback(
-    async ({ from, to }: { from: number; to: number }) => {
+    ({ from, to }: { from: number; to: number }) => {
       // Completed items are pinned to the tail (see the parent's `groups` memo) and
       // are never drag sources (`canDrag` below), but an incomplete item could
       // still be dropped past them without this clamp - keeping the invariant
@@ -118,18 +120,12 @@ export const ApplicationItemGroupSection = memo(function ApplicationItemGroupSec
       )
       if (templateFrom < 0 || templateTo < 0) return
 
-      const previousItems = items
-      setOptimisticItems(reorderItems(previousItems, from, clampedTo))
+      setOptimisticItems(reorderItems(items, from, clampedTo))
       setReorderPending(true)
-      try {
-        await reorderChecklistItems(checklist.id, templateFrom, templateTo)
-      } catch {
-        setOptimisticItems(previousItems)
-        setReorderPending(false)
-        onError('Não foi possível reordenar os itens')
-      }
+      const reordered = reorderChecklistItems(checklist, templateFrom, templateTo)
+      enqueueOp(checklistSave, { id: reordered.id, entity: reordered })
     },
-    [items, checklist, onError],
+    [items, checklist],
   )
 
   // Clicking the header's leading progress ring fills or unfills every item

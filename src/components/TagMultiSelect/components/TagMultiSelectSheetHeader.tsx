@@ -1,6 +1,6 @@
 import { memo, type RefObject } from 'react'
 import { Text, View, type TextInput } from 'react-native'
-import { Tag } from '@/infra/domain/entities'
+import { Tag } from '@/features/tag/shared/tag.types'
 import { colors } from '@/styles'
 import { Icon } from '../../Icon'
 import { TagChipList } from '../../TagChipList'

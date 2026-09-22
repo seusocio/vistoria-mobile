@@ -16,7 +16,7 @@ import {
 import { Icon } from '@/components/Icon'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
-import type { ApplicationDerivedState } from '@/infra/services'
+import type { ApplicationDerivedState } from '@/features/application/shared/application.utils'
 import { colors } from '@/styles'
 import { styles } from './application-fill.styles'
 import {
@@ -185,7 +185,6 @@ export function ApplicationFillView(props: UseApplicationFillContainerProps) {
             onOpenDrawer={c.onOpenDrawer}
             onAcceptSuggestion={c.onAcceptSuggestion}
             onRejectSuggestion={c.onRejectSuggestion}
-            onError={c.onError}
           />
         ))}
       </View>

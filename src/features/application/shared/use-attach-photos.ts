@@ -1,11 +1,11 @@
 import { useUndoToast } from '@/components'
 import { enqueueOp } from '@/lib/offline-queue'
-import { deleteLocalUpload, prepareAssetQueued, type RawAsset } from '@/infra/convex/photo-picker'
-import type { Attachment } from '@/infra/domain/entities'
-import { generateId } from '@/infra/id'
-import { createAttachment } from '@/infra/services'
-import { useUploadStore } from '@/infra/uploads/upload-store'
-import { addAttachment, purgeAttachment, setAttachmentDeletedAt } from '../application-fill/application-fill.ops'
+import { deleteLocalUpload, prepareAssetQueued, type RawAsset } from '@/lib/convex/photo-picker'
+import type { Attachment } from '@/features/application/shared/application.types'
+import { generateId } from '@/lib/id'
+import { createAttachment } from '@/features/application/shared/application.utils'
+import { useUploadStore } from '@/lib/uploads/upload-store'
+import { addAttachment, purgeAttachment, setAttachmentDeletedAt } from './application.ops'
 
 interface CommitAssetParams extends RawAsset {
   attachmentId: string

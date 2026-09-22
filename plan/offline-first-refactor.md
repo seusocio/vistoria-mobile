@@ -443,3 +443,106 @@ ação primária que já existe hoje ("Criar checklist" / "Iniciar vistoria") �
 botão salvar. Resultado prático é o mesmo que você pediu: nada se perde, nenhum sheet de descartar,
 e a Library não enche de checklists vazios. Se você preferir criar a entidade já no primeiro
 caractere válido, é uma linha no `useDraft` — diga e eu troco.
+
+---
+
+## Estado da execução — 2026-09-21
+
+O plano está executado de ponta a ponta. `src/infra/` e `src/hooks/` não existem mais.
+`bun run typecheck && bun run lint && bun test src` passam limpos (33 testes).
+
+### Quatro defeitos encontrados no que as Fases 1-5 já tinham entregue
+
+Auditoria do código contra o plano. Todos corrigidos aqui.
+
+1. **`useOutboxLifecycle` era código morto.** Definido e exportado, nunca montado — `App.tsx` não o
+   chamava. O único gatilho de dreno era o próprio `enqueueOp`, então uma fila persistida não
+   drenava no boot, nem na reconexão, nem no foreground: o usuário reabria o app conectado e nada
+   subia até fazer uma escrita nova. Agora é montado dentro do `ConvexProvider`, e a hidratação
+   assíncrona do `persist` também dispara o dreno (`onFinishHydration`) — sem isso, a montagem
+   acontece com a fila ainda vazia e perde tudo o que estava em disco.
+
+2. **`applications.create` não passava pela fila.** `ApplicationNew` e `ChecklistDetail` ainda usavam
+   `useApplicationMutations` (in-memory). Isso era pior do que não ter migrado: os `patchItem` /
+   `addAttachment` *estavam* persistidos, mas apontavam para uma entidade que o servidor nunca ia
+   receber — no kill offline o `create` sumia, os patches drenavam, e cada handler batia no
+   `if (!application) return null`. As respostas evaporavam em silêncio, que é exatamente o Fato 1 do
+   contexto acima.
+
+3. **`useEntityList` injetava entidade de tipo errado.** Toda op cujo `entityId` não estava na lista
+   era tratada como "criada" e anexada, sem checar de que op se tratava. Como
+   `checklistSave.applyLocal` retorna `args.entity` ignorando o que recebe, uma edição de checklist
+   pendente virava um Checklist injetado na lista de Applications da Library. `defineOp` ganhou
+   `kind`, e o overlay filtra por ele; listas já filtradas pelo servidor (`listByChecklistId`) ganham
+   um predicado `belongs`.
+
+4. **Op `failed` era pulada, não bloqueava a fila.** O dreno filtrava `status === 'pending'`, então um
+   item que estourava `MAX_ATTEMPTS` era marcado e os seguintes passavam por cima — o oposto do FIFO
+   que o próprio comentário prometia. E nada nunca retentava um `failed`, enquanto o overlay
+   continuava aplicando ele para sempre: a tela mostrava dado que jamais sincronizaria, sem sinal
+   nenhum. Agora o dreno é `items[0]` estrito, um head `failed` **bloqueia**, `retryFailed()` roda em
+   reconexão/foreground/boot, e a `SyncStatusBar` fica vermelha enquanto durar.
+
+### Desvios em relação ao plano escrito
+
+- **`setTagsForMany` não virou op.** Um op tem exatamente um `entityId`; o batch-tag do
+  `ChecklistDetail` enfileira N `updateMeta` (um por aplicação), que é o que permite o overlay pintar
+  cada linha. Custa N round trips para um punhado de aplicações e drena em ordem.
+- **`reorderChecklistItems` sobreviveu, como função pura.** Era `repo.findById` + `repo.save`
+  bloqueante chamado do `ApplicationItemGroupSection`; virou transformação pura sobre o checklist que
+  a section já tem em mãos, enfileirada como `checklists.save`.
+- **`tags.create` entrou na fila** (não estava no plano). Aplicar um modelo de checklist faz
+  `await createTag` por label — sem rede isso travava para sempre. `createTag` agora resolve assim que
+  enfileira e deduplica localmente por `normalizedLabel`, espelhando o servidor.
+- **`setAttachmentUploaded` / `setAttachmentUploadStatus` também entraram na fila.** O upload pode
+  terminar segundos antes de um kill; perder essa escrita deixa uma foto guardada no servidor que o
+  app re-envia para sempre.
+- **A fila de upload guarda o job enquanto ele roda.** O `drainQueue` antigo removia o job de `queue`
+  *antes* de processar, então um kill no meio do upload perdia a única referência ao arquivo local. O
+  `resumePending` passou a unir fila persistida + varredura do servidor, pulando anexos que já têm
+  `storageId` ou um `setAttachmentUploaded` pendente na outbox (o arquivo local já foi apagado nesse
+  ponto — re-enviar só marcaria a foto como falha).
+- **`getOp` devolve `undefined` em vez de lançar.** Ele roda durante o render do overlay; uma op
+  persistida por um build que não a define mais não pode derrubar a tela. O dreno trata o mesmo caso
+  como falha permanente, que fica visível.
+- **`src/features/ops.ts` registra todas as ops no boot.** Antes o registro dependia de as rotas
+  serem importadas estaticamente — funcionava por acidente, e quebraria na primeira rota lazy.
+- **PhotoCapture perdeu o `ConfirmBottomSheet` de descartar** (o plano pedia "o padrão"): nada se
+  perde ao sair da câmera, então não há o que confirmar.
+- **`reports/` foi consertado, não excluído do typecheck.** Eram 13 erros reais num projeto Bun
+  separado: `loadEnv` devolvendo `Record<string,string>`, `client.query` com string em vez de
+  `makeFunctionReference`, e dois campos (`position`, `deletedAt`) faltando nas interfaces locais.
+
+### O que continua pendente
+
+**O roteiro manual de 7 passos nunca foi rodado em device.** Ele é a única coisa que prova a tese —
+modo avião → kill → reabrir → reconectar, sem duplicata e sem perda. Os passos 2, 4 e 5 cobrem
+caminhos sem nenhum teste automatizado. Nada aqui foi executado em aparelho.
+
+### Quinto defeito, achado em device — modo avião mostrava tela vazia
+
+Reportado rodando o app: com o avião ligado, nada aparece.
+
+A causa é a premissa que o overlay carregava desde a Fase 2: ele só sabia aplicar ops **em cima de
+uma resposta do `useQuery`**, e tratava `undefined` como "ainda carregando". Só que `useQuery` só
+resolve quando o socket resolve — sem rede ele fica `undefined` para sempre. Resultado: toda tela
+num spinner permanente, com a fila cheia de dados que ninguém conseguia ler.
+
+E havia um buraco atrás dele: a fila guarda **escritas pendentes**, não entidades. O cache de query
+do Convex vive só na memória do cliente. Então mesmo consertando o gate, uma vistoria criada
+*online* não tinha nenhuma cópia local depois de um kill — o passo 2 do roteiro ("todas as
+respostas continuam na tela") não tinha como passar.
+
+Correção em duas partes:
+
+- **`snapshot.store.ts`** — a última resposta de cada query é persistida em AsyncStorage, uma chave
+  por `query(args)`, com debounce e limite de tamanho. O overlay lê dela quando o servidor não
+  respondeu. Isso é o que torna o app legível sem rede nenhuma, e também o que faz a pintura inicial
+  ser instantânea com rede.
+- **`resolveOverlayBase`** — função pura que decide se "nada" é resposta ou espera: espera enquanto
+  os snapshots estão sendo lidos do disco ou enquanto há socket (a resposta está a caminho);
+  **desiste** quando está desconectado e não há cache. Aí uma lista resolve para `[]` e a tela
+  renderiza. Seis testes cobrem essa tabela de decisão — é a lógica que estava errada.
+
+Consequência: `useEntityList` devolve `[]` offline sem cache (primeiro boot sem rede abre na Library
+vazia, passo 7 do roteiro), e `useEntity` devolve `null` em vez de ficar pendurado.

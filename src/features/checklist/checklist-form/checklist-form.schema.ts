@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import type { Checklist } from '@/infra/domain/entities'
-import { DEFAULT_RESPONSE_OPTIONS } from '@/infra/domain/entities'
+import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import { DEFAULT_RESPONSE_OPTIONS } from '@/features/checklist/shared/checklist.types'
 
 export const responseOptionFormSchema = z.object({
   label: z.string().trim().min(1, 'Informe um rótulo'),

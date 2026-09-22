@@ -12,6 +12,7 @@ describe('outbox slice', () => {
   test('enqueue derives entityId and type from the op, and starts pending with 0 attempts', () => {
     const store = freshStore()
     const op = defineOp<{ applicationId: string }, unknown>('queue-store-test.touch', {
+      kind: 'application',
       mutation: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: (args) => args.applicationId,
@@ -29,6 +30,7 @@ describe('outbox slice', () => {
   test('resolve removes the item', () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>('queue-store-test.resolve', {
+      kind: 'application',
       mutation: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',
@@ -44,6 +46,7 @@ describe('outbox slice', () => {
   test('retry bumps attempts and keeps the item pending', () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>('queue-store-test.retry', {
+      kind: 'application',
       mutation: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',
@@ -59,6 +62,7 @@ describe('outbox slice', () => {
   test('fail marks the item failed instead of discarding it', () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>('queue-store-test.fail', {
+      kind: 'application',
       mutation: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',

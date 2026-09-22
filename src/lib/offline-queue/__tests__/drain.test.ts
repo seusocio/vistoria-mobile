@@ -28,6 +28,7 @@ describe('drainOutboxWith', () => {
   test('resolves and removes an item whose mutation succeeds', async () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>(uniqueType('success'), {
+      kind: 'application',
       mutation: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',
@@ -42,6 +43,7 @@ describe('drainOutboxWith', () => {
   test('drains multiple pending items in enqueue order on success', async () => {
     const store = freshStore()
     const op = defineOp<{ n: number }, unknown>(uniqueType('order'), {
+      kind: 'application',
       mutation: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: (args) => `e-${args.n}`,
@@ -61,6 +63,7 @@ describe('drainOutboxWith', () => {
   test('on failure, bumps attempts, keeps the item pending, and stops before later items', async () => {
     const store = freshStore()
     const failing = defineOp<{ n: number }, unknown>(uniqueType('fail-first'), {
+      kind: 'application',
       mutation: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: (args) => `e-${args.n}`,
@@ -89,6 +92,7 @@ describe('drainOutboxWith', () => {
   test('marks the item failed (not discarded) once attempts are exhausted', async () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>(uniqueType('exhausted'), {
+      kind: 'application',
       mutation: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',
@@ -103,6 +107,77 @@ describe('drainOutboxWith', () => {
     })
 
     expect(store.getState().items).toHaveLength(1)
+    expect(store.getState().items[0].status).toBe('failed')
+  })
+
+  test('a failed head blocks the queue instead of being stepped over', async () => {
+    // The whole point of FIFO: a later op routinely targets the entity an
+    // earlier one creates, and the server answers a patch against a missing
+    // row with `return null` — the write disappears with no error anywhere.
+    const store = freshStore()
+    const op = defineOp<{ n: number }, unknown>(uniqueType('blocked'), {
+      kind: 'application',
+      mutation: {} as never,
+      applyLocal: (entity) => entity as never,
+      entityId: (args) => `e-${args.n}`,
+    })
+    store.getState().enqueue(op, { n: 1 })
+    store.getState().enqueue(op, { n: 2 })
+    store.getState().fail(store.getState().items[0].id)
+
+    const seen: number[] = []
+    await drainOutboxWith(store, async (_mutation, args) => {
+      seen.push((args as { n: number }).n)
+    })
+
+    expect(seen).toEqual([])
+    expect(store.getState().items).toHaveLength(2)
+  })
+
+  test('retryFailed gives the blocked head a new budget and the queue drains', async () => {
+    const store = freshStore()
+    const op = defineOp<{ n: number }, unknown>(uniqueType('unblocked'), {
+      kind: 'application',
+      mutation: {} as never,
+      applyLocal: (entity) => entity as never,
+      entityId: (args) => `e-${args.n}`,
+    })
+    store.getState().enqueue(op, { n: 1 })
+    store.getState().enqueue(op, { n: 2 })
+    store.getState().fail(store.getState().items[0].id)
+
+    store.getState().retryFailed()
+
+    const seen: number[] = []
+    await drainOutboxWith(store, async (_mutation, args) => {
+      seen.push((args as { n: number }).n)
+    })
+
+    expect(seen).toEqual([1, 2])
+    expect(store.getState().items).toHaveLength(0)
+    expect(store.getState().items).toEqual([])
+  })
+
+  test('an op type this build no longer defines is failed, not thrown on', async () => {
+    const store = freshStore()
+    const op = defineOp<Record<string, never>, unknown>(uniqueType('vanishing'), {
+      kind: 'application',
+      mutation: {} as never,
+      applyLocal: (entity) => entity as never,
+      entityId: () => 'e',
+    })
+    store.getState().enqueue(op, {})
+    // Simulate a queue persisted by a build that had an op this one doesn't.
+    store.setState((state) => ({
+      items: state.items.map((item) => ({ ...item, type: 'drain-test.removed-in-this-build' })),
+    }))
+
+    let calls = 0
+    await drainOutboxWith(store, async () => {
+      calls += 1
+    })
+
+    expect(calls).toBe(0)
     expect(store.getState().items[0].status).toBe('failed')
   })
 })

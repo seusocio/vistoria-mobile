@@ -3,9 +3,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { useUndoToast } from '@/components'
-import { useTagsCatalog } from '@/hooks/useTagsCatalog'
-import type { Checklist } from '@/infra/domain/entities'
-import { checklistTemplates, type ChecklistTemplate } from '@/infra/data/templates'
+import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
+import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import { checklistTemplates, type ChecklistTemplate } from '@/features/checklist/shared/checklist.templates'
 import { useDraft } from '@/lib/forms'
 import { enqueueOp, useEntity } from '@/lib/offline-queue'
 import type { StackRoutesList } from '@/routes/types'
@@ -43,6 +43,7 @@ export function useChecklistFormContainer({ checklistId, navigation }: UseCheckl
     api.checklists.findById,
     { id: checklistId ?? '' },
     checklistId ?? '',
+    'checklist',
   )
   const loading = isEditing && (existing === undefined || existing === null)
 

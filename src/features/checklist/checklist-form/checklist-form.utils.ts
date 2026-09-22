@@ -1,6 +1,6 @@
-import type { Checklist, ChecklistItem } from '@/infra/domain/entities'
-import { DEFAULT_RESPONSE_OPTIONS } from '@/infra/domain/entities'
-import { generateId } from '@/infra/id'
+import type { Checklist, ChecklistItem } from '@/features/checklist/shared/checklist.types'
+import { DEFAULT_RESPONSE_OPTIONS } from '@/features/checklist/shared/checklist.types'
+import { generateId } from '@/lib/id'
 import type { ChecklistFormValues, ChecklistItemFormValues } from './checklist-form.schema'
 
 function buildChecklistItem(

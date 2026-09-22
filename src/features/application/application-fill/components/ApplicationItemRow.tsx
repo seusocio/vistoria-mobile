@@ -7,7 +7,7 @@ import {
   ItemCard,
   type ItemCompletionVariant,
 } from '@/components/ItemCard'
-import type { ApplicationItem } from '@/infra/domain/entities'
+import type { ApplicationItem } from '@/features/application/shared/application.types'
 import { haptics } from '@/utils/haptics'
 import { styles } from './ApplicationItemRow.styles'
 

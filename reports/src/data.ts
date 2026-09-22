@@ -1,11 +1,14 @@
 import { ConvexHttpClient } from "convex/browser";
+import { makeFunctionReference } from "convex/server";
 import sharp from "sharp";
 import { readFileSync } from "node:fs";
 
 export interface Attachment {
   id: string;
   name: string;
+  position: number;
   createdAt: string;
+  deletedAt?: string | null;
   storageId?: string;
   url?: string;
   width?: number;
@@ -15,6 +18,8 @@ export interface Attachment {
 export interface ApplicationItem {
   id: string;
   title: string;
+  position: number;
+  deletedAt?: string | null;
   answer: string;
   note: string;
   quantity: number | null;
@@ -56,12 +61,14 @@ export function loadEnv(): Environment {
       // ignore missing
     }
   }
-  return out;
+  // The two files above are the only source of CONVEX_URL; a missing one is
+  // a setup error the first query reports far more clearly than a type could.
+  return out as Environment;
 }
 
 export async function fetchApplications(env: Environment): Promise<Application[]> {
   const client = new ConvexHttpClient(env.CONVEX_URL);
-  return (await client.query("applications:listAll", {})) as Application[];
+  return (await client.query(makeFunctionReference<"query">("applications:listAll"), {})) as Application[];
 }
 
 export async function fetchApplicationById(
@@ -69,12 +76,12 @@ export async function fetchApplicationById(
   id: string,
 ): Promise<Application | null> {
   const client = new ConvexHttpClient(env.CONVEX_URL);
-  return (await client.query("applications:findById", { id })) as Application | null;
+  return (await client.query(makeFunctionReference<"query">("applications:findById"), { id })) as Application | null;
 }
 
 export async function fetchTags(env: Environment): Promise<Tag[]> {
   const client = new ConvexHttpClient(env.CONVEX_URL);
-  return (await client.query("tags:listAll", {})) as Tag[];
+  return (await client.query(makeFunctionReference<"query">("tags:listAll"), {})) as Tag[];
 }
 
 const mapLimit = async <T, R>(
