@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { FLOATING_ACTION_CLEARANCE } from '../FloatingAction'
 import { colors, textStyles } from '@/styles'
 
 export const styles = StyleSheet.create({
@@ -71,6 +72,11 @@ export const styles = StyleSheet.create({
     paddingBottom: 32,
     gap: 20,
   },
+  // Enough slack under the last row that it can always be scrolled clear of a
+  // floating action. Applied only when there is one.
+  contentWithFloatingAction: {
+    paddingBottom: FLOATING_ACTION_CLEARANCE,
+  },
   topHeader: {
     gap: 2,
     paddingHorizontal: 20,
@@ -111,10 +117,17 @@ export const styles = StyleSheet.create({
     ...textStyles.metaLabel,
     color: colors.gray[600],
   },
+  // Floats over the content instead of sitting in the column beneath it: no
+  // white strip, no top border, and the list runs underneath. `box-none` on
+  // the host view is what keeps the transparent area tappable - see index.tsx.
   footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
-    backgroundColor: colors.white,
   },
   backButton: {
     width: 34,

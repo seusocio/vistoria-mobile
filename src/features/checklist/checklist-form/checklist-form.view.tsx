@@ -2,7 +2,13 @@ import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { useMemo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { ScrollViewContainer } from 'react-native-reorderable-list'
-import { AppBottomSheet, ConfirmBottomSheet, Form, Screen } from '@/components'
+import {
+  AppBottomSheet,
+  ConfirmBottomSheet,
+  FloatingAction,
+  Form,
+  Screen,
+} from '@/components'
 import { Icon } from '@/components/Icon'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { groupItemsByTitlePrefix } from '@/features/application/shared/application.utils'
@@ -62,14 +68,12 @@ export function ChecklistFormView(props: UseChecklistFormContainerProps) {
       title={container.isEditing ? 'Editar checklist' : 'Novo checklist'}
       footer={
         container.isEditing ? undefined : (
-          <Pressable
-            style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.7 }]}
+          <FloatingAction
+            label="Criar checklist"
+            icon="check"
             onPress={container.onCreate}
             disabled={container.form.formState.isSubmitting}
-          >
-            <Icon name="check" size={18} color={colors.white} />
-            <Text style={styles.saveButtonText}>Criar checklist</Text>
-          </Pressable>
+          />
         )
       }
     >

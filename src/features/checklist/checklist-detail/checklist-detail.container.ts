@@ -25,6 +25,7 @@ import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
 import { normalizeApplication } from '@/lib/convex'
 import { useDraft } from '@/lib/forms'
 import { enqueueOp, useEntity, useEntityList } from '@/lib/offline-queue'
+import { useHasHydratedPreferences, usePreferences } from '@/lib/preferences'
 import type { StackRoutesList } from '@/routes/types'
 import { formatBrDateShort } from '@/utils/date'
 import { api } from '../../../../convex/_generated/api'
@@ -72,6 +73,9 @@ export function useChecklistDetailContainer({
   const loading = checklistData === undefined || applicationsData === undefined
 
   const { resolveLabels, activeTags, tagsById, createTag } = useTagsCatalog()
+  const historyLayout = usePreferences((state) => state.historyLayout)
+  const toggleHistoryLayout = usePreferences((state) => state.toggleHistoryLayout)
+  const preferencesReady = useHasHydratedPreferences()
   const submitted = useRef(false)
 
   const groups = useMemo(
@@ -83,6 +87,7 @@ export function useChecklistDetailContainer({
               id: application.id,
               dateLabel: formatBrDateShort(application.date),
               negativeCount: countNegativeAnswers(application, checklist),
+              status: application.status,
             })),
           }))
         : [],
@@ -181,7 +186,13 @@ export function useChecklistDetailContainer({
   )
 
   return {
-    loading: loading || !checklist,
+    /**
+     * Waits on the preference too, not just the data. AsyncStorage hydration
+     * is async, so a `dense` user would otherwise get one frame of `detailed`
+     * and a visible re-layout. Data loading is normally the slower of the two,
+     * so this costs nothing in practice.
+     */
+    loading: loading || !checklist || !preferencesReady,
     checklist,
     checklistId,
     applications,
@@ -210,5 +221,7 @@ export function useChecklistDetailContainer({
     onEditTags,
     onCloseBatchEdit: () => setEditingGroup(null),
     onSaveBatchTags,
+    historyLayout,
+    onToggleHistoryLayout: toggleHistoryLayout,
   }
 }

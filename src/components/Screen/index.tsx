@@ -143,7 +143,10 @@ export function Screen({
           content
         ) : (
           <ScrollComponent
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[
+              styles.content,
+              footer ? styles.contentWithFloatingAction : null,
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             contentInsetAdjustmentBehavior="automatic"
@@ -154,7 +157,13 @@ export function Screen({
         )}
 
         {footer ? (
-          <View style={[styles.footer, { paddingBottom: bottom + 16 }]}>
+          // box-none: the bar spans the screen width but only the pill inside
+          // it should catch touches - everything around it belongs to the list
+          // scrolling underneath.
+          <View
+            style={[styles.footer, { paddingBottom: bottom + 16 }]}
+            pointerEvents="box-none"
+          >
             {footer}
           </View>
         ) : null}

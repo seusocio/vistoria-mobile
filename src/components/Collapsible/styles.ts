@@ -6,6 +6,10 @@ import { colors, fontFamily, textStyles } from '@/styles'
  * so a section can't drift from the rows it contains. Screens compose
  * Collapsible.Header / .Row / .RowTitle and add only what's genuinely theirs
  * (a progress ring, a suggestion tint), never a second copy of this design.
+ *
+ * Where a screen genuinely needs a different bar, it picks a variant on
+ * Collapsible.Root and the difference is spelled out here - `header` is the
+ * base, `headerCard` is what a card bar drops.
  */
 export const styles = StyleSheet.create({
   header: {
@@ -21,9 +25,31 @@ export const styles = StyleSheet.create({
   headerPressed: {
     // backgroundColor: colors.gray[100],
   },
+  // The `card` variant: the accordion is the card, so the bar draws no chrome
+  // of its own - the card supplies background and edges, and a second set here
+  // would double them up. It keeps the base padding: the card has none, so the
+  // bar's own padding is what makes the press target span the full width.
+  headerCard: {
+    borderBottomWidth: 0,
+    backgroundColor: 'transparent',
+  },
   headerTitle: {
     ...textStyles.cardTitle,
+  },
+  // A card bar sits inside a list of cards and carries a subtitle, so its
+  // title steps down one tier from the section bar's - a card is an item in a
+  // list, not a heading over one.
+  headerTitleCard: {
+    ...textStyles.itemTitle,
+  },
+  // Only when the title stands alone. With a subtitle, headerTextCol takes the
+  // slack instead (see Header.tsx).
+  headerTitleFill: {
     flex: 1,
+  },
+  headerTextCol: {
+    flex: 1,
+    gap: 3,
   },
   headerCount: {
     ...textStyles.metaLabel,

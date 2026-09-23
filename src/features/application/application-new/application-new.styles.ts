@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native'
-import { colors, textStyles } from '@/styles'
+import { textStyles } from '@/styles'
 
 export const styles = StyleSheet.create({
   title: {
@@ -19,22 +19,5 @@ export const styles = StyleSheet.create({
   helperText: {
     ...textStyles.metaLabel,
     flex: 1,
-  },
-  startButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.blue.base,
-    borderRadius: 12,
-    borderCurve: 'continuous',
-    paddingVertical: 13,
-  },
-  startButtonDisabled: {
-    opacity: 0.5,
-  },
-  startButtonText: {
-    ...textStyles.buttonLabel,
-    color: colors.white,
   },
 })

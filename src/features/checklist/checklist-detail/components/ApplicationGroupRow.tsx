@@ -2,6 +2,7 @@ import { memo, useCallback } from 'react'
 import { ApplicationRow } from '@/components'
 import type { ApplicationGroup } from '@/features/application/shared/application.utils'
 import type { ApplicationRowEntry } from '@/components/ApplicationRow'
+import type { HistoryLayout } from '@/lib/preferences'
 
 type ApplicationGroupWithEntries = ApplicationGroup & {
   entries: ApplicationRowEntry[]
@@ -10,6 +11,7 @@ type ApplicationGroupWithEntries = ApplicationGroup & {
 interface ApplicationGroupRowProps {
   group: ApplicationGroupWithEntries
   tagLabels: string[]
+  layout: HistoryLayout
   defaultExpanded: boolean
   onOpenEntry: (applicationId: string) => void
   onRepeat: (applications: ApplicationGroup['applications']) => void
@@ -19,6 +21,7 @@ interface ApplicationGroupRowProps {
 export const ApplicationGroupRow = memo(function ApplicationGroupRow({
   group,
   tagLabels,
+  layout,
   defaultExpanded,
   onOpenEntry,
   onRepeat,
@@ -34,6 +37,7 @@ export const ApplicationGroupRow = memo(function ApplicationGroupRow({
   )
   return (
     <ApplicationRow
+      layout={layout}
       tagLabels={tagLabels}
       latestStatusLabel={
         group.applications[0].status === 'completed' ? 'Concluída' : 'Rascunho'

@@ -1,148 +1,40 @@
-import { AnimatePresence, MotiView } from 'moti'
-import { memo, useState } from 'react'
-import { Pressable, Text, View } from 'react-native'
-import { colors } from '@/styles'
-import { BadgeTone } from '../Badge'
-import { Icon } from '../Icon'
-import { VisitRow } from './VisitRow'
-import { styles } from './styles'
+import { memo } from 'react'
+import type { HistoryLayout } from '@/lib/preferences'
+import { DenseCard } from './DenseCard'
+import { DetailedCard } from './DetailedCard'
+import type { ApplicationRowProps } from './types'
 
-export interface ApplicationRowEntry {
-  id: string
-  dateLabel: string
-  negativeCount: number
+export type { ApplicationRowEntry, ApplicationRowProps } from './types'
+
+export interface ApplicationRowLayoutProps extends ApplicationRowProps {
+  /** Which history layout to draw. Comes from the persisted user preference. */
+  layout?: HistoryLayout
 }
 
-export interface ApplicationRowProps {
-  tagLabels: string[]
-  latestStatusLabel: string
-  latestStatusTone: BadgeTone
-  entries: ApplicationRowEntry[]
-  onOpenEntry: (id: string) => void
-  onRepeat: () => void
-  onEditTags?: () => void
-  defaultExpanded?: boolean
-}
-
-/** Component/ApplicationRow */
+/**
+ * Component/ApplicationRow - one tag-group of vistorias in a checklist's
+ * history, as a full-bleed card that opens to show the visits inside it.
+ *
+ * Two layouts, chosen by the user and remembered (see `@/lib/preferences`).
+ * They are separate components rather than one component branching on a prop:
+ * they agree only on the card shell and the data, and disagree about the
+ * header, the rows, and where the group's actions live. Folding that into one
+ * body would be a component that is two components wearing a trench coat.
+ *
+ * Callers pass `layout` and otherwise don't care which one renders.
+ *
+ * The memo lives here and only here. Both layouts are reached through this
+ * switch, so memoizing them as well would be a second comparison of props the
+ * first one already found equal - see ADR 0008 for what these props have to
+ * satisfy to compare at all.
+ */
 export const ApplicationRow = memo(function ApplicationRow({
-  tagLabels,
-  latestStatusLabel,
-  latestStatusTone,
-  entries,
-  onOpenEntry,
-  onRepeat,
-  onEditTags,
-  defaultExpanded = false,
-}: ApplicationRowProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
-  const latest = entries[0]
-  const previous = entries.slice(1).reverse()
-  const highlightRepeat = latest ? latest.negativeCount > 0 : false
-
-  const visitsLabel = `${entries.length} ${entries.length === 1 ? 'vistoria' : 'vistorias'}`
-  const tagsTitle =
-    tagLabels.length > 0 ? tagLabels.join('  ·  ') : 'Sem tags associadas'
-
-  return (
-    <View style={styles.container}>
-      <Pressable
-        style={({ pressed }) => [styles.header, pressed && { opacity: 0.7 }]}
-        onPress={() => setExpanded((prev) => !prev)}
-        accessibilityRole="button"
-      >
-        <View style={styles.marker}>
-          {/* <Icon name="tag" size={16} color={colors.blue.base} /> */}
-        </View>
-
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {tagsTitle}
-          </Text>
-          <Text style={styles.headerSubtitle} numberOfLines={1}>
-            {visitsLabel}
-            {'  •  '}
-            <Text
-              style={
-                latestStatusTone === 'completed'
-                  ? styles.headerStatusCompleted
-                  : styles.headerStatusDraft
-              }
-            >
-              {latestStatusLabel}
-            </Text>
-          </Text>
-        </View>
-
-        <Icon
-          name={expanded ? 'chevron-up' : 'chevron-down'}
-          size={18}
-          color={colors.gray[400]}
-        />
-      </Pressable>
-
-      <AnimatePresence>
-        {expanded && (
-          <MotiView
-            from={{ opacity: 0, translateY: -8 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            exit={{ opacity: 0, translateY: -8 }}
-            transition={{ type: 'timing', duration: 180 }}
-            style={styles.body}
-          >
-            <View style={styles.divider} />
-            {onEditTags ? (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.editTagsButton,
-                  pressed && { opacity: 0.7 },
-                ]}
-                onPress={onEditTags}
-                accessibilityLabel="Editar tags das aplicações"
-              >
-                <Icon name="edit-pen" size={14} color={colors.blue.base} />
-                <Text style={styles.editTagsText}>Editar tags do grupo</Text>
-              </Pressable>
-            ) : null}
-
-            {previous.length > 0 && (
-              <>
-                <Text style={styles.historyLabel}>Vistorias anteriores</Text>
-                <View style={styles.historyList}>
-                  {previous.map((entry) => (
-                    <VisitRow
-                      key={entry.id}
-                      entry={entry}
-                      onPress={() => onOpenEntry(entry.id)}
-                    />
-                  ))}
-                </View>
-              </>
-            )}
-
-            {latest ? (
-              <VisitRow
-                entry={latest}
-                strong
-                onPress={() => onOpenEntry(latest.id)}
-              />
-            ) : null}
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.repeatButton,
-                highlightRepeat && styles.repeatButtonHighlight,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={onRepeat}
-              accessibilityLabel="Nova aplicação"
-            >
-              <Text style={styles.repeatButtonText}>Nova aplicação</Text>
-              <Icon name="repeat" size={16} color={colors.white} />
-            </Pressable>
-          </MotiView>
-        )}
-      </AnimatePresence>
-    </View>
+  layout = 'detailed',
+  ...props
+}: ApplicationRowLayoutProps) {
+  return layout === 'dense' ? (
+    <DenseCard {...props} />
+  ) : (
+    <DetailedCard {...props} />
   )
 })

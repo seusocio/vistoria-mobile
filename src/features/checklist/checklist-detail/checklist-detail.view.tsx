@@ -2,7 +2,13 @@ import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { LegendList, type LegendListRenderItemProps } from '@legendapp/list/react-native'
 import { useCallback } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { AppBottomSheet, ConfirmBottomSheet, Form, Screen } from '@/components'
+import {
+  AppBottomSheet,
+  ConfirmBottomSheet,
+  FloatingAction,
+  Form,
+  Screen,
+} from '@/components'
 import { Icon } from '@/components/Icon'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { colors } from '@/styles'
@@ -14,8 +20,6 @@ import { styles } from './checklist-detail.styles'
 import { ApplicationGroupRow } from './components/ApplicationGroupRow'
 import { ChecklistDetailHeader } from './components/ChecklistDetailHeader'
 
-const GroupSeparator = () => <View style={styles.listSeparator} />
-
 export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
   const c = useChecklistDetailContainer(props)
 
@@ -24,13 +28,47 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
       <ApplicationGroupRow
         group={item}
         tagLabels={c.resolveLabels(item.tagsIds)}
+        layout={c.historyLayout}
         defaultExpanded={index === 0}
         onOpenEntry={c.onOpenEntry}
         onRepeat={c.onRepeat}
         onEditTags={c.onEditTags}
       />
     ),
-    [c.onEditTags, c.onOpenEntry, c.onRepeat, c.resolveLabels],
+    [c.historyLayout, c.onEditTags, c.onOpenEntry, c.onRepeat, c.resolveLabels],
+  )
+
+  const historyList = (
+    <LegendList
+      data={c.groups}
+      renderItem={renderGroup}
+      keyExtractor={(item) => item.key}
+      ListHeaderComponent={
+        c.checklist ? (
+          <ChecklistDetailHeader
+            checklist={c.checklist}
+            tagLabels={c.resolveLabels(c.checklist.tagsIds)}
+            applicationsCount={c.applicationsCount}
+            completedCount={c.completedCount}
+            historyLayout={c.historyLayout}
+            onToggleHistoryLayout={c.onToggleHistoryLayout}
+          />
+        ) : null
+      }
+      ListEmptyComponent={
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>
+            Nenhuma aplicação ainda. Crie a primeira vistoria com este checklist.
+          </Text>
+        </View>
+      }
+      contentContainerStyle={styles.listContent}
+      // No separator: each card closes itself with a bottom hairline, so
+      // the last one in the list gets an edge too.
+      estimatedItemSize={180}
+      recycleItems={false}
+      showsVerticalScrollIndicator={false}
+    />
   )
 
   const footerComponent = useSheetFooterActions({
@@ -47,13 +85,11 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
       title="Checklist"
       footer={
         c.checklist ? (
-          <Pressable
-            style={({ pressed }) => [styles.newAppButton, pressed && { opacity: 0.7 }]}
+          <FloatingAction
+            label="Nova aplicação"
+            icon="plus"
             onPress={c.onNewApplication}
-          >
-            <Icon name="plus" size={18} color={colors.white} />
-            <Text style={styles.newAppButtonText}>Nova aplicação</Text>
-          </Pressable>
+          />
         ) : undefined
       }
       headerRight={
@@ -85,33 +121,7 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
       }
       content={
         <>
-          <LegendList
-            data={c.groups}
-            renderItem={renderGroup}
-            keyExtractor={(item) => item.key}
-            ListHeaderComponent={
-              c.checklist ? (
-                <ChecklistDetailHeader
-                  checklist={c.checklist}
-                  tagLabels={c.resolveLabels(c.checklist.tagsIds)}
-                  applicationsCount={c.applicationsCount}
-                  completedCount={c.completedCount}
-                />
-              ) : null
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>
-                  Nenhuma aplicação ainda. Crie a primeira vistoria com este checklist.
-                </Text>
-              </View>
-            }
-            contentContainerStyle={styles.listContent}
-            ItemSeparatorComponent={GroupSeparator}
-            estimatedItemSize={180}
-            recycleItems={false}
-            showsVerticalScrollIndicator={false}
-          />
+          {historyList}
           <AppBottomSheet
             visible={Boolean(c.editingGroup)}
             onClose={c.onCloseBatchEdit}

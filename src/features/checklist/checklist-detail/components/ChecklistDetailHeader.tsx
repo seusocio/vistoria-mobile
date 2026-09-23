@@ -2,13 +2,17 @@ import { memo } from 'react'
 import { Text, View } from 'react-native'
 import { Metric, TagChipList } from '@/components'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import type { HistoryLayout } from '@/lib/preferences'
 import { styles } from '../checklist-detail.styles'
+import { HistoryLayoutToggle } from './HistoryLayoutToggle'
 
 interface ChecklistDetailHeaderProps {
   checklist: Checklist
   tagLabels: string[]
   applicationsCount: number
   completedCount: number
+  historyLayout: HistoryLayout
+  onToggleHistoryLayout: () => void
 }
 
 export const ChecklistDetailHeader = memo(function ChecklistDetailHeader({
@@ -16,6 +20,8 @@ export const ChecklistDetailHeader = memo(function ChecklistDetailHeader({
   tagLabels,
   applicationsCount,
   completedCount,
+  historyLayout,
+  onToggleHistoryLayout,
 }: ChecklistDetailHeaderProps) {
   return (
     <View style={styles.listHeader}>
@@ -28,7 +34,13 @@ export const ChecklistDetailHeader = memo(function ChecklistDetailHeader({
         <Metric label="Concluídas" value={String(completedCount)} />
         <Metric label="Itens/visita" value={String(checklist.items.length)} />
       </View>
-      <Text style={styles.sectionTitle}>Histórico</Text>
+      <View style={styles.historyRow}>
+        <Text style={styles.sectionTitle}>Histórico</Text>
+        <HistoryLayoutToggle
+          layout={historyLayout}
+          onToggle={onToggleHistoryLayout}
+        />
+      </View>
     </View>
   )
 })

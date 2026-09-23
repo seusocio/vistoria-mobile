@@ -8,6 +8,7 @@ import {
   Form,
   ItemDrawer,
   PhotoViewer,
+  FloatingAction,
   ProgressBar,
   Screen,
   TagChipList,
@@ -85,15 +86,11 @@ export function ApplicationFillView(props: UseApplicationFillContainerProps) {
         </View>
       }
       footer={
-        <View style={styles.footerActions}>
-          <Pressable
-            style={({ pressed }) => [styles.completeButton, pressed && { opacity: 0.7 }]}
-            onPress={c.onComplete}
-          >
-            <Icon name="check" size={18} color={colors.white} />
-            <Text style={styles.completeButtonText}>Concluir aplicação</Text>
-          </Pressable>
-        </View>
+        <FloatingAction
+          label="Concluir aplicação"
+          icon="check"
+          onPress={c.onComplete}
+        />
       }
     >
       <View style={styles.tagsRow}>

@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { FLOATING_ACTION_CLEARANCE } from '@/components/FloatingAction'
 import { colors, textStyles } from '@/styles'
 
 export const styles = StyleSheet.create({
@@ -30,40 +31,51 @@ export const styles = StyleSheet.create({
   },
   listHeader: {
     gap: 16,
+    // The cards below run to the screen edge, so the gutter lives here rather
+    // than on the list - and at 20 the checklist title lines up with the nav
+    // title above it and with every card title below.
+    paddingHorizontal: 20,
   },
   listContent: {
-    paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 32,
-  },
-  listSeparator: {
-    height: 10,
+    // This screen brings its own scroll container, so Screen's
+    // contentWithFloatingAction doesn't reach it - the clearance under the
+    // "Nova aplicação" pill is paid for here instead.
+    paddingBottom: FLOATING_ACTION_CLEARANCE,
   },
   metricsRow: {
     flexDirection: 'row',
     gap: 10,
   },
-  newAppButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.blue.base,
-    borderRadius: 12,
-    borderCurve: 'continuous',
-    paddingVertical: 13,
-  },
-  newAppButtonText: {
-    ...textStyles.buttonLabel,
-    color: colors.white,
-  },
   sectionTitle: {
     ...textStyles.sectionTitle,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  layoutToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderCurve: 'continuous',
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    backgroundColor: colors.white,
+  },
+  layoutToggleText: {
+    ...textStyles.badgeLabel,
+    color: colors.gray[600],
   },
   list: {
     gap: 10,
   },
   emptyState: {
+    marginHorizontal: 20,
     backgroundColor: colors.white,
     borderRadius: 16,
     borderCurve: 'continuous',

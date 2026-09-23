@@ -1,5 +1,5 @@
-import { Pressable, Text, View } from 'react-native'
-import { Form, Screen } from '@/components'
+import { Text, View } from 'react-native'
+import { FloatingAction, Form, Screen } from '@/components'
 import { Icon } from '@/components/Icon'
 import { colors } from '@/styles'
 import {
@@ -20,20 +20,13 @@ export function ApplicationNewView(props: UseApplicationNewContainerProps) {
       title={c.checklist?.title}
       footer={
         c.checklist ? (
-          <Pressable
-            style={({ pressed }) => [
-              styles.startButton,
-              c.tagsIds.length === 0 && styles.startButtonDisabled,
-              pressed && { opacity: 0.7 },
-            ]}
+          <FloatingAction
+            label={c.isSubmitting ? 'Iniciando...' : 'Iniciar preenchimento'}
+            icon="chevron-right"
+            iconPosition="trailing"
             onPress={c.onStart}
             disabled={c.isSubmitting || c.tagsIds.length === 0}
-          >
-            <Text style={styles.startButtonText}>
-              {c.isSubmitting ? 'Iniciando...' : 'Iniciar preenchimento'}
-            </Text>
-            <Icon name="chevron-right" size={18} color={colors.white} />
-          </Pressable>
+          />
         ) : undefined
       }
     >

@@ -176,18 +176,4 @@ export const styles = StyleSheet.create({
     color: colors.white,
   },
 
-  saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.blue.base,
-    borderRadius: 12,
-    borderCurve: 'continuous',
-    paddingVertical: 13,
-  },
-  saveButtonText: {
-    ...textStyles.buttonLabel,
-    color: colors.white,
-  },
 })

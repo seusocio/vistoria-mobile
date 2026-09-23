@@ -1,9 +1,11 @@
 import { ReactNode, useMemo } from 'react'
-import { CollapsibleContext } from './context'
+import { CollapsibleContext, type CollapsibleVariant } from './context'
 
 export interface CollapsibleRootProps {
   expanded: boolean
   onToggle: () => void
+  /** Which bar design the section wears - see CollapsibleVariant. */
+  variant?: CollapsibleVariant
   children: ReactNode
 }
 
@@ -15,11 +17,12 @@ export interface CollapsibleRootProps {
 export function CollapsibleRoot({
   expanded,
   onToggle,
+  variant = 'section',
   children,
 }: CollapsibleRootProps) {
   const value = useMemo(
-    () => ({ expanded, toggle: onToggle }),
-    [expanded, onToggle],
+    () => ({ expanded, toggle: onToggle, variant }),
+    [expanded, onToggle, variant],
   )
 
   return (

@@ -20,6 +20,9 @@ items.
 | [0007](0007-single-pass-render-for-non-scrolling-lists.md) | Non-scrolling nested lists render in a single pass | Accepted |
 | [0008](0008-memoization-contract-for-sections-and-rows.md) | Sections and rows have an explicit memoization contract | Accepted |
 | [0009](0009-offline-queue-as-the-only-write-path.md) | The offline queue is the only write path | Accepted |
+| [0010](0010-collapsible-card-variant.md) | A bar variant, not a second accordion | Accepted |
+| [0011](0011-history-layout-is-a-persisted-preference.md) | The history layout is a persisted preference, not a screen state | Accepted |
+| [0011](0011-daily-inspection-report.md) | The daily inspection report is generated offline from Convex reads | Accepted |
 
 ## A note on evidence
 
