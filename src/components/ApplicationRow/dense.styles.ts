@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native'
-import { colors, textStyles } from '@/styles'
+import { colors, rule, textStyles } from '@/styles'
 
 /**
  * The `dense` layout's own styles. The card shell it sits in is shared with
@@ -13,7 +13,7 @@ export const denseStyles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 20,
     paddingVertical: 9,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: rule,
     borderTopColor: colors.gray[200],
   },
   // A 3pt bar rather than a dot: at this density a dot reads as punctuation.

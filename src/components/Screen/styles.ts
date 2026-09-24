@@ -1,6 +1,8 @@
 import { StyleSheet } from 'react-native'
-import { FLOATING_ACTION_CLEARANCE } from '../FloatingAction'
 import { colors, textStyles } from '@/styles'
+
+/** Slack under the last row when nothing is floating over it. */
+export const CONTENT_PADDING_BOTTOM = 32
 
 export const styles = StyleSheet.create({
   safeArea: {
@@ -69,13 +71,8 @@ export const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 32,
+    paddingBottom: CONTENT_PADDING_BOTTOM,
     gap: 20,
-  },
-  // Enough slack under the last row that it can always be scrolled clear of a
-  // floating action. Applied only when there is one.
-  contentWithFloatingAction: {
-    paddingBottom: FLOATING_ACTION_CLEARANCE,
   },
   topHeader: {
     gap: 2,

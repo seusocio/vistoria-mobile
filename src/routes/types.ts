@@ -25,6 +25,12 @@ export type StackRoutesList = {
 export type StackRoutesProps<T extends keyof StackRoutesList> =
 	NativeStackScreenProps<StackRoutesList, T>;
 
+/**
+ * Typed against the native navigator, but below iOS 26 the runtime prop comes
+ * from the JS one (see `usesFloatingTabBar`). The two agree on every
+ * navigation action; they diverge on `setOptions`, so a tab screen should not
+ * reach for navigator-specific options.
+ */
 export type TabRoutesProps<T extends keyof TabRoutesList> =
 	CompositeScreenProps<
 		NativeBottomTabScreenProps<TabRoutesList, T>,

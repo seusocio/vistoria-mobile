@@ -12,8 +12,10 @@ import {
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '@/styles'
+import { FLOATING_ACTION_CLEARANCE } from '../FloatingAction'
+import { useFloatingTabBarClearance } from '../FloatingTabBar'
 import { Icon } from '../Icon'
-import { styles } from './styles'
+import { CONTENT_PADDING_BOTTOM, styles } from './styles'
 
 function SkeletonBlock({ style }: { style?: StyleProp<ViewStyle> }) {
   return (
@@ -84,10 +86,19 @@ export function Screen({
   footer,
 }: ScreenProps) {
   const { bottom } = useSafeAreaInsets()
+  const tabBarClearance = useFloatingTabBarClearance()
   const { isWebSocketConnected } = useConvexConnectionState()
   const connectionLabel = !isWebSocketConnected
     ? 'Sem conexão · alterações serão reenviadas'
     : null
+
+  // Whatever floats over the scroll area has to be scrollable past: a footer
+  // pill, the tab bar, or both stacked when a tab screen has an action of its
+  // own. Only the default ScrollView gets this - a screen bringing its own
+  // list applies `useFloatingTabBarClearance` itself.
+  const contentPaddingBottom =
+    (footer ? FLOATING_ACTION_CLEARANCE : CONTENT_PADDING_BOTTOM) +
+    tabBarClearance
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -145,7 +156,7 @@ export function Screen({
           <ScrollComponent
             contentContainerStyle={[
               styles.content,
-              footer ? styles.contentWithFloatingAction : null,
+              { paddingBottom: contentPaddingBottom },
             ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -161,7 +172,10 @@ export function Screen({
           // it should catch touches - everything around it belongs to the list
           // scrolling underneath.
           <View
-            style={[styles.footer, { paddingBottom: bottom + 16 }]}
+            style={[
+              styles.footer,
+              { paddingBottom: Math.max(bottom, tabBarClearance) },
+            ]}
             pointerEvents="box-none"
           >
             {footer}

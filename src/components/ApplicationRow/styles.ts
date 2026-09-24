@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native'
-import { colors, textStyles } from '@/styles'
+import { colors, rule, textStyles } from '@/styles'
 
 /**
  * A full-bleed card: it spans the screen, and everything inside it spans the
@@ -18,7 +18,7 @@ import { colors, textStyles } from '@/styles'
 export const sharedStyles = StyleSheet.create({
   container: {
     backgroundColor: colors.white,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: rule,
     borderBottomColor: colors.gray[200],
   },
   // A pressed full-width row tints rather than fading: at this width `opacity`
@@ -53,7 +53,7 @@ export const styles = StyleSheet.create({
     fontFamily: textStyles.badgeLabel.fontFamily,
   },
   divider: {
-    height: StyleSheet.hairlineWidth,
+    height: rule,
     backgroundColor: colors.gray[200],
   },
   editTagsRow: {
@@ -62,7 +62,7 @@ export const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: rule,
     borderBottomColor: colors.gray[200],
   },
   editTagsText: {
@@ -83,7 +83,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   visitRowDivided: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: rule,
     borderBottomColor: colors.gray[200],
   },
   dateTextStrong: {

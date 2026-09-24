@@ -1,7 +1,7 @@
 import { LegendList, type LegendListRenderItemProps } from '@legendapp/list/react-native'
 import { memo, useCallback } from 'react'
 import { Text, View } from 'react-native'
-import { Screen } from '@/components'
+import { Screen, useFloatingTabBarClearance } from '@/components'
 import {
   useReportOverviewContainer,
   type PendingListData,
@@ -26,6 +26,7 @@ const OverviewEmpty = memo(function OverviewEmpty({ hasTags }: { hasTags: boolea
 
 export function ReportOverviewView() {
   const c = useReportOverviewContainer()
+  const tabBarClearance = useFloatingTabBarClearance()
 
   const renderPending = useCallback(
     ({ item }: LegendListRenderItemProps<PendingListData>) => (
@@ -70,7 +71,10 @@ export function ReportOverviewView() {
             />
           }
           ListEmptyComponent={<OverviewEmpty hasTags={c.tagsIds.length > 0} />}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: 32 + tabBarClearance },
+          ]}
           ItemSeparatorComponent={PendingSeparator}
           estimatedItemSize={180}
           recycleItems

@@ -1,8 +1,9 @@
 import { LegendList, type LegendListRenderItemProps } from '@legendapp/list/react-native'
 import { useCallback } from 'react'
 import { View } from 'react-native'
-import { Screen } from '@/components'
+import { Screen, useFloatingTabBarClearance } from '@/components'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import { space } from '@/styles'
 import {
   useChecklistLibraryContainer,
   type UseChecklistLibraryContainerProps,
@@ -17,6 +18,7 @@ const ChecklistSeparator = () => <View style={styles.itemSeparator} />
 
 export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
   const c = useChecklistLibraryContainer(props)
+  const tabBarClearance = useFloatingTabBarClearance()
 
   const renderChecklist = useCallback(
     ({ item }: LegendListRenderItemProps<Checklist>) => (
@@ -47,7 +49,10 @@ export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
             data={c.filteredChecklists}
             renderItem={renderChecklist}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[
+              styles.listContent,
+              { paddingBottom: space.xxl + tabBarClearance },
+            ]}
             ListHeaderComponent={
               <LibraryHeader
                 checklistCount={c.checklistCount}
