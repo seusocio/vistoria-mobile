@@ -435,7 +435,11 @@ export function useApplicationFillContainer({
     }
   }
 
-  // --- lifecycle: complete / delete -------------------------------------
+  // --- lifecycle: draft / complete / delete ------------------------------
+  function handleSaveDraft() {
+    navigation.goBack()
+  }
+
   function handleComplete() {
     const updatedAt = new Date().toISOString()
     enqueueOp(updateMeta, {
@@ -515,6 +519,7 @@ export function useApplicationFillContainer({
     editingItemCompletionVariant,
     onBack: () => navigation.goBack(),
     onDelete: handleDelete,
+    onSaveDraft: handleSaveDraft,
     onComplete: handleComplete,
     onEditApplication: handleOpenEditApplication,
     onAddApplicationPhoto: handleAddApplicationPhoto,

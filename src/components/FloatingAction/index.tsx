@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native'
+import { Pressable, Text } from 'react-native'
 import { colors } from '@/styles'
 import { Icon, type IconName } from '../Icon'
 import { styles } from './styles'
@@ -64,8 +64,3 @@ export function FloatingAction({
  * own scroll container (a FlatList via `content`) has to apply it itself.
  */
 export const FLOATING_ACTION_CLEARANCE = 96
-
-/** Wraps a floating action so several can share one row. Rare - most screens have one. */
-export function FloatingActionRow({ children }: { children: React.ReactNode }) {
-  return <View style={styles.row}>{children}</View>
-}

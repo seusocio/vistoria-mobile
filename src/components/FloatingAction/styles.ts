@@ -34,10 +34,4 @@ export const styles = StyleSheet.create({
     ...textStyles.buttonLabel,
     color: colors.white,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
 })

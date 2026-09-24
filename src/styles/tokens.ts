@@ -31,26 +31,6 @@ export const radius = {
  */
 export const touch = { min: 48 } as const
 
-/**
- * Width of a divider rule.
- *
- * Deliberately 1, and **not** `StyleSheet.hairlineWidth`.
- *
- * `hairlineWidth` is `1 / PixelRatio.get()` — 0.333 on a @3x screen, i.e.
- * exactly one physical pixel. That only survives if the view's edge lands on a
- * physical pixel boundary. Card and row heights here are driven by text and by
- * Collapsible's animated height, so they are fractional, and consecutive rows
- * land at y-offsets cycling through .0 / .333 / .667 of a pixel. At one of
- * those three phases the rule rounds away and the border is simply missing —
- * which is why it looked like every third divider had been deleted.
- *
- * A 1dp rule is three physical pixels at @3x, so no rounding phase can erase
- * it. It also matches what the rest of the app already draws (Screen's nav row
- * and top header, Card, Modal, TagMultiSelect) — the sub-pixel/1pt split was
- * the drift ADR 0001 flagged and never resolved.
- */
-export const rule = 1
-
 /** Animation durations. Above ~300ms motion starts to feel sluggish. */
 export const duration = {
   fast: 150,

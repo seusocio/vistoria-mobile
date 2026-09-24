@@ -17,4 +17,10 @@ export interface ApplicationRowProps {
   onRepeat: () => void
   onEditTags?: () => void
   defaultExpanded?: boolean
+  /**
+   * First card in the list. Suppresses the separating rule: the card draws it
+   * on its top edge, and the first one has nothing above it to be separated
+   * from - the rule would just hang under the section title.
+   */
+  first?: boolean
 }

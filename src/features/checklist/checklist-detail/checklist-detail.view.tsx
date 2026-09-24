@@ -27,15 +27,16 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
     ({ item, index }: LegendListRenderItemProps<(typeof c.groups)[number]>) => (
       <ApplicationGroupRow
         group={item}
-        tagLabels={c.resolveLabels(item.tagsIds)}
+        tagLabels={item.tagLabels}
         layout={c.historyLayout}
         defaultExpanded={index === 0}
+        first={index === 0}
         onOpenEntry={c.onOpenEntry}
         onRepeat={c.onRepeat}
         onEditTags={c.onEditTags}
       />
     ),
-    [c.historyLayout, c.onEditTags, c.onOpenEntry, c.onRepeat, c.resolveLabels],
+    [c.historyLayout, c.onEditTags, c.onOpenEntry, c.onRepeat],
   )
 
   const historyList = (
@@ -52,13 +53,22 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
             completedCount={c.completedCount}
             historyLayout={c.historyLayout}
             onToggleHistoryLayout={c.onToggleHistoryLayout}
+            historySearch={c.historySearch}
+            onHistorySearchChange={c.onHistorySearchChange}
+            historyHasFilter={c.historyHasFilter}
+            onOpenHistorySort={c.onOpenHistorySort}
           />
         ) : null
+      }
+      ListFooterComponent={
+        c.groups.length > 0 ? <View style={styles.listEndRule} /> : null
       }
       ListEmptyComponent={
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>
-            Nenhuma aplicação ainda. Crie a primeira vistoria com este checklist.
+            {c.hasApplications
+              ? 'Nenhuma aplicação encontrada com esse filtro.'
+              : 'Nenhuma aplicação ainda. Crie a primeira vistoria com este checklist.'}
           </Text>
         </View>
       }

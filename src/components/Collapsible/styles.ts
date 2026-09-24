@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native'
-import { colors, fontFamily, rule, textStyles } from '@/styles'
+import { colors, fontFamily, textStyles } from '@/styles'
 
 /**
  * The whole accordion look lives here - header bar, row shell and row title -
@@ -18,7 +18,7 @@ export const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 20,
     paddingVertical: 14,
-    borderBottomWidth: rule,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.gray[200],
     backgroundColor: colors.white,
   },
@@ -78,7 +78,7 @@ export const styles = StyleSheet.create({
   row: {
     backgroundColor: 'transparent',
     borderWidth: 0,
-    borderBottomWidth: rule,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.gray[200],
     borderRadius: 0,
     paddingHorizontal: 20,

@@ -19,6 +19,7 @@ import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import type { ApplicationDerivedState } from '@/features/application/shared/application.utils'
 import { colors } from '@/styles'
+import { presentApplicationCompletionPicker } from './application-completion-picker'
 import { styles } from './application-fill.styles'
 import {
   useApplicationFillContainer,
@@ -87,9 +88,15 @@ export function ApplicationFillView(props: UseApplicationFillContainerProps) {
       }
       footer={
         <FloatingAction
-          label="Concluir aplicação"
-          icon="check"
-          onPress={c.onComplete}
+          label="Continuar"
+          icon="chevron-down"
+          iconPosition="trailing"
+          onPress={() =>
+            presentApplicationCompletionPicker((action) => {
+              if (action === 'draft') c.onSaveDraft()
+              else c.onComplete()
+            })
+          }
         />
       }
     >

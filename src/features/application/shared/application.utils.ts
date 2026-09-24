@@ -79,15 +79,21 @@ function cloneExtraItem(item: ApplicationItem, now: string): ApplicationItem {
   }
 }
 
+export interface RepeatedApplicationOverrides {
+  tagsIds?: string[]
+  date?: string
+}
+
 export function buildRepeatedApplication(
   sourceApplication: Application,
   checklist: Checklist,
+  overrides: RepeatedApplicationOverrides = {},
 ): Application {
   const newApplication = buildApplication(
     {
       checklistId: sourceApplication.checklistId,
-      tagsIds: sourceApplication.tagsIds,
-      date: new Date().toISOString(),
+      tagsIds: overrides.tagsIds ?? sourceApplication.tagsIds,
+      date: overrides.date ?? new Date().toISOString(),
     },
     checklist,
   )
@@ -381,4 +387,89 @@ export function groupApplicationsByTagSet(
       new Date(a.applications[0].date).getTime(),
   )
   return result
+}
+
+/**
+ * The most recent application sharing exactly the given tag set, or null.
+ *
+ * Same equality as `groupApplicationsByTagSet` (order-insensitive), so
+ * picking a tag set that already exists in the histórico finds the very
+ * application the group's "repetir" button would have copied from.
+ */
+export function findLatestApplicationByTagSet(
+  applications: Application[],
+  tagsIds: string[],
+): Application | null {
+  if (tagsIds.length === 0) return null
+  const key = tagsKey(tagsIds)
+  let latest: Application | null = null
+  for (const application of applications) {
+    if (application.deletedAt) continue
+    if (tagsKey(application.tagsIds) !== key) continue
+    if (!latest || new Date(application.date).getTime() > new Date(latest.date).getTime()) {
+      latest = application
+    }
+  }
+  return latest
+}
+
+export type HistorySortMode = 'recent' | 'alpha' | 'numeric'
+
+const NUMERIC_CHUNK = /(\d+|\D+)/g
+
+/**
+ * Natural-order comparator: splits both strings into runs of digits and
+ * non-digits and compares digit runs by numeric value instead of character
+ * code, so "Bloco 10" sorts after "Bloco 2".
+ *
+ * Deliberately hand-rolled instead of `localeCompare(..., { numeric: true })`
+ * - Hermes (the RN engine) doesn't reliably honor that Intl.Collator option,
+ * so on-device it silently fell back to plain string comparison and put
+ * "101" before "99" (`'1' < '9'` as characters). This has no Intl dependency,
+ * so it behaves the same in tests (Bun/V8) and on-device (Hermes/JSC).
+ */
+function naturalCompare(a: string, b: string): number {
+  const aParts = a.match(NUMERIC_CHUNK) ?? []
+  const bParts = b.match(NUMERIC_CHUNK) ?? []
+  const length = Math.max(aParts.length, bParts.length)
+  for (let i = 0; i < length; i++) {
+    const aPart = aParts[i] ?? ''
+    const bPart = bParts[i] ?? ''
+    if (aPart === bPart) continue
+    const aNum = /^\d+$/.test(aPart) ? Number(aPart) : null
+    const bNum = /^\d+$/.test(bPart) ? Number(bPart) : null
+    if (aNum !== null && bNum !== null) {
+      if (aNum !== bNum) return aNum - bNum
+      continue
+    }
+    return aPart < bPart ? -1 : 1
+  }
+  return 0
+}
+
+/**
+ * Reorders groups by their tag labels — the only field the histórico's sort
+ * picker touches, per the "considere apenas tags" requirement. `recent`
+ * leaves `groupApplicationsByTagSet`'s own date order alone; `alpha` does a
+ * plain case-insensitive compare of the joined labels, `numeric` runs them
+ * through `naturalCompare` instead.
+ *
+ * Untagged groups have nothing to sort by, so they're pinned to the end
+ * regardless of mode rather than landing wherever an empty string collates.
+ */
+export function sortGroupsByTagLabels<T extends { tagLabels: string[] }>(
+  groups: T[],
+  mode: HistorySortMode,
+): T[] {
+  if (mode === 'recent') return groups
+  return [...groups].sort((a, b) => {
+    const aUntagged = a.tagLabels.length === 0
+    const bUntagged = b.tagLabels.length === 0
+    if (aUntagged !== bUntagged) return aUntagged ? 1 : -1
+    const aLabel = a.tagLabels.join(' ')
+    const bLabel = b.tagLabels.join(' ')
+    return mode === 'numeric'
+      ? naturalCompare(aLabel, bLabel)
+      : aLabel.localeCompare(bLabel, 'pt-BR', { sensitivity: 'base' })
+  })
 }

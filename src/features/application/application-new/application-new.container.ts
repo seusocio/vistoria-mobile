@@ -1,19 +1,28 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { useCallback, useMemo } from 'react'
 import {
   applicationMetaSchema,
   type ApplicationMetaFormValues,
 } from '@/features/application/shared/application.schema'
 import { create as createApplication } from '@/features/application/shared/application.ops'
-import { buildApplication } from '@/features/application/shared/application.utils'
+import type { Application } from '@/features/application/shared/application.types'
+import {
+  buildApplication,
+  buildRepeatedApplication,
+  findLatestApplicationByTagSet,
+} from '@/features/application/shared/application.utils'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
+import { normalizeApplication } from '@/lib/convex'
 import { useDraft } from '@/lib/forms'
-import { enqueueOp, useEntity } from '@/lib/offline-queue'
+import { enqueueOp, useEntity, useEntityList } from '@/lib/offline-queue'
 import type { StackRoutesList } from '@/routes/types'
 import { todayIso } from '@/utils/date'
 import { api } from '../../../../convex/_generated/api'
 
 type Navigation = NativeStackNavigationProp<StackRoutesList, keyof StackRoutesList>
+
+const getApplicationId = (application: Application) => application.id
 
 export interface UseApplicationNewContainerProps {
   checklistId: string
@@ -37,6 +46,27 @@ export function useApplicationNewContainer({
   const loading = checklistData === undefined
   const tagsCatalog = useTagsCatalog()
 
+  // The same list the histórico groups: picking a tag set that already exists
+  // there has to prefill from its latest vistoria, exactly like the group's
+  // "repetir" button does. Filtered by checklistId for the overlay's sake, so
+  // an application created offline under another checklist can't leak in.
+  const belongsToChecklist = useCallback(
+    (application: Application) => application.checklistId === checklistId,
+    [checklistId],
+  )
+  const applicationsData = useEntityList<Application>(
+    api.applications.listByChecklistId,
+    { checklistId },
+    { kind: 'application', getId: getApplicationId, belongs: belongsToChecklist },
+  )
+  const applications = useMemo(
+    () =>
+      (applicationsData ?? [])
+        .filter((application) => !application.deletedAt)
+        .map(normalizeApplication),
+    [applicationsData],
+  )
+
   // The entity doesn't exist yet, so `autoCommit: false`: the draft is only
   // persisted locally until the primary action ("Iniciar preenchimento")
   // turns it into a real application. Before this, backing out of the screen
@@ -49,14 +79,28 @@ export function useApplicationNewContainer({
   })
   const tagsIds = form.watch('tagsIds')
 
+  const previousApplication = useMemo(
+    () => findLatestApplicationByTagSet(applications, tagsIds),
+    [applications, tagsIds],
+  )
+
   async function onStart() {
     if (!checklist) return
     if (!(await commit())) return
     const values = form.getValues()
-    const application = buildApplication(
-      { checklistId, tagsIds: values.tagsIds, date: values.date },
-      checklist,
-    )
+    const source = findLatestApplicationByTagSet(applications, values.tagsIds)
+    // Prefilled from the previous visit of this same tag set when there is
+    // one - the answers come in as suggestions, which is what "repetir" on
+    // the histórico card produces too.
+    const application = source
+      ? buildRepeatedApplication(source, checklist, {
+          tagsIds: values.tagsIds,
+          date: values.date,
+        })
+      : buildApplication(
+          { checklistId, tagsIds: values.tagsIds, date: values.date },
+          checklist,
+        )
     // Queued, not awaited: the create is durable the moment it is enqueued,
     // so there is no failure to report back and no reason to make the user
     // wait on the network before the fill screen opens.
@@ -74,6 +118,7 @@ export function useApplicationNewContainer({
     control: form.control,
     tagsIds,
     tagsCatalog,
+    previousApplicationDate: previousApplication?.date ?? null,
     isSubmitting: form.formState.isSubmitting,
     onBack: () => navigation.goBack(),
     onStart,

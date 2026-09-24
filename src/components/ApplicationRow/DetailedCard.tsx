@@ -26,6 +26,7 @@ export function DetailedCard({
   onRepeat,
   onEditTags,
   defaultExpanded = false,
+  first = false,
 }: ApplicationRowProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
   const handleToggle = useCallback(() => setExpanded((prev) => !prev), [])
@@ -38,7 +39,7 @@ export function DetailedCard({
     tagLabels.length > 0 ? tagLabels.join('  ·  ') : 'Sem tags associadas'
 
   return (
-    <View style={sharedStyles.container}>
+    <View style={[sharedStyles.container, first && sharedStyles.containerFirst]}>
       <Collapsible.Root
         expanded={expanded}
         onToggle={handleToggle}

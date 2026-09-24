@@ -5,6 +5,7 @@ import type { ApplicationRowEntry } from '@/components/ApplicationRow'
 import type { HistoryLayout } from '@/lib/preferences'
 
 type ApplicationGroupWithEntries = ApplicationGroup & {
+  tagLabels: string[]
   entries: ApplicationRowEntry[]
 }
 
@@ -13,6 +14,7 @@ interface ApplicationGroupRowProps {
   tagLabels: string[]
   layout: HistoryLayout
   defaultExpanded: boolean
+  first: boolean
   onOpenEntry: (applicationId: string) => void
   onRepeat: (applications: ApplicationGroup['applications']) => void
   onEditTags: (group: ApplicationGroupWithEntries) => void
@@ -23,6 +25,7 @@ export const ApplicationGroupRow = memo(function ApplicationGroupRow({
   tagLabels,
   layout,
   defaultExpanded,
+  first,
   onOpenEntry,
   onRepeat,
   onEditTags,
@@ -38,6 +41,7 @@ export const ApplicationGroupRow = memo(function ApplicationGroupRow({
   return (
     <ApplicationRow
       layout={layout}
+      first={first}
       tagLabels={tagLabels}
       latestStatusLabel={
         group.applications[0].status === 'completed' ? 'Concluída' : 'Rascunho'

@@ -14,6 +14,8 @@ import {
   buildRepeatedApplication,
   countNegativeAnswers,
   groupApplicationsByTagSet,
+  type HistorySortMode,
+  sortGroupsByTagLabels,
 } from '@/features/application/shared/application.utils'
 import {
   checklistSave,
@@ -29,6 +31,7 @@ import { useHasHydratedPreferences, usePreferences } from '@/lib/preferences'
 import type { StackRoutesList } from '@/routes/types'
 import { formatBrDateShort } from '@/utils/date'
 import { api } from '../../../../convex/_generated/api'
+import { presentHistorySortPicker } from './history-sort-picker'
 
 type Navigation = NativeStackNavigationProp<StackRoutesList, keyof StackRoutesList>
 
@@ -78,11 +81,12 @@ export function useChecklistDetailContainer({
   const preferencesReady = useHasHydratedPreferences()
   const submitted = useRef(false)
 
-  const groups = useMemo(
+  const allGroups = useMemo(
     () =>
       checklist
         ? groupApplicationsByTagSet(applications).map((group) => ({
             ...group,
+            tagLabels: resolveLabels(group.tagsIds),
             entries: group.applications.map((application): ApplicationRowEntry => ({
               id: application.id,
               dateLabel: formatBrDateShort(application.date),
@@ -91,8 +95,22 @@ export function useChecklistDetailContainer({
             })),
           }))
         : [],
-    [applications, checklist],
+    [applications, checklist, resolveLabels],
   )
+
+  const [historySearch, setHistorySearch] = useState('')
+  const [historySortMode, setHistorySortMode] = useState<HistorySortMode>('recent')
+  const historyHasFilter = historySearch.trim().length > 0 || historySortMode !== 'recent'
+
+  const groups = useMemo(() => {
+    const query = historySearch.trim().toLowerCase()
+    const filtered = query
+      ? allGroups.filter((group) =>
+          group.tagLabels.some((label) => label.toLowerCase().includes(query)),
+        )
+      : allGroups
+    return sortGroupsByTagLabels(filtered, historySortMode)
+  }, [allGroups, historySearch, historySortMode])
 
   const [deleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -164,6 +182,10 @@ export function useChecklistDetailContainer({
     setEditingGroup(null)
   }
 
+  const onOpenHistorySort = useCallback(() => {
+    presentHistorySortPicker(setHistorySortMode)
+  }, [])
+
   const onOpenEntry = useCallback(
     (applicationId: string) => {
       navigation.navigate('applicationFill', { checklistId, applicationId })
@@ -199,6 +221,12 @@ export function useChecklistDetailContainer({
     applicationsCount: applications.length,
     completedCount,
     groups,
+    hasApplications: applications.length > 0,
+    historySearch,
+    onHistorySearchChange: setHistorySearch,
+    historySortMode,
+    onOpenHistorySort,
+    historyHasFilter,
     resolveLabels,
     activeTags,
     tagsById,

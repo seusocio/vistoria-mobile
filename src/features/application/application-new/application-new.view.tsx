@@ -2,6 +2,7 @@ import { Text, View } from 'react-native'
 import { FloatingAction, Form, Screen } from '@/components'
 import { Icon } from '@/components/Icon'
 import { colors } from '@/styles'
+import { formatBrDateShort } from '@/utils/date'
 import {
   useApplicationNewContainer,
   type UseApplicationNewContainerProps,
@@ -57,8 +58,9 @@ export function ApplicationNewView(props: UseApplicationNewContainerProps) {
           <View style={styles.helperRow}>
             <Icon name="clipboard-check" size={14} color={colors.gray[400]} />
             <Text style={styles.helperText}>
-              Os {c.checklist.items.length} itens do modelo serão copiados para
-              esta visita
+              {c.previousApplicationDate
+                ? `As respostas da última visita com essas tags (${formatBrDateShort(c.previousApplicationDate)}) serão sugeridas nesta`
+                : `Os ${c.checklist.items.length} itens do modelo serão copiados para esta visita`}
             </Text>
           </View>
         </>

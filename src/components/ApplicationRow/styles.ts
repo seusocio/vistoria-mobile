@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native'
-import { colors, rule, textStyles } from '@/styles'
+import { colors, textStyles } from '@/styles'
 
 /**
  * A full-bleed card: it spans the screen, and everything inside it spans the
@@ -16,10 +16,39 @@ import { colors, rule, textStyles } from '@/styles'
  * where they disagree - see ./dense.styles.ts.
  */
 export const sharedStyles = StyleSheet.create({
+  /**
+   * The separating rule is on the **top** edge, and it is 1 rather than
+   * `StyleSheet.hairlineWidth`. Both are deliberate, and both are defences
+   * against the same reported bug: on a @3x device, dividers went missing in a
+   * repeating pattern - two drawn, one skipped, all the way down the list.
+   *
+   * Two mechanisms can each produce that, and **it was never isolated which
+   * one was actually at fault** (the build under test turned out to be stale,
+   * so the single-variable attempts proved nothing). Both defences are
+   * therefore kept:
+   *
+   * - *Top, not bottom.* LegendList renders every item into its own
+   *   absolutely positioned container, placed from sizes it measures and
+   *   caches. A card whose real height disagrees with its cached height by a
+   *   rounding step lets the next container sit slightly early and overlap
+   *   this one - and every card paints an opaque background, so the overlap
+   *   covers whatever is on this card's bottom edge. The top edge is drawn by
+   *   the container that would be doing the covering, so it survives.
+   * - *1, not hairlineWidth.* `hairlineWidth` is `1 / PixelRatio.get()`: a
+   *   single physical pixel, which rounds away completely at some sub-pixel
+   *   offsets. 1dp is three physical pixels at @3x and cannot vanish.
+   *
+   * Do not drop either one to "simplify" without re-testing on a real @3x
+   * device - a simulator at @2x shows neither the bug nor the fix.
+   */
   container: {
     backgroundColor: colors.white,
-    borderBottomWidth: rule,
-    borderBottomColor: colors.gray[200],
+    borderTopWidth: 1,
+    borderTopColor: colors.gray[200],
+  },
+  /** Nothing above the first card to separate it from - see `first`. */
+  containerFirst: {
+    borderTopWidth: 0,
   },
   // A pressed full-width row tints rather than fading: at this width `opacity`
   // dims the hairlines around it too and the whole card flickers.
@@ -53,7 +82,7 @@ export const styles = StyleSheet.create({
     fontFamily: textStyles.badgeLabel.fontFamily,
   },
   divider: {
-    height: rule,
+    height: StyleSheet.hairlineWidth,
     backgroundColor: colors.gray[200],
   },
   editTagsRow: {
@@ -62,7 +91,7 @@ export const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderBottomWidth: rule,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.gray[200],
   },
   editTagsText: {
@@ -83,7 +112,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   visitRowDivided: {
-    borderBottomWidth: rule,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.gray[200],
   },
   dateTextStrong: {

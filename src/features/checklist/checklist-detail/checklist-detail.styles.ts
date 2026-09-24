@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native'
 import { FLOATING_ACTION_CLEARANCE } from '@/components/FloatingAction'
-import { colors, textStyles } from '@/styles'
+import { colors, radius, space, textStyles, touch } from '@/styles'
 
 export const styles = StyleSheet.create({
   headerActions: {
@@ -71,8 +71,45 @@ export const styles = StyleSheet.create({
     ...textStyles.badgeLabel,
     color: colors.gray[600],
   },
+  historySearchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.sm
+  },
+  filterButton: {
+    minWidth: touch.min,
+    minHeight: touch.min,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
+  },
+  filterButtonActive: {
+    backgroundColor: colors.blue.tint,
+    borderColor: colors.blue.tint,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: space.sm,
+    right: space.sm,
+    width: space.xs,
+    height: space.xs,
+    backgroundColor: colors.blue.base,
+    borderRadius: space.xs,
+  },
   list: {
     gap: 10,
+  },
+  // Cards carry their rule on the top edge (see ApplicationRow's sharedStyles),
+  // so the list needs one more to close the last one.
+  listEndRule: {
+    height: 1,
+    backgroundColor: colors.gray[200],
   },
   emptyState: {
     marginHorizontal: 20,

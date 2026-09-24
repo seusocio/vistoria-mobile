@@ -14,8 +14,9 @@ const CHECKLIST_ID = 'seed-checklist-apartamentos'
 const POSITIVE_ANSWER = 'Sim'
 
 /**
- * O lote que o estagiário criou em campo: aplicações ativas datadas nesses
- * dois dias. As aplicações de 22 e 23/09 são testes e ficam de fora.
+ * O lote-baseline: as vistorias que o estagiário levantou na planilha, datadas
+ * nesses dois dias. É delas que sai o conteúdo que `cloneBaselineForward`
+ * propaga para as vistorias seguintes do mesmo apartamento.
  */
 const LOTE_DATE_PREFIXES = ['2026-09-16', '2026-09-17']
 
@@ -362,6 +363,134 @@ export const fillFromVistoria = internalMutation({
       itemsPerApplication: checklist.items.filter((item) => !item.deletedAt)
         .length,
       missingTags,
+    }
+  },
+})
+
+/**
+ * Propaga o lote de 16-17/09 para as vistorias seguintes do mesmo apartamento.
+ *
+ * Cada apto tem um baseline (o lote da planilha: respostas completas, sem
+ * fotos) e uma ou mais vistorias posteriores que o campo abriu só para tirar
+ * foto - elas ficaram com as 7-11 fotos e nenhuma resposta. Aqui o conteúdo do
+ * baseline desce para elas: respostas, notas e `workflowStatus`, mantendo a
+ * galeria de fotos de cada uma intacta (as fotos são o que não se clona) e
+ * deixando-as como `draft`, porque a vistoria nova é a que está em andamento.
+ *
+ * O baseline em si é normalizado para `completed`.
+ *
+ * Idempotente: rodar de novo reescreve o mesmo conteúdo. `dryRun: true`
+ * devolve o relatório sem gravar.
+ */
+export const cloneBaselineForward = internalMutation({
+  args: { dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, { dryRun }) => {
+    const now = new Date().toISOString()
+    const checklist = await findChecklist(ctx)
+
+    const tags = await ctx.db.query('tags').collect()
+    const apartmentByTagId = new Map<string, string>()
+    for (const tag of tags) {
+      const match = tag.label.match(/^APT-(\d+)$/)
+      if (match) apartmentByTagId.set(tag.id, match[1])
+    }
+
+    const applications = (
+      await ctx.db
+        .query('applications')
+        .withIndex('by_deleted_at', (q) => q.eq('deletedAt', null))
+        .collect()
+    ).filter((application) => application.checklistId === CHECKLIST_ID)
+
+    const byApartment = new Map<string, Application[]>()
+    for (const application of applications) {
+      const apartment = application.tagsIds
+        .map((id) => apartmentByTagId.get(id))
+        .find(Boolean)
+      if (!apartment) continue
+      const list = byApartment.get(apartment) ?? []
+      list.push(application)
+      byApartment.set(apartment, list)
+    }
+
+    const isBaseline = (application: Application) =>
+      LOTE_DATE_PREFIXES.some((prefix) => application.date.startsWith(prefix))
+
+    let baselinesCompleted = 0
+    let cloned = 0
+    let itemsGrown = 0
+    const withoutBaseline: string[] = []
+
+    for (const [apartment, list] of [...byApartment].sort(
+      (a, b) => Number(a[0]) - Number(b[0]),
+    )) {
+      // Entre baselines (o apto 73 tem duas), vale a que tem mais respostas.
+      const baseline = list
+        .filter(isBaseline)
+        .sort(
+          (a, b) =>
+            b.items.filter((item) => item.answer).length -
+            a.items.filter((item) => item.answer).length,
+        )[0]
+
+      if (!baseline || baseline.items.every((item) => !item.answer)) {
+        withoutBaseline.push(apartment)
+        continue
+      }
+
+      if (baseline.status !== 'completed') {
+        if (!dryRun) {
+          await ctx.db.patch('applications', baseline._id, {
+            status: 'completed',
+            completedAt: baseline.completedAt ?? now,
+            updatedAt: now,
+          })
+        }
+        baselinesCompleted += 1
+      }
+
+      const answersByTitle = new Map(
+        baseline.items
+          .filter((item) => !item.deletedAt)
+          .map((item) => [
+            normalizeTitle(item.title),
+            { answer: item.answer, note: item.note },
+          ]),
+      )
+
+      for (const target of list) {
+        if (target._id === baseline._id) continue
+        if (isBaseline(target)) continue
+
+        const items = buildItems(
+          checklist,
+          target.items,
+          answersByTitle,
+          target.id,
+          now,
+        )
+        if (items.length !== target.items.length) itemsGrown += 1
+
+        if (!dryRun) {
+          // `attachments` fica de fora do patch: a galeria de fotos é dela.
+          await ctx.db.patch('applications', target._id, {
+            items,
+            status: 'draft',
+            completedAt: null,
+            updatedAt: now,
+          })
+        }
+        cloned += 1
+      }
+    }
+
+    return {
+      dryRun: Boolean(dryRun),
+      apartments: byApartment.size,
+      baselinesCompleted,
+      applicationsCloned: cloned,
+      itemCountChanged: itemsGrown,
+      withoutBaseline,
     }
   },
 })
