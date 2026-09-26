@@ -32,7 +32,7 @@ describe('applyOps', () => {
   test('folds pending ops onto the server entity in enqueue order', () => {
     defineOp<{ answer: string; updatedAt: string }, FakeItem>('overlay-test.setAnswer', {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity, args) => ({ ...(entity as FakeItem), answer: args.answer, updatedAt: args.updatedAt }),
       entityId: () => 'item-1',
     })
@@ -50,7 +50,7 @@ describe('applyOps', () => {
   test('with a null entity, a create-style op builds the entity from scratch', () => {
     defineOp<{ id: string; title: string }, { id: string; title: string }>('overlay-test.create', {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (_entity, args) => ({ id: args.id, title: args.title }),
       entityId: (args) => args.id,
     })
@@ -75,7 +75,7 @@ describe('applyOps', () => {
     // fields, which turns that ordinary condition into a crash.
     defineOp<{ answer: string }, FakeItem>('overlay-test.patch-on-missing', {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity, args) => {
         if (!entity) return null
         return { ...entity, answer: args.answer }
@@ -96,7 +96,7 @@ describe('mergePendingIntoList', () => {
   test('appends an entity the server does not have yet', () => {
     defineOp<{ id: string; title: string }, { id: string; title: string }>('list-test.create', {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity, args) => entity ?? { id: args.id, title: args.title },
       entityId: (args) => args.id,
     })
@@ -133,7 +133,7 @@ describe('mergePendingIntoList', () => {
     // Library's count with an object that is not an application at all.
     defineOp<{ id: string; title: string }, { id: string; title: string }>('list-test.checklist-save', {
       kind: 'checklist',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (_entity, args) => ({ id: args.id, title: args.title }),
       entityId: (args) => args.id,
     })

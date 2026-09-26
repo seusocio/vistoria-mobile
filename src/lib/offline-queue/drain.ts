@@ -1,11 +1,11 @@
-import type { FunctionReference } from 'convex/server'
+import type { QueryClient } from '@tanstack/react-query'
 import type { StoreApi } from 'zustand'
 import { getOp } from './ops'
 import type { OutboxState } from './queue.store'
 import { backoffMs, MAX_ATTEMPTS } from './retry-policy'
 
 export type MutationRunner = (
-  mutation: FunctionReference<'mutation'>,
+  send: (args: Record<string, unknown>) => Promise<unknown>,
   args: Record<string, unknown>,
 ) => Promise<unknown>
 export type Scheduler = (run: () => void, delayMs: number) => void
@@ -40,6 +40,9 @@ export async function drainOutboxWith(
   outbox: Pick<StoreApi<OutboxState>, 'getState'>,
   runMutation: MutationRunner,
   schedule: Scheduler = defaultScheduler,
+  // Unused until a later ticket adds per-op `onServerResponse`/`invalidates`
+  // hooks that write the server's response into the React Query cache.
+  _queryClient?: QueryClient,
 ): Promise<void> {
   if (draining) return
   draining = true
@@ -57,7 +60,7 @@ export async function drainOutboxWith(
       }
 
       try {
-        await runMutation(op.mutation, item.args as Record<string, unknown>)
+        await runMutation(op.send, item.args as Record<string, unknown>)
         outbox.getState().resolve(item.id)
       } catch {
         const attempts = item.attempts + 1
@@ -65,7 +68,10 @@ export async function drainOutboxWith(
           outbox.getState().fail(item.id)
         } else {
           outbox.getState().retry(item.id)
-          schedule(() => void drainOutboxWith(outbox, runMutation, schedule), backoffMs(attempts))
+          schedule(
+            () => void drainOutboxWith(outbox, runMutation, schedule, _queryClient),
+            backoffMs(attempts),
+          )
         }
         return
       }

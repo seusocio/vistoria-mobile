@@ -5,7 +5,7 @@ describe('defineOp / getOp', () => {
   test('registers an op and getOp finds it back by type', () => {
     const op = defineOp<{ id: string }, { id: string }>('ops-test.create', {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (_entity, args) => ({ id: args.id }),
       entityId: (args) => args.id,
     })
@@ -15,14 +15,14 @@ describe('defineOp / getOp', () => {
   test('throws when the same type is defined twice', () => {
     defineOp('ops-test.duplicate', {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity,
       entityId: () => 'x',
     })
     expect(() =>
       defineOp('ops-test.duplicate', {
         kind: 'application',
-        mutation: {} as never,
+        send: {} as never,
         applyLocal: (entity) => entity,
         entityId: () => 'x',
       }),

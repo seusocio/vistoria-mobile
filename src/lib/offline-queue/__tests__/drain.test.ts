@@ -29,7 +29,7 @@ describe('drainOutboxWith', () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>(uniqueType('success'), {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',
     })
@@ -44,7 +44,7 @@ describe('drainOutboxWith', () => {
     const store = freshStore()
     const op = defineOp<{ n: number }, unknown>(uniqueType('order'), {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: (args) => `e-${args.n}`,
     })
@@ -64,7 +64,7 @@ describe('drainOutboxWith', () => {
     const store = freshStore()
     const failing = defineOp<{ n: number }, unknown>(uniqueType('fail-first'), {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: (args) => `e-${args.n}`,
     })
@@ -93,7 +93,7 @@ describe('drainOutboxWith', () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>(uniqueType('exhausted'), {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',
     })
@@ -117,7 +117,7 @@ describe('drainOutboxWith', () => {
     const store = freshStore()
     const op = defineOp<{ n: number }, unknown>(uniqueType('blocked'), {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: (args) => `e-${args.n}`,
     })
@@ -138,7 +138,7 @@ describe('drainOutboxWith', () => {
     const store = freshStore()
     const op = defineOp<{ n: number }, unknown>(uniqueType('unblocked'), {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: (args) => `e-${args.n}`,
     })
@@ -162,7 +162,7 @@ describe('drainOutboxWith', () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>(uniqueType('vanishing'), {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',
     })

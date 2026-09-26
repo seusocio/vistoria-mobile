@@ -1,13 +1,11 @@
-import { convexClient } from '@/lib/convex/client'
+import { queryClient } from '@/lib/query-client'
 import { drainOutboxWith } from './drain'
 import type { OpDefinition } from './ops'
 import { useOutbox } from './queue.store'
 
-/** Wires the pure drain algorithm (`drain.ts`) to the real outbox and the real Convex client. */
+/** Wires the pure drain algorithm (`drain.ts`) to the real outbox and each op's own `send`. */
 export function drainOutbox(): Promise<void> {
-  return drainOutboxWith(useOutbox, (mutation, args) =>
-    convexClient.mutation(mutation, args as never),
-  )
+  return drainOutboxWith(useOutbox, (send, args) => send(args), undefined, queryClient)
 }
 
 /**

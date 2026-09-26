@@ -13,7 +13,7 @@ describe('outbox slice', () => {
     const store = freshStore()
     const op = defineOp<{ applicationId: string }, unknown>('queue-store-test.touch', {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: (args) => args.applicationId,
     })
@@ -31,7 +31,7 @@ describe('outbox slice', () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>('queue-store-test.resolve', {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',
     })
@@ -47,7 +47,7 @@ describe('outbox slice', () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>('queue-store-test.retry', {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',
     })
@@ -63,7 +63,7 @@ describe('outbox slice', () => {
     const store = freshStore()
     const op = defineOp<Record<string, never>, unknown>('queue-store-test.fail', {
       kind: 'application',
-      mutation: {} as never,
+      send: {} as never,
       applyLocal: (entity) => entity as never,
       entityId: () => 'e',
     })

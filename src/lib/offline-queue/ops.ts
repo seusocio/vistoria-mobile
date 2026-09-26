@@ -1,5 +1,3 @@
-import type { FunctionReference } from 'convex/server'
-
 /**
  * Which table an op writes to. The overlay uses it to keep ops from bleeding
  * across entity types: a pending `checklists.save` and a pending
@@ -30,7 +28,8 @@ export type EntityKind = 'application' | 'checklist' | 'tag'
 export interface OpDefinition<Args, Entity> {
   type: string
   kind: EntityKind
-  mutation: FunctionReference<'mutation'>
+  /** Sends the op to the backend. Still a Convex mutation call for every op today. */
+  send: (args: Args) => Promise<unknown>
   applyLocal: (entity: Entity | null, args: Args) => Entity | null
   /** Which entity this op's pending state is grouped under, for the overlay. */
   entityId: (args: Args) => string

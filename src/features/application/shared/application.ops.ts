@@ -1,6 +1,7 @@
 import { defineOp } from '@/lib/offline-queue/ops'
 import type { Application, Attachment } from '@/features/application/shared/application.types'
 import { applyApplicationItemPatch, type ApplicationItemPatch } from '@/features/application/shared/application.utils'
+import { convexClient } from '@/lib/convex/client'
 import { api } from '../../../../convex/_generated/api'
 
 function findItem(application: Application, itemId: string) {
@@ -19,7 +20,7 @@ function findItem(application: Application, itemId: string) {
  */
 export const create = defineOp<{ entity: Application }, Application>('applications.create', {
   kind: 'application',
-  mutation: api.applications.create,
+  send: (args) => convexClient.mutation(api.applications.create, args as never),
   applyLocal: (entity, args) => entity ?? args.entity,
   entityId: (args) => args.entity.id,
 })
@@ -37,7 +38,7 @@ export const patchItem = defineOp<
   Application
 >('applications.patchItem', {
   kind: 'application',
-  mutation: api.applications.patchItem,
+  send: (args) => convexClient.mutation(api.applications.patchItem, args as never),
   applyLocal: (entity, args) => {
     if (!entity) return null
     return applyApplicationItemPatch(entity, args.itemId, args.patch, args.updatedAt)
@@ -50,7 +51,7 @@ export const addItem = defineOp<
   Application
 >('applications.addItem', {
   kind: 'application',
-  mutation: api.applications.addItem,
+  send: (args) => convexClient.mutation(api.applications.addItem, args as never),
   applyLocal: (entity, args) => {
     if (!entity) return null
     if (entity.items.some((item) => item.id === args.item.id)) return entity
@@ -64,7 +65,7 @@ export const addAttachment = defineOp<
   Application
 >('applications.addAttachment', {
   kind: 'application',
-  mutation: api.applications.addAttachment,
+  send: (args) => convexClient.mutation(api.applications.addAttachment, args as never),
   applyLocal: (entity, args) => {
     if (!entity) return null
     if (args.itemId === null) {
@@ -101,7 +102,7 @@ export const setAttachmentDeletedAt = defineOp<
   Application
 >('applications.setAttachmentDeletedAt', {
   kind: 'application',
-  mutation: api.applications.setAttachmentDeletedAt,
+  send: (args) => convexClient.mutation(api.applications.setAttachmentDeletedAt, args as never),
   applyLocal: (entity, args) => {
     if (!entity) return null
     const update = (attachment: Attachment) =>
@@ -127,7 +128,7 @@ export const purgeAttachment = defineOp<
   Application
 >('applications.purgeAttachment', {
   kind: 'application',
-  mutation: api.applications.purgeAttachment,
+  send: (args) => convexClient.mutation(api.applications.purgeAttachment, args as never),
   applyLocal: (entity, args) => {
     if (!entity) return null
     const drop = (attachments: Attachment[]) =>
@@ -156,7 +157,7 @@ export const setAttachmentUploaded = defineOp<
   Application
 >('applications.setAttachmentUploaded', {
   kind: 'application',
-  mutation: api.applications.setAttachmentUploaded,
+  send: (args) => convexClient.mutation(api.applications.setAttachmentUploaded, args as never),
   applyLocal: (entity, args) => {
     if (!entity) return null
     const update = (attachment: Attachment) =>
@@ -183,7 +184,7 @@ export const setAttachmentUploadStatus = defineOp<
   Application
 >('applications.setAttachmentUploadStatus', {
   kind: 'application',
-  mutation: api.applications.setAttachmentUploadStatus,
+  send: (args) => convexClient.mutation(api.applications.setAttachmentUploadStatus, args as never),
   applyLocal: (entity, args) => {
     if (!entity) return null
     const update = (attachment: Attachment) =>
@@ -213,7 +214,7 @@ export const updateMeta = defineOp<
   Application
 >('applications.updateMeta', {
   kind: 'application',
-  mutation: api.applications.updateMeta,
+  send: (args) => convexClient.mutation(api.applications.updateMeta, args as never),
   applyLocal: (entity, args) => {
     if (!entity) return null
     const { applicationId: _applicationId, ...meta } = args
@@ -226,7 +227,7 @@ export const softDelete = defineOp<{ id: string; deletedAt: string }, Applicatio
   'applications.softDelete',
   {
     kind: 'application',
-    mutation: api.applications.softDelete,
+    send: (args) => convexClient.mutation(api.applications.softDelete, args as never),
     applyLocal: (entity, args) => {
       if (!entity) return null
       return { ...entity, deletedAt: args.deletedAt }

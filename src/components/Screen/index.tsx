@@ -1,5 +1,4 @@
 import { MotiView } from 'moti'
-import { useConvexConnectionState } from 'convex/react'
 import { ReactNode, ComponentType } from 'react'
 import {
   Pressable,
@@ -11,6 +10,7 @@ import {
   ViewStyle,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useIsOnline } from '@/lib/offline-queue'
 import { colors } from '@/styles'
 import { FLOATING_ACTION_CLEARANCE } from '../FloatingAction'
 import { useFloatingTabBarClearance } from '../FloatingTabBar'
@@ -87,8 +87,8 @@ export function Screen({
 }: ScreenProps) {
   const { bottom } = useSafeAreaInsets()
   const tabBarClearance = useFloatingTabBarClearance()
-  const { isWebSocketConnected } = useConvexConnectionState()
-  const connectionLabel = !isWebSocketConnected
+  const isOnline = useIsOnline()
+  const connectionLabel = !isOnline
     ? 'Sem conexão · alterações serão reenviadas'
     : null
 

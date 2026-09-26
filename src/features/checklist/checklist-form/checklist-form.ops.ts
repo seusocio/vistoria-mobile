@@ -1,5 +1,6 @@
 import { defineOp } from '@/lib/offline-queue/ops'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import { convexClient } from '@/lib/convex/client'
 import { api } from '../../../../convex/_generated/api'
 
 export interface ChecklistSaveArgs {
@@ -15,7 +16,7 @@ export interface ChecklistSaveArgs {
  */
 export const checklistSave = defineOp<ChecklistSaveArgs, Checklist>('checklists.save', {
   kind: 'checklist',
-  mutation: api.checklists.save,
+  send: (args) => convexClient.mutation(api.checklists.save, args as never),
   applyLocal: (_entity, args) => args.entity,
   entityId: (args) => args.id,
 })
@@ -37,7 +38,7 @@ export const checklistSoftDeleteCascade = defineOp<
   Checklist
 >('checklists.softDeleteCascade', {
   kind: 'checklist',
-  mutation: api.checklists.softDeleteCascade,
+  send: (args) => convexClient.mutation(api.checklists.softDeleteCascade, args as never),
   applyLocal: (entity, args) => {
     if (!entity) return null
     return { ...entity, deletedAt: args.deletedAt }

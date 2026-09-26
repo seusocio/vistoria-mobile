@@ -5,17 +5,18 @@ import {
 	useFonts,
 } from "@expo-google-fonts/lato";
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { ConvexQueryCacheProvider } from 'convex-helpers/react/cache';
 import { ConvexProvider } from 'convex/react';
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SyncStatusBar, UndoToastProvider } from "@/components";
 // Registers every offline-queue op before anything can drain the outbox.
 import "@/features/ops";
 import { convexClient } from '@/lib/convex'
+import { queryClient } from '@/lib/query-client'
+import { queryPersister } from '@/lib/query-persister'
 import { registerBackgroundUploadTask } from '@/lib/uploads/background-task';
 import { subscribeToUploadRecovery } from '@/lib/uploads/upload-store';
 import { migrateLocalDataToConvex } from '@/lib/legacy/migrate-to-convex';
@@ -24,18 +25,8 @@ import { Routes } from "@/routes";
 
 void SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient({
-	defaultOptions: {
-		queries: {
-			staleTime: 30_000,
-			retry: 2,
-		},
-	},
-});
-
 /**
- * Lives inside `ConvexProvider` because it reads the connection state, and
- * renders nothing: its whole job is to drain the persisted outbox at boot,
+ * Renders nothing: its whole job is to drain the persisted outbox at boot,
  * on reconnect and on foreground.
  */
 function OutboxLifecycle() {
@@ -72,15 +63,16 @@ export default function App() {
       <SafeAreaProvider>
         <UndoToastProvider>
           <BottomSheetModalProvider>
-            <QueryClientProvider client={queryClient}>
-            <ConvexProvider client={convexClient}>
-              <ConvexQueryCacheProvider>
+            <PersistQueryClientProvider
+              client={queryClient}
+              persistOptions={{ persister: queryPersister }}
+            >
+              <ConvexProvider client={convexClient}>
                 <OutboxLifecycle />
                 <SyncStatusBar />
                 <Routes />
-              </ConvexQueryCacheProvider>
-            </ConvexProvider>
-            </QueryClientProvider>
+              </ConvexProvider>
+            </PersistQueryClientProvider>
           </BottomSheetModalProvider>
         </UndoToastProvider>
       </SafeAreaProvider>

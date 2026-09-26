@@ -1,12 +1,11 @@
-import { useQuery } from 'convex-helpers/react/cache'
-import { useConvexConnectionState } from 'convex/react'
-import type { FunctionReference } from 'convex/server'
-import { useEffect, useMemo } from 'react'
+import { useIsRestoring, useQuery } from '@tanstack/react-query'
+import { useConvex, useConvexConnectionState } from 'convex/react'
+import { getFunctionName, type FunctionReference } from 'convex/server'
+import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { castConvex } from '@/lib/convex/cast'
 import { getOp, type EntityKind } from './ops'
 import { useOutbox, type QueuedOp } from './queue.store'
-import { snapshotKey, useSnapshots, writeSnapshot } from './snapshot.store'
 
 /**
  * Applies every pending op, in enqueue order, on top of the server's copy.
@@ -50,32 +49,40 @@ export function resolveOverlayBase<Value>(input: {
 
 /**
  * The base the overlay applies pending ops onto: the server's answer when
- * there is one, otherwise the last answer we persisted for this query.
+ * there is one, otherwise the last answer React Query persisted for this
+ * query.
  *
- * The snapshot is also what survives a process kill: Convex's own query
- * cache lives in the client's memory only, so after a restart there is
- * nothing to read until the socket comes back.
+ * Reads go through React Query rather than Convex's own reactive `useQuery`
+ * now — a one-shot `convex.query` call wrapped as a `queryFn` — which is
+ * also what survives a process kill: the persisted cache (`query-persister`)
+ * is read from disk before the first fetch resolves, where Convex's own
+ * query cache lived in memory only and had nothing to read until the socket
+ * reconnected.
+ *
+ * `connected` still reads the Convex socket (not Seam E's `useIsOnline`):
+ * `useNetworkState` pulls in `expo-network`, which transitively imports
+ * `react-native` in a way `bun test` can't parse, and this function is
+ * reached by `overlay.test.ts` just by importing the module.
  */
 function useServerOrSnapshot<Value>(
   query: FunctionReference<'query'>,
   args: Record<string, unknown>,
 ): { value: Value | undefined; settled: boolean } {
-  const raw = useQuery(query, args)
-  const key = snapshotKey(query, args)
-  // Selecting `undefined` while the server's answer is in hand keeps every
-  // snapshot write from re-rendering screens that aren't reading the cache.
-  const cached = useSnapshots((state) => (raw === undefined ? state.byKey[key] : undefined))
-  const snapshotsHydrated = useSnapshots((state) => state.hydrated)
+  const convex = useConvex()
   const { isWebSocketConnected } = useConvexConnectionState()
-
-  useEffect(() => {
-    if (raw !== undefined) writeSnapshot(key, raw)
-  }, [raw, key])
+  const isRestoring = useIsRestoring()
+  const result = useQuery<Value>({
+    queryKey: [getFunctionName(query), args],
+    queryFn: () => convex.query(query, args) as Promise<Value>,
+  })
 
   return resolveOverlayBase<Value>({
-    server: raw as Value | undefined,
-    cached: cached as Value | undefined,
-    snapshotsHydrated,
+    // Only this mount's own fetch counts as "the server answered" — data
+    // present before that (restored from disk, or left from a previous
+    // mount) is the cached fallback instead.
+    server: result.isFetchedAfterMount ? result.data : undefined,
+    cached: result.isFetchedAfterMount ? undefined : result.data,
+    snapshotsHydrated: !isRestoring,
     connected: isWebSocketConnected,
   })
 }

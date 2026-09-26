@@ -1,8 +1,8 @@
-import { useConvexConnectionState } from 'convex/react'
+import { useIsFetching, useIsMutating } from '@tanstack/react-query'
 import { MotiView } from 'moti'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useUploadStore } from '@/lib/uploads/upload-store'
-import { useOutbox } from '@/lib/offline-queue'
+import { useIsOnline, useOutbox } from '@/lib/offline-queue'
 import { colors } from '@/styles'
 import { styles } from './styles'
 
@@ -22,7 +22,10 @@ import { styles } from './styles'
  */
 export function SyncStatusBar() {
   const { top } = useSafeAreaInsets()
-  const { isWebSocketConnected, hasInflightRequests } = useConvexConnectionState()
+  const isOnline = useIsOnline()
+  const fetchingCount = useIsFetching()
+  const mutatingCount = useIsMutating()
+  const hasInflightRequests = fetchingCount > 0 || mutatingCount > 0
   const outboxItems = useOutbox((state) => state.items)
   const uploadsInFlight = useUploadStore((state) => state.queue.length)
 
@@ -31,7 +34,7 @@ export function SyncStatusBar() {
 
   const color = hasFailed
     ? colors.danger.base
-    : !isWebSocketConnected
+    : !isOnline
       ? colors.warning.base
       : hasPending
         ? colors.blue.base

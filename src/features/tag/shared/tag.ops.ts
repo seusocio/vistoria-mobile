@@ -1,5 +1,6 @@
 import { defineOp } from '@/lib/offline-queue/ops'
 import type { Tag } from '@/features/tag/shared/tag.types'
+import { convexClient } from '@/lib/convex/client'
 import { api } from '../../../../convex/_generated/api'
 
 /**
@@ -13,7 +14,7 @@ import { api } from '../../../../convex/_generated/api'
  */
 export const tagCreate = defineOp<{ entity: Tag }, Tag>('tags.create', {
   kind: 'tag',
-  mutation: api.tags.create,
+  send: (args) => convexClient.mutation(api.tags.create, args as never),
   applyLocal: (entity, args) => entity ?? args.entity,
   entityId: (args) => args.entity.id,
 })
