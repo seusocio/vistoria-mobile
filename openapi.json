@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Vistoria API",
-    "description": "Backend do app de vistoria. Auth por email-OTP + organizations (Better Auth em /api/auth). Módulos escopados por :orgId no path.",
+    "description": "Backend do app de vistoria. Auth por email-OTP + organizations (Better Auth em /api/auth). Projetos pertencem à organização; recursos de vistoria são escopados por :projectId no path.",
     "version": "1.0.0"
   },
   "tags": [
@@ -819,7 +819,7 @@
         }
       }
     },
-    "/{orgId}/projects/{id}": {
+    "/{orgId}/projects/{projectId}": {
       "get": {
         "parameters": [
           {
@@ -831,7 +831,7 @@
           {
             "schema": { "type": "string" },
             "in": "path",
-            "name": "id",
+            "name": "projectId",
             "required": true
           }
         ],
@@ -1091,7 +1091,7 @@
             }
           }
         },
-        "operationId": "getByOrgIdProjectsById"
+        "operationId": "getByOrgIdProjectsByProjectId"
       },
       "delete": {
         "parameters": [
@@ -1104,7 +1104,7 @@
           {
             "schema": { "type": "string" },
             "in": "path",
-            "name": "id",
+            "name": "projectId",
             "required": true
           }
         ],
@@ -1328,16 +1328,22 @@
             }
           }
         },
-        "operationId": "deleteByOrgIdProjectsById"
+        "operationId": "deleteByOrgIdProjectsByProjectId"
       }
     },
-    "/{orgId}/tags/": {
+    "/{orgId}/projects/{projectId}/tags/": {
       "get": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -1678,7 +1684,7 @@
             }
           }
         },
-        "operationId": "getByOrgIdTags"
+        "operationId": "getByOrgIdProjectsByProjectIdTags"
       },
       "post": {
         "parameters": [
@@ -1686,6 +1692,12 @@
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           }
         ],
@@ -2043,7 +2055,7 @@
             }
           }
         },
-        "operationId": "postByOrgIdTags",
+        "operationId": "postByOrgIdProjectsByProjectIdTags",
         "requestBody": {
           "required": true,
           "content": {
@@ -2081,13 +2093,19 @@
         }
       }
     },
-    "/{orgId}/checklists/": {
+    "/{orgId}/projects/{projectId}/checklists/": {
       "get": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -2536,7 +2554,7 @@
             }
           }
         },
-        "operationId": "getByOrgIdChecklists"
+        "operationId": "getByOrgIdProjectsByProjectIdChecklists"
       },
       "post": {
         "parameters": [
@@ -2544,6 +2562,12 @@
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           }
         ],
@@ -3117,7 +3141,7 @@
             }
           }
         },
-        "operationId": "postByOrgIdChecklists",
+        "operationId": "postByOrgIdProjectsByProjectIdChecklists",
         "requestBody": {
           "required": true,
           "content": {
@@ -3127,9 +3151,6 @@
                 "required": ["title"],
                 "properties": {
                   "id": { "type": "string" },
-                  "projectId": {
-                    "anyOf": [{ "type": "string" }, { "type": "null" }]
-                  },
                   "title": { "type": "string" },
                   "source": {
                     "anyOf": [{ "type": "string" }, { "type": "null" }]
@@ -3184,9 +3205,6 @@
                 "required": ["title"],
                 "properties": {
                   "id": { "type": "string" },
-                  "projectId": {
-                    "anyOf": [{ "type": "string" }, { "type": "null" }]
-                  },
                   "title": { "type": "string" },
                   "source": {
                     "anyOf": [{ "type": "string" }, { "type": "null" }]
@@ -3241,9 +3259,6 @@
                 "required": ["title"],
                 "properties": {
                   "id": { "type": "string" },
-                  "projectId": {
-                    "anyOf": [{ "type": "string" }, { "type": "null" }]
-                  },
                   "title": { "type": "string" },
                   "source": {
                     "anyOf": [{ "type": "string" }, { "type": "null" }]
@@ -3296,13 +3311,19 @@
         }
       }
     },
-    "/{orgId}/checklists/{id}": {
+    "/{orgId}/projects/{projectId}/checklists/{id}": {
       "get": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -3676,7 +3697,7 @@
             }
           }
         },
-        "operationId": "getByOrgIdChecklistsById"
+        "operationId": "getByOrgIdProjectsByProjectIdChecklistsById"
       },
       "put": {
         "parameters": [
@@ -3689,6 +3710,12 @@
           {
             "schema": { "type": "string" },
             "in": "path",
+            "name": "projectId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
             "name": "id",
             "required": true
           }
@@ -4057,7 +4084,7 @@
             }
           }
         },
-        "operationId": "putByOrgIdChecklistsById",
+        "operationId": "putByOrgIdProjectsByProjectIdChecklistsById",
         "requestBody": {
           "required": true,
           "content": {
@@ -4067,9 +4094,6 @@
                 "required": ["title"],
                 "properties": {
                   "id": { "type": "string" },
-                  "projectId": {
-                    "anyOf": [{ "type": "string" }, { "type": "null" }]
-                  },
                   "title": { "type": "string" },
                   "source": {
                     "anyOf": [{ "type": "string" }, { "type": "null" }]
@@ -4124,9 +4148,6 @@
                 "required": ["title"],
                 "properties": {
                   "id": { "type": "string" },
-                  "projectId": {
-                    "anyOf": [{ "type": "string" }, { "type": "null" }]
-                  },
                   "title": { "type": "string" },
                   "source": {
                     "anyOf": [{ "type": "string" }, { "type": "null" }]
@@ -4181,9 +4202,6 @@
                 "required": ["title"],
                 "properties": {
                   "id": { "type": "string" },
-                  "projectId": {
-                    "anyOf": [{ "type": "string" }, { "type": "null" }]
-                  },
                   "title": { "type": "string" },
                   "source": {
                     "anyOf": [{ "type": "string" }, { "type": "null" }]
@@ -4241,6 +4259,12 @@
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -4470,16 +4494,22 @@
             }
           }
         },
-        "operationId": "deleteByOrgIdChecklistsById"
+        "operationId": "deleteByOrgIdProjectsByProjectIdChecklistsById"
       }
     },
-    "/{orgId}/applications": {
+    "/{orgId}/projects/{projectId}/applications": {
       "get": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -5720,7 +5750,7 @@
             }
           }
         },
-        "operationId": "getByOrgIdApplications"
+        "operationId": "getByOrgIdProjectsByProjectIdApplications"
       },
       "post": {
         "parameters": [
@@ -5728,6 +5758,12 @@
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           }
         ],
@@ -7813,7 +7849,7 @@
             }
           }
         },
-        "operationId": "postByOrgIdApplications",
+        "operationId": "postByOrgIdProjectsByProjectIdApplications",
         "requestBody": {
           "required": true,
           "content": {
@@ -8115,13 +8151,19 @@
         }
       }
     },
-    "/{orgId}/applications/{id}": {
+    "/{orgId}/projects/{projectId}/applications/{id}": {
       "get": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -9257,7 +9299,7 @@
             }
           }
         },
-        "operationId": "getByOrgIdApplicationsById"
+        "operationId": "getByOrgIdProjectsByProjectIdApplicationsById"
       },
       "patch": {
         "parameters": [
@@ -9265,6 +9307,12 @@
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -10394,7 +10442,7 @@
             }
           }
         },
-        "operationId": "patchByOrgIdApplicationsById",
+        "operationId": "patchByOrgIdProjectsByProjectIdApplicationsById",
         "requestBody": {
           "required": true,
           "content": {
@@ -10485,6 +10533,12 @@
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -10714,16 +10768,22 @@
             }
           }
         },
-        "operationId": "deleteByOrgIdApplicationsById"
+        "operationId": "deleteByOrgIdProjectsByProjectIdApplicationsById"
       }
     },
-    "/{orgId}/applications/{id}/items": {
+    "/{orgId}/projects/{projectId}/applications/{id}/items": {
       "post": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -11861,7 +11921,7 @@
             }
           }
         },
-        "operationId": "postByOrgIdApplicationsByIdItems",
+        "operationId": "postByOrgIdProjectsByProjectIdApplicationsByIdItems",
         "requestBody": {
           "required": true,
           "content": {
@@ -11983,13 +12043,19 @@
         }
       }
     },
-    "/{orgId}/application-items/{id}": {
+    "/{orgId}/projects/{projectId}/application-items/{id}": {
       "patch": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -13211,7 +13277,7 @@
             }
           }
         },
-        "operationId": "patchByOrgIdApplication-itemsById",
+        "operationId": "patchByOrgIdProjectsByProjectIdApplication-itemsById",
         "requestBody": {
           "required": true,
           "content": {
@@ -13297,13 +13363,19 @@
         }
       }
     },
-    "/{orgId}/applications/{id}/attachments": {
+    "/{orgId}/projects/{projectId}/applications/{id}/attachments": {
       "post": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -13929,7 +14001,7 @@
             }
           }
         },
-        "operationId": "postByOrgIdApplicationsByIdAttachments",
+        "operationId": "postByOrgIdProjectsByProjectIdApplicationsByIdAttachments",
         "requestBody": {
           "required": true,
           "content": {
@@ -14051,13 +14123,19 @@
         }
       }
     },
-    "/{orgId}/uploads/presign": {
+    "/{orgId}/projects/{projectId}/uploads/presign": {
       "post": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           }
         ],
@@ -14340,7 +14418,7 @@
             }
           }
         },
-        "operationId": "postByOrgIdUploadsPresign",
+        "operationId": "postByOrgIdProjectsByProjectIdUploadsPresign",
         "requestBody": {
           "required": true,
           "content": {
@@ -14411,13 +14489,19 @@
         }
       }
     },
-    "/{orgId}/attachments/{id}": {
+    "/{orgId}/projects/{projectId}/attachments/{id}": {
       "patch": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -14806,7 +14890,7 @@
             }
           }
         },
-        "operationId": "patchByOrgIdAttachmentsById",
+        "operationId": "patchByOrgIdProjectsByProjectIdAttachmentsById",
         "requestBody": {
           "required": true,
           "content": {
@@ -14864,6 +14948,12 @@
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -15093,16 +15183,22 @@
             }
           }
         },
-        "operationId": "deleteByOrgIdAttachmentsById"
+        "operationId": "deleteByOrgIdProjectsByProjectIdAttachmentsById"
       }
     },
-    "/{orgId}/reports/tags": {
+    "/{orgId}/projects/{projectId}/reports/tags": {
       "get": {
         "parameters": [
           {
             "schema": { "type": "string" },
             "in": "path",
             "name": "orgId",
+            "required": true
+          },
+          {
+            "schema": { "type": "string" },
+            "in": "path",
+            "name": "projectId",
             "required": true
           },
           {
@@ -15593,7 +15689,7 @@
             }
           }
         },
-        "operationId": "getByOrgIdReportsTags"
+        "operationId": "getByOrgIdProjectsByProjectIdReportsTags"
       }
     },
     "/api/auth/sign-in/social": {
@@ -22870,6 +22966,737 @@
   },
   "components": {
     "schemas": {
+      "ErrorBody": {
+        "$id": "ErrorBody",
+        "type": "object",
+        "required": ["error"],
+        "properties": { "error": { "type": "string" } }
+      },
+      "EmptyMeta": { "$id": "EmptyMeta", "type": "object", "properties": {} },
+      "PaginationMeta": {
+        "$id": "PaginationMeta",
+        "type": "object",
+        "required": ["page", "pageSize", "pageCount", "total"],
+        "properties": {
+          "page": { "type": "number" },
+          "pageSize": { "type": "number" },
+          "pageCount": { "type": "number" },
+          "total": { "type": "number" }
+        }
+      },
+      "ListMeta": {
+        "$id": "ListMeta",
+        "type": "object",
+        "required": ["pagination"],
+        "properties": {
+          "pagination": {
+            "$id": "PaginationMeta",
+            "type": "object",
+            "required": ["page", "pageSize", "pageCount", "total"],
+            "properties": {
+              "page": { "type": "number" },
+              "pageSize": { "type": "number" },
+              "pageCount": { "type": "number" },
+              "total": { "type": "number" }
+            }
+          }
+        }
+      },
+      "Tag": {
+        "$id": "Tag",
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "normalizedLabel",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "normalizedLabel": { "type": "string" },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        }
+      },
+      "Project": {
+        "$id": "Project",
+        "type": "object",
+        "required": ["id", "orgId", "name", "createdAt", "updatedAt"],
+        "properties": {
+          "id": { "type": "string" },
+          "orgId": { "type": "string" },
+          "name": { "type": "string" },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        }
+      },
+      "Checklist": {
+        "$id": "Checklist",
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "source",
+          "tagsIds",
+          "options",
+          "items",
+          "metadata",
+          "applicationsCount",
+          "completedCount",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "source": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "tagsIds": { "type": "array", "items": { "type": "string" } },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["label", "semantic"],
+              "properties": {
+                "label": { "type": "string" },
+                "semantic": { "type": "string" }
+              }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": { "type": "object", "patternProperties": { "^(.*)$": {} } }
+          },
+          "metadata": {
+            "type": "object",
+            "patternProperties": { "^(.*)$": {} }
+          },
+          "applicationsCount": { "type": "number" },
+          "completedCount": { "type": "number" },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        }
+      },
+      "Attachment": {
+        "$id": "Attachment",
+        "type": "object",
+        "required": [
+          "id",
+          "applicationId",
+          "itemId",
+          "position",
+          "name",
+          "storageKey",
+          "uploadStatus",
+          "url",
+          "sizeBytes",
+          "checksum",
+          "mimeType",
+          "width",
+          "height",
+          "metadata",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "applicationId": { "type": "string" },
+          "itemId": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "position": { "type": "number" },
+          "name": { "type": "string" },
+          "storageKey": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "uploadStatus": { "type": "string" },
+          "url": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "sizeBytes": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "checksum": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "mimeType": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "width": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "height": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "metadata": {
+            "type": "object",
+            "patternProperties": { "^(.*)$": {} }
+          },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        }
+      },
+      "ApplicationItem": {
+        "$id": "ApplicationItem",
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "checklistItemId",
+          "parentId",
+          "title",
+          "description",
+          "tagsIds",
+          "answer",
+          "answeredAt",
+          "note",
+          "quantity",
+          "suggested",
+          "suggestionSource",
+          "workflowStatus",
+          "metadata",
+          "attachments",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "position": { "type": "number" },
+          "checklistItemId": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          },
+          "parentId": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "tagsIds": { "type": "array", "items": { "type": "string" } },
+          "answer": { "type": "string" },
+          "answeredAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "note": { "type": "string" },
+          "quantity": { "anyOf": [{ "type": "number" }, { "type": "null" }] },
+          "suggested": { "type": "boolean" },
+          "suggestionSource": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          },
+          "workflowStatus": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          },
+          "metadata": {
+            "type": "object",
+            "patternProperties": { "^(.*)$": {} }
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$id": "Attachment",
+              "type": "object",
+              "required": [
+                "id",
+                "applicationId",
+                "itemId",
+                "position",
+                "name",
+                "storageKey",
+                "uploadStatus",
+                "url",
+                "sizeBytes",
+                "checksum",
+                "mimeType",
+                "width",
+                "height",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "properties": {
+                "id": { "type": "string" },
+                "applicationId": { "type": "string" },
+                "itemId": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "position": { "type": "number" },
+                "name": { "type": "string" },
+                "storageKey": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "uploadStatus": { "type": "string" },
+                "url": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                "sizeBytes": {
+                  "anyOf": [{ "type": "number" }, { "type": "null" }]
+                },
+                "checksum": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "mimeType": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "width": {
+                  "anyOf": [{ "type": "number" }, { "type": "null" }]
+                },
+                "height": {
+                  "anyOf": [{ "type": "number" }, { "type": "null" }]
+                },
+                "metadata": {
+                  "type": "object",
+                  "patternProperties": { "^(.*)$": {} }
+                },
+                "createdAt": { "type": "string" },
+                "updatedAt": { "type": "string" }
+              }
+            }
+          },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        }
+      },
+      "Application": {
+        "$id": "Application",
+        "type": "object",
+        "required": [
+          "id",
+          "checklistId",
+          "tagsIds",
+          "date",
+          "status",
+          "transcript",
+          "gallerySourceApplicationId",
+          "metadata",
+          "answeredCount",
+          "totalCount",
+          "negativeCount",
+          "attachmentsCount",
+          "attachments",
+          "items",
+          "createdAt",
+          "updatedAt",
+          "completedAt"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "checklistId": { "type": "string" },
+          "tagsIds": { "type": "array", "items": { "type": "string" } },
+          "date": { "type": "string" },
+          "status": { "type": "string" },
+          "transcript": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+          "gallerySourceApplicationId": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }]
+          },
+          "metadata": {
+            "type": "object",
+            "patternProperties": { "^(.*)$": {} }
+          },
+          "answeredCount": { "type": "number" },
+          "totalCount": { "type": "number" },
+          "negativeCount": { "type": "number" },
+          "attachmentsCount": { "type": "number" },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$id": "Attachment",
+              "type": "object",
+              "required": [
+                "id",
+                "applicationId",
+                "itemId",
+                "position",
+                "name",
+                "storageKey",
+                "uploadStatus",
+                "url",
+                "sizeBytes",
+                "checksum",
+                "mimeType",
+                "width",
+                "height",
+                "metadata",
+                "createdAt",
+                "updatedAt"
+              ],
+              "properties": {
+                "id": { "type": "string" },
+                "applicationId": { "type": "string" },
+                "itemId": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "position": { "type": "number" },
+                "name": { "type": "string" },
+                "storageKey": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "uploadStatus": { "type": "string" },
+                "url": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+                "sizeBytes": {
+                  "anyOf": [{ "type": "number" }, { "type": "null" }]
+                },
+                "checksum": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "mimeType": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "width": {
+                  "anyOf": [{ "type": "number" }, { "type": "null" }]
+                },
+                "height": {
+                  "anyOf": [{ "type": "number" }, { "type": "null" }]
+                },
+                "metadata": {
+                  "type": "object",
+                  "patternProperties": { "^(.*)$": {} }
+                },
+                "createdAt": { "type": "string" },
+                "updatedAt": { "type": "string" }
+              }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$id": "ApplicationItem",
+              "type": "object",
+              "required": [
+                "id",
+                "position",
+                "checklistItemId",
+                "parentId",
+                "title",
+                "description",
+                "tagsIds",
+                "answer",
+                "answeredAt",
+                "note",
+                "quantity",
+                "suggested",
+                "suggestionSource",
+                "workflowStatus",
+                "metadata",
+                "attachments",
+                "createdAt",
+                "updatedAt"
+              ],
+              "properties": {
+                "id": { "type": "string" },
+                "position": { "type": "number" },
+                "checklistItemId": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "parentId": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "title": { "type": "string" },
+                "description": { "type": "string" },
+                "tagsIds": { "type": "array", "items": { "type": "string" } },
+                "answer": { "type": "string" },
+                "answeredAt": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "note": { "type": "string" },
+                "quantity": {
+                  "anyOf": [{ "type": "number" }, { "type": "null" }]
+                },
+                "suggested": { "type": "boolean" },
+                "suggestionSource": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "workflowStatus": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }]
+                },
+                "metadata": {
+                  "type": "object",
+                  "patternProperties": { "^(.*)$": {} }
+                },
+                "attachments": {
+                  "type": "array",
+                  "items": {
+                    "$id": "Attachment",
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "applicationId",
+                      "itemId",
+                      "position",
+                      "name",
+                      "storageKey",
+                      "uploadStatus",
+                      "url",
+                      "sizeBytes",
+                      "checksum",
+                      "mimeType",
+                      "width",
+                      "height",
+                      "metadata",
+                      "createdAt",
+                      "updatedAt"
+                    ],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "applicationId": { "type": "string" },
+                      "itemId": {
+                        "anyOf": [{ "type": "string" }, { "type": "null" }]
+                      },
+                      "position": { "type": "number" },
+                      "name": { "type": "string" },
+                      "storageKey": {
+                        "anyOf": [{ "type": "string" }, { "type": "null" }]
+                      },
+                      "uploadStatus": { "type": "string" },
+                      "url": {
+                        "anyOf": [{ "type": "string" }, { "type": "null" }]
+                      },
+                      "sizeBytes": {
+                        "anyOf": [{ "type": "number" }, { "type": "null" }]
+                      },
+                      "checksum": {
+                        "anyOf": [{ "type": "string" }, { "type": "null" }]
+                      },
+                      "mimeType": {
+                        "anyOf": [{ "type": "string" }, { "type": "null" }]
+                      },
+                      "width": {
+                        "anyOf": [{ "type": "number" }, { "type": "null" }]
+                      },
+                      "height": {
+                        "anyOf": [{ "type": "number" }, { "type": "null" }]
+                      },
+                      "metadata": {
+                        "type": "object",
+                        "patternProperties": { "^(.*)$": {} }
+                      },
+                      "createdAt": { "type": "string" },
+                      "updatedAt": { "type": "string" }
+                    }
+                  }
+                },
+                "createdAt": { "type": "string" },
+                "updatedAt": { "type": "string" }
+              }
+            }
+          },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" },
+          "completedAt": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+        }
+      },
+      "ReportPendingItem": {
+        "$id": "ReportPendingItem",
+        "type": "object",
+        "required": ["itemId", "itemTitle"],
+        "properties": {
+          "itemId": { "type": "string" },
+          "itemTitle": { "type": "string" }
+        }
+      },
+      "ReportApplication": {
+        "$id": "ReportApplication",
+        "type": "object",
+        "required": ["id", "tagsIds", "date", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "tagsIds": { "type": "array", "items": { "type": "string" } },
+          "date": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      },
+      "ReportPendingGroup": {
+        "$id": "ReportPendingGroup",
+        "type": "object",
+        "required": ["application", "items"],
+        "properties": {
+          "application": {
+            "$id": "ReportApplication",
+            "type": "object",
+            "required": ["id", "tagsIds", "date", "status"],
+            "properties": {
+              "id": { "type": "string" },
+              "tagsIds": { "type": "array", "items": { "type": "string" } },
+              "date": { "type": "string" },
+              "status": { "type": "string" }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$id": "ReportPendingItem",
+              "type": "object",
+              "required": ["itemId", "itemTitle"],
+              "properties": {
+                "itemId": { "type": "string" },
+                "itemTitle": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "ReportTags": {
+        "$id": "ReportTags",
+        "type": "object",
+        "required": ["itemProgress", "applicationProgress", "pendingGroups"],
+        "properties": {
+          "itemProgress": {
+            "$id": "ItemProgress",
+            "type": "object",
+            "required": ["answered", "total"],
+            "properties": {
+              "answered": { "type": "number" },
+              "total": { "type": "number" }
+            }
+          },
+          "applicationProgress": {
+            "$id": "ApplicationProgress",
+            "type": "object",
+            "required": ["completed", "total"],
+            "properties": {
+              "completed": { "type": "number" },
+              "total": { "type": "number" }
+            }
+          },
+          "pendingGroups": {
+            "type": "array",
+            "items": {
+              "$id": "ReportPendingGroup",
+              "type": "object",
+              "required": ["application", "items"],
+              "properties": {
+                "application": {
+                  "$id": "ReportApplication",
+                  "type": "object",
+                  "required": ["id", "tagsIds", "date", "status"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "tagsIds": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
+                    "date": { "type": "string" },
+                    "status": { "type": "string" }
+                  }
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "$id": "ReportPendingItem",
+                    "type": "object",
+                    "required": ["itemId", "itemTitle"],
+                    "properties": {
+                      "itemId": { "type": "string" },
+                      "itemTitle": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "ReportTagsResponse": {
+        "$id": "ReportTagsResponse",
+        "type": "object",
+        "required": ["data", "meta"],
+        "properties": {
+          "data": {
+            "$id": "ReportTags",
+            "type": "object",
+            "required": [
+              "itemProgress",
+              "applicationProgress",
+              "pendingGroups"
+            ],
+            "properties": {
+              "itemProgress": {
+                "$id": "ItemProgress",
+                "type": "object",
+                "required": ["answered", "total"],
+                "properties": {
+                  "answered": { "type": "number" },
+                  "total": { "type": "number" }
+                }
+              },
+              "applicationProgress": {
+                "$id": "ApplicationProgress",
+                "type": "object",
+                "required": ["completed", "total"],
+                "properties": {
+                  "completed": { "type": "number" },
+                  "total": { "type": "number" }
+                }
+              },
+              "pendingGroups": {
+                "type": "array",
+                "items": {
+                  "$id": "ReportPendingGroup",
+                  "type": "object",
+                  "required": ["application", "items"],
+                  "properties": {
+                    "application": {
+                      "$id": "ReportApplication",
+                      "type": "object",
+                      "required": ["id", "tagsIds", "date", "status"],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "tagsIds": {
+                          "type": "array",
+                          "items": { "type": "string" }
+                        },
+                        "date": { "type": "string" },
+                        "status": { "type": "string" }
+                      }
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$id": "ReportPendingItem",
+                        "type": "object",
+                        "required": ["itemId", "itemTitle"],
+                        "properties": {
+                          "itemId": { "type": "string" },
+                          "itemTitle": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "meta": {
+            "$id": "ListMeta",
+            "type": "object",
+            "required": ["pagination"],
+            "properties": {
+              "pagination": {
+                "$id": "PaginationMeta",
+                "type": "object",
+                "required": ["page", "pageSize", "pageCount", "total"],
+                "properties": {
+                  "page": { "type": "number" },
+                  "pageSize": { "type": "number" },
+                  "pageCount": { "type": "number" },
+                  "total": { "type": "number" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "PresignedPut": {
+        "$id": "PresignedPut",
+        "type": "object",
+        "required": ["key", "uploadUrl", "method", "headers", "expiresAt"],
+        "properties": {
+          "key": { "type": "string" },
+          "uploadUrl": { "type": "string" },
+          "method": { "type": "string" },
+          "headers": {
+            "type": "object",
+            "patternProperties": { "^(.*)$": { "type": "string" } }
+          },
+          "expiresAt": { "type": "string" }
+        }
+      },
+      "IdResult": {
+        "$id": "IdResult",
+        "type": "object",
+        "required": ["id"],
+        "properties": { "id": { "type": "string" } }
+      },
+      "HealthBody": {
+        "$id": "HealthBody",
+        "type": "object",
+        "required": ["status", "storage"],
+        "properties": {
+          "status": { "type": "string" },
+          "storage": {
+            "type": "object",
+            "required": ["bucket"],
+            "properties": { "bucket": { "type": "string" } }
+          }
+        },
+        "additionalProperties": false
+      },
       "User": {
         "type": "object",
         "properties": {
