@@ -1,7 +1,7 @@
 import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { LegendList, type LegendListRenderItemProps } from '@legendapp/list/react-native'
 import { useCallback } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Text, View } from 'react-native'
 import {
   AppBottomSheet,
   ConfirmBottomSheet,
@@ -9,9 +9,7 @@ import {
   Form,
   Screen,
 } from '@/components'
-import { Icon } from '@/components/Icon'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
-import { colors } from '@/styles'
 import {
   useChecklistDetailContainer,
   type UseChecklistDetailContainerProps,
@@ -19,6 +17,7 @@ import {
 import { styles } from './checklist-detail.styles'
 import { ApplicationGroupRow } from './components/ApplicationGroupRow'
 import { ChecklistDetailHeader } from './components/ChecklistDetailHeader'
+import { ChecklistHeaderMenu } from './components/ChecklistHeaderMenu'
 
 export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
   const c = useChecklistDetailContainer(props)
@@ -51,8 +50,6 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
             tagLabels={c.resolveLabels(c.checklist.tagsIds)}
             applicationsCount={c.applicationsCount}
             completedCount={c.completedCount}
-            historyLayout={c.historyLayout}
-            onToggleHistoryLayout={c.onToggleHistoryLayout}
             historySearch={c.historySearch}
             onHistorySearchChange={c.onHistorySearchChange}
             historyHasFilter={c.historyHasFilter}
@@ -105,27 +102,13 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
       headerRight={
         c.checklist ? (
           <View style={styles.headerActions}>
-            <Pressable
-              style={({ pressed }) => [styles.headerActionButton, pressed && { opacity: 0.7 }]}
-              onPress={c.onEditChecklist}
-              accessibilityLabel="Editar checklist"
-            >
-              <Icon name="edit-pen" size={16} color={colors.ink.base} />
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.headerActionButton, pressed && { opacity: 0.7 }]}
-              onPress={c.onDuplicate}
-              accessibilityLabel="Duplicar checklist"
-            >
-              <Icon name="copy" size={16} color={colors.ink.base} />
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.headerActionButton, pressed && { opacity: 0.7 }]}
-              onPress={c.onAskDelete}
-              accessibilityLabel="Excluir checklist"
-            >
-              <Icon name="trash-2" size={16} color={colors.danger.base} />
-            </Pressable>
+            <ChecklistHeaderMenu
+              historyLayout={c.historyLayout}
+              onToggleHistoryLayout={c.onToggleHistoryLayout}
+              onEditChecklist={c.onEditChecklist}
+              onDuplicate={c.onDuplicate}
+              onAskDelete={c.onAskDelete}
+            />
           </View>
         ) : undefined
       }

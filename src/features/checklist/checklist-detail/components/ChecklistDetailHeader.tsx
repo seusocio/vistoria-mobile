@@ -3,18 +3,14 @@ import { Pressable, Text, View } from 'react-native'
 import { Metric, SearchBar, TagChipList } from '@/components'
 import { Icon } from '@/components/Icon'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
-import type { HistoryLayout } from '@/lib/preferences'
 import { colors } from '@/styles'
 import { styles } from '../checklist-detail.styles'
-import { HistoryLayoutToggle } from './HistoryLayoutToggle'
 
 interface ChecklistDetailHeaderProps {
   checklist: Checklist
   tagLabels: string[]
   applicationsCount: number
   completedCount: number
-  historyLayout: HistoryLayout
-  onToggleHistoryLayout: () => void
   historySearch: string
   onHistorySearchChange: (value: string) => void
   historyHasFilter: boolean
@@ -26,8 +22,6 @@ export const ChecklistDetailHeader = memo(function ChecklistDetailHeader({
   tagLabels,
   applicationsCount,
   completedCount,
-  historyLayout,
-  onToggleHistoryLayout,
   historySearch,
   onHistorySearchChange,
   historyHasFilter,
@@ -39,17 +33,13 @@ export const ChecklistDetailHeader = memo(function ChecklistDetailHeader({
         <Text style={styles.title}>{checklist.title}</Text>
         <TagChipList labels={tagLabels} tone="neutral" />
       </View>
-      <View style={styles.metricsRow}>
+      {/* <View style={styles.metricsRow}>
         <Metric label="Aplicações" value={String(applicationsCount)} />
         <Metric label="Concluídas" value={String(completedCount)} />
         <Metric label="Itens/visita" value={String(checklist.items.length)} />
-      </View>
+      </View> */}
       <View style={styles.historyRow}>
         <Text style={styles.sectionTitle}>Histórico</Text>
-        <HistoryLayoutToggle
-          layout={historyLayout}
-          onToggle={onToggleHistoryLayout}
-        />
       </View>
       <View style={styles.historySearchRow}>
         <SearchBar

@@ -1,6 +1,6 @@
 {
 	"files": {
-		"includes": ["**", "!dist", "!.expo", "!convex/_generated"]
+		"includes": ["**", "!dist", "!.expo", "!convex/_generated", "!src/lib/api"]
 	},
 	"linter": {
 		"rules": {

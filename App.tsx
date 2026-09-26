@@ -9,6 +9,7 @@ import { ConvexQueryCacheProvider } from 'convex-helpers/react/cache';
 import { ConvexProvider } from 'convex/react';
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SyncStatusBar, UndoToastProvider } from "@/components";
@@ -22,6 +23,15 @@ import { useOutboxLifecycle } from '@/lib/offline-queue';
 import { Routes } from "@/routes";
 
 void SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			staleTime: 30_000,
+			retry: 2,
+		},
+	},
+});
 
 /**
  * Lives inside `ConvexProvider` because it reads the connection state, and
@@ -62,6 +72,7 @@ export default function App() {
       <SafeAreaProvider>
         <UndoToastProvider>
           <BottomSheetModalProvider>
+            <QueryClientProvider client={queryClient}>
             <ConvexProvider client={convexClient}>
               <ConvexQueryCacheProvider>
                 <OutboxLifecycle />
@@ -69,6 +80,7 @@ export default function App() {
                 <Routes />
               </ConvexQueryCacheProvider>
             </ConvexProvider>
+            </QueryClientProvider>
           </BottomSheetModalProvider>
         </UndoToastProvider>
       </SafeAreaProvider>

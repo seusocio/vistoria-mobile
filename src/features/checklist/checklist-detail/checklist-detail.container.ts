@@ -99,8 +99,8 @@ export function useChecklistDetailContainer({
   )
 
   const [historySearch, setHistorySearch] = useState('')
-  const [historySortMode, setHistorySortMode] = useState<HistorySortMode>('recent')
-  const historyHasFilter = historySearch.trim().length > 0 || historySortMode !== 'recent'
+  const [historySortMode, setHistorySortMode] = useState<HistorySortMode>('numeric')
+  const historyHasFilter = historySearch.trim().length > 0 || historySortMode !== 'numeric'
 
   const groups = useMemo(() => {
     const query = historySearch.trim().toLowerCase()

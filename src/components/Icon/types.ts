@@ -20,6 +20,7 @@ export type IconName =
   | 'grip-vertical'
   | 'mic'
   | 'minus'
+  | 'more-vertical'
   | 'multiply'
   | 'note-with-text'
   | 'play'

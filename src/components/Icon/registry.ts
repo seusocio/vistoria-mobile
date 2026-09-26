@@ -17,6 +17,7 @@ import { Filter } from '@/assets/icon-components/filter'
 import { GripVertical } from '@/assets/icon-components/grip-vertical'
 import { Mic } from '@/assets/icon-components/mic'
 import { Minus } from '@/assets/icon-components/minus'
+import { MoreVertical } from '@/assets/icon-components/more-vertical'
 import { Multiply } from '@/assets/icon-components/multiply'
 import { NoteWithText } from '@/assets/icon-components/note-with-text'
 import { Play } from '@/assets/icon-components/play'
@@ -50,6 +51,7 @@ export const iconRegistry: Record<IconName, React.ComponentType<IconProps>> = {
   'grip-vertical': GripVertical,
   mic: Mic,
   minus: Minus,
+  'more-vertical': MoreVertical,
   multiply: Multiply,
   'note-with-text': NoteWithText,
   play: Play,
