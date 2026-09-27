@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { StoreApi } from 'zustand'
+import { ApiError } from '@/lib/api/fetcher'
 import { getOp } from './ops'
 import type { OutboxState } from './queue.store'
 import { backoffMs, MAX_ATTEMPTS } from './retry-policy'
@@ -40,9 +41,7 @@ export async function drainOutboxWith(
   outbox: Pick<StoreApi<OutboxState>, 'getState'>,
   runMutation: MutationRunner,
   schedule: Scheduler = defaultScheduler,
-  // Unused until a later ticket adds per-op `onServerResponse`/`invalidates`
-  // hooks that write the server's response into the React Query cache.
-  _queryClient?: QueryClient,
+  queryClient?: QueryClient,
 ): Promise<void> {
   if (draining) return
   draining = true
@@ -59,17 +58,48 @@ export async function drainOutboxWith(
         return
       }
 
+      // `item.backend` is fixed at enqueue time (see `queue.store.ts`), not
+      // read from the live flag — so a flag flip while this op sat offline
+      // can't strand it with a request shape the wrong backend expects.
+      const isRest = item.backend === 'rest' && Boolean(op.sendRest)
+      const send = isRest && op.sendRest ? op.sendRest : op.send
+
       try {
-        await runMutation(op.send, item.args as Record<string, unknown>)
+        const response = await runMutation(send, item.args as Record<string, unknown>)
         outbox.getState().resolve(item.id)
-      } catch {
+        // Only a REST response is shaped for the REST query cache — a
+        // Convex mutation's return value has no relation to it, and writing
+        // it in would leave a wrong-shaped entry waiting under the key this
+        // entity's REST reads use once its flag flips.
+        if (queryClient && isRest) {
+          op.onServerResponse?.(queryClient, item.args, response)
+          for (const queryKey of op.invalidates?.(item.args) ?? []) {
+            void queryClient.invalidateQueries({ queryKey })
+          }
+        }
+      } catch (error) {
+        // A REST 4xx is never worth retrying: a 404 means this op's target
+        // (still) doesn't exist on the server — most often a patch-style op
+        // racing ahead of the `create` it depends on — and every other 4xx
+        // is the server permanently rejecting what was sent. Either way,
+        // burning attempts on a retry can't change the outcome; failing
+        // immediately reuses the existing "failed head blocks the queue"
+        // mechanism, so it stays visible and in place instead of resolving,
+        // dropping, or being stepped over. Only 5xx/network errors retry
+        // with backoff, same as before REST existed.
+        const status = error instanceof ApiError ? error.status : undefined
+        if (status !== undefined && status < 500) {
+          outbox.getState().fail(item.id)
+          return
+        }
+
         const attempts = item.attempts + 1
         if (attempts >= MAX_ATTEMPTS) {
           outbox.getState().fail(item.id)
         } else {
           outbox.getState().retry(item.id)
           schedule(
-            () => void drainOutboxWith(outbox, runMutation, schedule, _queryClient),
+            () => void drainOutboxWith(outbox, runMutation, schedule, queryClient),
             backoffMs(attempts),
           )
         }

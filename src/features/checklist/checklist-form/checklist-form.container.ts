@@ -6,6 +6,7 @@ import { useUndoToast } from '@/components'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { checklistTemplates, type ChecklistTemplate } from '@/features/checklist/shared/checklist.templates'
+import { useChecklistEntityRestSource } from '@/features/checklist/shared/checklist.rest'
 import { useDraft } from '@/lib/forms'
 import { enqueueOp, useEntity } from '@/lib/offline-queue'
 import type { StackRoutesList } from '@/routes/types'
@@ -39,11 +40,13 @@ export interface UseChecklistFormContainerProps {
  */
 export function useChecklistFormContainer({ checklistId, navigation }: UseChecklistFormContainerProps) {
   const isEditing = Boolean(checklistId)
+  const existingRest = useChecklistEntityRestSource(checklistId)
   const existing = useEntity<Checklist>(
     api.checklists.findById,
     { id: checklistId ?? '' },
     checklistId ?? '',
     'checklist',
+    existingRest,
   )
   const loading = isEditing && (existing === undefined || existing === null)
 
@@ -187,7 +190,7 @@ export function useChecklistFormContainer({ checklistId, navigation }: UseCheckl
     }
     setTemplateError(null)
     const entity = buildChecklistEntity(null, form.getValues())
-    enqueueOp(checklistSave, { id: entity.id, entity })
+    enqueueOp(checklistSave, { id: entity.id, entity, isCreate: true })
     void clearDraft()
     navigation.replace('checklistDetail', { checklistId: entity.id })
   }

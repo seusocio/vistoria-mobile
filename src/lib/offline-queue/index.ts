@@ -1,6 +1,6 @@
 export { defineOp, getOp, type EntityKind, type OpDefinition } from './ops'
-export { useEntity, useEntityList, applyOps, type EntityListOptions } from './overlay'
+export { useEntity, useEntityList, applyOps, type EntityListOptions, type RestSource } from './overlay'
 export { enqueueOp, drainOutbox, retryFailedOps } from './process-queue'
-export { useOutbox, type QueuedOp, type QueuedOpStatus } from './queue.store'
+export { useOutbox, type QueuedOp, type QueuedOpStatus, type OpBackend } from './queue.store'
 export { useIsOnline, useOutboxLifecycle } from './use-online-status'
 export { MAX_ATTEMPTS, backoffMs } from './retry-policy'

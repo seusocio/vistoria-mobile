@@ -24,6 +24,7 @@ import {
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { buildDuplicatedChecklist } from '@/features/checklist/shared/checklist.utils'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
+import { useChecklistEntityRestSource } from '@/features/checklist/shared/checklist.rest'
 import { normalizeApplication } from '@/lib/convex'
 import { useDraft } from '@/lib/forms'
 import { enqueueOp, useEntity, useEntityList } from '@/lib/offline-queue'
@@ -46,11 +47,13 @@ export function useChecklistDetailContainer({
   checklistId,
   navigation,
 }: UseChecklistDetailContainerProps) {
+  const checklistRest = useChecklistEntityRestSource(checklistId)
   const checklistData = useEntity<Checklist>(
     api.checklists.findById,
     { id: checklistId },
     checklistId,
     'checklist',
+    checklistRest,
   )
   // `listByChecklistId` is a filtered list, so the overlay needs to be told
   // which locally-created applications belong in it — otherwise a vistoria
@@ -136,7 +139,7 @@ export function useChecklistDetailContainer({
     if (!checklist || submitted.current) return
     submitted.current = true
     const copy = buildDuplicatedChecklist(checklist)
-    enqueueOp(checklistSave, { id: copy.id, entity: copy })
+    enqueueOp(checklistSave, { id: copy.id, entity: copy, isCreate: true })
     navigation.replace('checklistDetail', { checklistId: copy.id })
     submitted.current = false
   }

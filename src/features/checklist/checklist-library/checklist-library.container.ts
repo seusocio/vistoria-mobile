@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
 import type { Application } from '@/features/application/shared/application.types'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import { useChecklistsListRestSource } from '@/features/checklist/shared/checklist.rest'
 import { normalizeApplication } from '@/lib/convex'
 import { useEntityList } from '@/lib/offline-queue'
 import type { TabRoutesProps } from '@/routes/types'
@@ -22,10 +23,13 @@ export interface UseChecklistLibraryContainerProps {
 export function useChecklistLibraryContainer({
   navigation,
 }: UseChecklistLibraryContainerProps) {
-  const checklistsData = useEntityList<Checklist>(api.checklists.list, {}, {
-    kind: 'checklist',
-    getId: getChecklistId,
-  })
+  const checklistsRest = useChecklistsListRestSource()
+  const checklistsData = useEntityList<Checklist>(
+    api.checklists.list,
+    {},
+    { kind: 'checklist', getId: getChecklistId },
+    checklistsRest,
+  )
   const applicationsData = useEntityList<Application>(api.applications.listAll, {}, {
     kind: 'application',
     getId: getApplicationId,

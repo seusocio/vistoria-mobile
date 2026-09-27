@@ -1,3 +1,5 @@
+import type { QueryClient, QueryKey } from '@tanstack/react-query'
+
 /**
  * Which table an op writes to. The overlay uses it to keep ops from bleeding
  * across entity types: a pending `checklists.save` and a pending
@@ -28,11 +30,29 @@ export type EntityKind = 'application' | 'checklist' | 'tag'
 export interface OpDefinition<Args, Entity> {
   type: string
   kind: EntityKind
-  /** Sends the op to the backend. Still a Convex mutation call for every op today. */
+  /** Sends the op to Convex. Every op still defines this — it's what runs while the entity's REST flag is off, and what a REST-cut op falls back to if `sendRest` is missing. */
   send: (args: Args) => Promise<unknown>
+  /**
+   * Sends the op to the Vistoria REST API instead. Present once this op's
+   * entity has cut Seam A. The drain picks between this and `send` per queued
+   * item, using the backend that item captured at enqueue time — never the
+   * flag's current value — so a flip landing mid-flight can't strand a queued
+   * op with the wrong request shape.
+   */
+  sendRest?: (args: Args) => Promise<unknown>
   applyLocal: (entity: Entity | null, args: Args) => Entity | null
   /** Which entity this op's pending state is grouped under, for the overlay. */
   entityId: (args: Args) => string
+  /**
+   * Writes the server's applied response into the React Query cache once the
+   * op resolves, before the outbox drops it and the overlay stops covering
+   * for it — closing the gap between "op left the queue" and "the read hook
+   * has fresh data" that would otherwise flicker the screen back to the
+   * pre-write value for one frame.
+   */
+  onServerResponse?: (queryClient: QueryClient, args: Args, response: unknown) => void
+  /** Query keys to invalidate once the op resolves — e.g. a list's derived counts. */
+  invalidates?: (args: Args) => QueryKey[]
 }
 
 const registry = new Map<string, OpDefinition<unknown, unknown>>()

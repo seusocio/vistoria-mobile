@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create, type StateCreator } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { isRestEnabled } from '@/lib/backend-flags'
 import { generateId } from '@/lib/id'
 import type { EntityKind, OpDefinition } from './ops'
 
 export type QueuedOpStatus = 'pending' | 'failed'
+export type OpBackend = 'convex' | 'rest'
 
 export interface QueuedOp {
   id: string
@@ -15,6 +17,18 @@ export interface QueuedOp {
   attempts: number
   enqueuedAt: string
   status: QueuedOpStatus
+  /**
+   * Which backend this op targets, decided once at enqueue time from the
+   * entity's flag and carried with the op for its whole life in the queue.
+   * A flag flip while a device is offline must not change what an
+   * already-queued op sends — it targets whichever backend was live when the
+   * user made the write.
+   *
+   * Optional for compat with ops persisted before this field existed, and
+   * with tests that build a `QueuedOp` by hand — absent means `'convex'`,
+   * the only backend that existed before it.
+   */
+  backend?: OpBackend
 }
 
 export interface OutboxState {
@@ -50,6 +64,7 @@ export const createOutboxSlice: StateCreator<OutboxState> = (set) => ({
           attempts: 0,
           enqueuedAt: new Date().toISOString(),
           status: 'pending',
+          backend: isRestEnabled(op.kind) ? 'rest' : 'convex',
         },
       ],
     })),

@@ -1,11 +1,24 @@
-import { useIsRestoring, useQuery } from '@tanstack/react-query'
+import { useIsRestoring, useQuery, type QueryKey } from '@tanstack/react-query'
 import { useConvex, useConvexConnectionState } from 'convex/react'
 import { getFunctionName, type FunctionReference } from 'convex/server'
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { isRestEnabled } from '@/lib/backend-flags'
 import { castConvex } from '@/lib/convex/cast'
 import { getOp, type EntityKind } from './ops'
 import { useOutbox, type QueuedOp } from './queue.store'
+
+/**
+ * The REST half of a read, alongside the Convex query every entity still
+ * defines. `useServerOrSnapshot` picks whichever half matches the entity's
+ * `isRestEnabled` flag — the Convex `query`/`args` stay required so an
+ * entity keeps reading from Convex right up until this is supplied and its
+ * flag flips, with no call site needing to change twice.
+ */
+export interface RestSource<Value> {
+  queryKey: QueryKey
+  queryFn: () => Promise<Value>
+}
 
 /**
  * Applies every pending op, in enqueue order, on top of the server's copy.
@@ -59,21 +72,33 @@ export function resolveOverlayBase<Value>(input: {
  * query cache lived in memory only and had nothing to read until the socket
  * reconnected.
  *
- * `connected` still reads the Convex socket (not Seam E's `useIsOnline`):
- * `useNetworkState` pulls in `expo-network`, which transitively imports
- * `react-native` in a way `bun test` can't parse, and this function is
- * reached by `overlay.test.ts` just by importing the module.
+ * `connected` still reads the Convex socket (not Seam E's `useIsOnline`),
+ * even once an entity has cut over to REST: `useNetworkState` pulls in
+ * `expo-network`, which transitively imports `react-native` in a way `bun
+ * test` can't parse, and this function is reached by `overlay.test.ts` just
+ * by importing the module. The socket state is a fine proxy either way — a
+ * device with no network has no Convex socket either.
+ *
+ * `rest`, when given and the entity's flag is on, swaps the query this reads
+ * without changing which hooks get called or in what order: `useQuery` is
+ * still invoked exactly once, just with a different `queryKey`/`queryFn`.
+ * That's what lets a container decide Convex vs. REST from a plain flag
+ * check instead of calling one hook or the other — a real conditional hook
+ * call here would trip `react-hooks/rules-of-hooks`.
  */
 function useServerOrSnapshot<Value>(
   query: FunctionReference<'query'>,
   args: Record<string, unknown>,
+  kind: EntityKind,
+  rest?: RestSource<Value>,
 ): { value: Value | undefined; settled: boolean } {
   const convex = useConvex()
   const { isWebSocketConnected } = useConvexConnectionState()
   const isRestoring = useIsRestoring()
+  const useRest = isRestEnabled(kind) && rest !== undefined
   const result = useQuery<Value>({
-    queryKey: [getFunctionName(query), args],
-    queryFn: () => convex.query(query, args) as Promise<Value>,
+    queryKey: useRest ? rest.queryKey : [getFunctionName(query), args],
+    queryFn: useRest ? rest.queryFn : () => convex.query(query, args) as Promise<Value>,
   })
 
   return resolveOverlayBase<Value>({
@@ -97,16 +122,22 @@ function useServerOrSnapshot<Value>(
  * Convex documents carry `_id`/`_creationTime`; `castConvex` strips them
  * before this value ever reaches an op's `applyLocal` — an op that re-sends
  * the whole entity (like `checklists.save`) would otherwise ship those
- * system fields back to a mutation validator that rejects them.
+ * system fields back to a mutation validator that rejects them. A REST
+ * response was never Convex-shaped, so once the entity's flag is on and
+ * `rest` is actually in use, this skips the cast rather than running an
+ * already-normalized value through a Convex-specific strip.
  */
 export function useEntity<Entity>(
   query: FunctionReference<'query'>,
   args: Record<string, unknown>,
   entityId: string,
   kind: EntityKind,
+  rest?: RestSource<Entity | null>,
 ): Entity | null | undefined {
-  const { value, settled } = useServerOrSnapshot<unknown>(query, args)
-  const base = value === undefined ? undefined : castConvex<Entity | null>(value)
+  const usingRest = isRestEnabled(kind) && rest !== undefined
+  const { value, settled } = useServerOrSnapshot<unknown>(query, args, kind, rest)
+  const base =
+    value === undefined ? undefined : usingRest ? (value as Entity | null) : castConvex<Entity | null>(value)
   const pending = useOutbox(
     useShallow((state) =>
       state.items.filter((item) => item.kind === kind && item.entityId === entityId),
@@ -193,10 +224,13 @@ export function useEntityList<Entity>(
   query: FunctionReference<'query'>,
   args: Record<string, unknown>,
   options: EntityListOptions<Entity>,
+  rest?: RestSource<Entity[]>,
 ): Entity[] | undefined {
   const { kind, getId, belongs } = options
-  const { value, settled } = useServerOrSnapshot<unknown>(query, args)
-  const server = value === undefined ? undefined : castConvex<Entity[]>(value)
+  const usingRest = isRestEnabled(kind) && rest !== undefined
+  const { value, settled } = useServerOrSnapshot<unknown>(query, args, kind, rest)
+  const server =
+    value === undefined ? undefined : usingRest ? (value as Entity[]) : castConvex<Entity[]>(value)
   const pending = useOutbox(useShallow((state) => state.items.filter((item) => item.kind === kind)))
 
   return useMemo(() => {

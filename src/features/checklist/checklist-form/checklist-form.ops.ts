@@ -1,11 +1,35 @@
 import { defineOp } from '@/lib/offline-queue/ops'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import {
+  checklistQueryKey,
+  checklistsListQueryKey,
+  createChecklistRest,
+  updateChecklistRest,
+  deleteChecklistRest,
+} from '@/features/checklist/shared/checklist.rest'
 import { convexClient } from '@/lib/convex/client'
+import { useSessionStore } from '@/lib/session/session.store'
 import { api } from '../../../../convex/_generated/api'
 
 export interface ChecklistSaveArgs {
   id: string
   entity: Checklist
+  /**
+   * Set at the enqueue site, which is the only place that reliably knows
+   * whether `entity` is brand new or an edit of one the server already has
+   * — the queue itself can't infer that from a cache that might not have
+   * caught up yet. REST needs the distinction (`POST` vs. `PUT`); Convex's
+   * `checklists.save` upserts either way and ignores it.
+   */
+  isCreate?: boolean
+}
+
+function requireActiveProject(): { orgId: string; projectId: string } {
+  const { activeOrgId, activeProjectId } = useSessionStore.getState()
+  if (!activeOrgId || !activeProjectId) {
+    throw new Error('checklists: no active organization/project session')
+  }
+  return { orgId: activeOrgId, projectId: activeProjectId }
 }
 
 /**
@@ -17,8 +41,22 @@ export interface ChecklistSaveArgs {
 export const checklistSave = defineOp<ChecklistSaveArgs, Checklist>('checklists.save', {
   kind: 'checklist',
   send: (args) => convexClient.mutation(api.checklists.save, args as never),
+  sendRest: (args) => {
+    const { orgId, projectId } = requireActiveProject()
+    return args.isCreate
+      ? createChecklistRest(orgId, projectId, args.entity)
+      : updateChecklistRest(orgId, projectId, args.entity)
+  },
   applyLocal: (_entity, args) => args.entity,
   entityId: (args) => args.id,
+  onServerResponse: (queryClient, args, response) => {
+    const { orgId, projectId } = requireActiveProject()
+    queryClient.setQueryData(checklistQueryKey(orgId, projectId, args.id), response)
+  },
+  invalidates: () => {
+    const { orgId, projectId } = requireActiveProject()
+    return [checklistsListQueryKey(orgId, projectId)]
+  },
 })
 
 /**
@@ -39,9 +77,21 @@ export const checklistSoftDeleteCascade = defineOp<
 >('checklists.softDeleteCascade', {
   kind: 'checklist',
   send: (args) => convexClient.mutation(api.checklists.softDeleteCascade, args as never),
+  sendRest: (args) => {
+    const { orgId, projectId } = requireActiveProject()
+    return deleteChecklistRest(orgId, projectId, args.id)
+  },
   applyLocal: (entity, args) => {
     if (!entity) return null
     return { ...entity, deletedAt: args.deletedAt }
   },
   entityId: (args) => args.id,
+  onServerResponse: (queryClient, args) => {
+    const { orgId, projectId } = requireActiveProject()
+    queryClient.removeQueries({ queryKey: checklistQueryKey(orgId, projectId, args.id) })
+  },
+  invalidates: () => {
+    const { orgId, projectId } = requireActiveProject()
+    return [checklistsListQueryKey(orgId, projectId)]
+  },
 })
