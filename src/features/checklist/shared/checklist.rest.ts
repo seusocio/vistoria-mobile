@@ -81,6 +81,7 @@ function toChecklistBody(entity: Checklist): CreateChecklistBodyOne {
   }
 }
 
+/** Create and update share one request body shape — these are the same function under the two names each call site expects. */
 export const toCreateChecklistBody = toChecklistBody
 export const toUpdateChecklistBody: (entity: Checklist) => UpdateChecklistBodyOne = toChecklistBody
 
@@ -90,7 +91,7 @@ export const toUpdateChecklistBody: (entity: Checklist) => UpdateChecklistBodyOn
  * variant only agrees on the envelope's outer `{ data, meta }` shape, which
  * `f` (the fetcher) has already unwrapped by the time it reaches here.
  */
-function unwrapEntity(response: unknown): Record<string, unknown> {
+function asEntityRecord(response: unknown): Record<string, unknown> {
   return response as Record<string, unknown>
 }
 
@@ -100,7 +101,7 @@ export async function createChecklistRest(
   entity: Checklist,
 ): Promise<Checklist> {
   const response = await createChecklist(orgId, projectId, toCreateChecklistBody(entity))
-  return fromChecklistResponse(unwrapEntity(response))
+  return fromChecklistResponse(asEntityRecord(response))
 }
 
 export async function updateChecklistRest(
@@ -109,7 +110,7 @@ export async function updateChecklistRest(
   entity: Checklist,
 ): Promise<Checklist> {
   const response = await updateChecklist(orgId, projectId, entity.id, toUpdateChecklistBody(entity))
-  return fromChecklistResponse(unwrapEntity(response))
+  return fromChecklistResponse(asEntityRecord(response))
 }
 
 export async function deleteChecklistRest(
@@ -126,7 +127,7 @@ export async function fetchChecklistRest(
   id: string,
 ): Promise<Checklist | null> {
   const response = await getChecklist(orgId, projectId, id)
-  return fromChecklistResponse(unwrapEntity(response))
+  return fromChecklistResponse(asEntityRecord(response))
 }
 
 /**
