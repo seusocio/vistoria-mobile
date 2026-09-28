@@ -2,6 +2,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { CameraView, useCameraPermissions, type CameraType, type FlashMode } from 'expo-camera'
 import { useMemo, useRef, useState } from 'react'
 import type { PhotoGalleryItem } from '@/components/PhotoGalleryRow'
+import { useApplicationRestResult } from '@/features/application/shared/application.rest'
 import type { Application } from '@/features/application/shared/application.types'
 import { useAttachPhotos } from '@/features/application/shared/use-attach-photos'
 import { normalizeApplication, pickPhotos } from '@/lib/convex'
@@ -59,11 +60,13 @@ export function usePhotoCaptureContainer({
   const { beginAttachment, commitAsset, removeAttachment } = useAttachPhotos()
   const uploadProgress = useUploadStore((state) => state.progress)
 
+  const applicationRest = useApplicationRestResult(applicationId)
   const rawApplication = useEntity<Application>(
     api.applications.findById,
     { id: applicationId },
     applicationId,
     'application',
+    applicationRest,
   )
   const application = useMemo(
     () => (rawApplication ? normalizeApplication(rawApplication) : null),

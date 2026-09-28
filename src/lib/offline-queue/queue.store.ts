@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create, type StateCreator } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { isRestEnabled } from '@/lib/backend-flags'
+import { castConvex } from '@/lib/convex/cast'
 import { generateId } from '@/lib/id'
 import type { EntityKind, OpDefinition } from './ops'
 
@@ -47,6 +48,44 @@ export interface OutboxState {
    * since come back, not a write the server will reject forever.
    */
   retryFailed: () => void
+}
+
+/**
+ * Re-targets ops persisted before this entity's REST cutover at the REST
+ * backend, and strips the Convex system fields (`_id`/`_creationTime`) their
+ * `entity` argument may still carry.
+ *
+ * `item.backend` is deliberately fixed at enqueue time so a flag flip can't
+ * change what an in-flight op sends — but that rule has an end date. Once a
+ * kind reads and writes REST only, an op still pointing at Convex can never
+ * land: the whole-entity upserts (`checklists.save`) are rejected outright —
+ * "ArgumentValidationError: Object contains extra field _creationTime" —
+ * because those entities were read out of a Convex query before `castConvex`
+ * existed, so they carry system fields the mutation validator doesn't declare. That error is not an `ApiError`, so the drain treats it as
+ * retryable, burns `MAX_ATTEMPTS`, and the failed head then blocks *every*
+ * REST write behind it — while `retryFailedOps` (reconnect, foreground,
+ * boot) revives it and logs the same Convex failure again, forever.
+ *
+ * So: send it to REST instead, where the row exists under the same external
+ * id (the data was moved by `scripts/migrate-convex-to-rest.ts`). Dropping
+ * these items would be the one option that really loses a user's write.
+ */
+export function retargetLegacyConvexItems(items: QueuedOp[]): QueuedOp[] {
+  return items.map((item) => {
+    if (item.backend === 'rest' || !isRestEnabled(item.kind)) return item
+    const args = item.args as { entity?: unknown } | null
+    const entity =
+      args && typeof args === 'object' && 'entity' in args ? castConvex(args.entity) : undefined
+    return {
+      ...item,
+      backend: 'rest' as const,
+      args: entity === undefined ? item.args : { ...args, entity },
+      // A fresh budget: the attempts it burned were spent on a backend it
+      // should never have been sent to.
+      attempts: 0,
+      status: 'pending' as const,
+    }
+  })
 }
 
 export const createOutboxSlice: StateCreator<OutboxState> = (set) => ({
@@ -112,5 +151,10 @@ export const useOutbox = create<OutboxState>()(
     name: '@vistoria/outbox',
     storage: createJSONStorage(() => AsyncStorage),
     partialize: (state) => ({ items: state.items }) as OutboxState,
+    version: 1,
+    migrate: (persisted) => {
+      const state = persisted as { items?: QueuedOp[] } | undefined
+      return { items: retargetLegacyConvexItems(state?.items ?? []) } as OutboxState
+    },
   }),
 )

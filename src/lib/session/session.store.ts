@@ -48,5 +48,26 @@ export const useSessionStore = create<SessionState>()(
   persist(createSessionSlice, {
     name: '@vistoria/session',
     storage: createJSONStorage(() => AsyncStorage),
+    /**
+     * Zustand's default merge is `{ ...currentState, ...persistedState }` —
+     * every persisted field wins outright, including `null`. That silently
+     * re-nulls the env-seeded dev session on rehydrate: a build that ran
+     * before `.env.local` had real values cached `{ activeOrgId: null, ... }`
+     * to AsyncStorage, and every rehydrate since has clobbered the fresh env
+     * seed with that stale `null`. Once `setSession`/`clearSession` runs for
+     * real (the OTP flow), persisted values are the actual session and should
+     * win as usual — this only guards the narrow "persisted says null, env
+     * has a real value" case the dev stub creates.
+     */
+    merge: (persistedState, currentState) => {
+      const persisted = persistedState as Partial<SessionState>
+      return {
+        ...currentState,
+        ...persisted,
+        token: persisted.token ?? currentState.token,
+        activeOrgId: persisted.activeOrgId ?? currentState.activeOrgId,
+        activeProjectId: persisted.activeProjectId ?? currentState.activeProjectId,
+      }
+    },
   }),
 )

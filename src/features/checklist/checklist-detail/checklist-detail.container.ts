@@ -9,6 +9,7 @@ import {
   batchTagEditSchema,
   type BatchTagEditFormValues,
 } from '@/features/application/shared/application.schema'
+import { useApplicationsListRestResult } from '@/features/application/shared/application.rest'
 import type { Application } from '@/features/application/shared/application.types'
 import {
   buildRepeatedApplication,
@@ -24,7 +25,7 @@ import {
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { buildDuplicatedChecklist } from '@/features/checklist/shared/checklist.utils'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
-import { useChecklistEntityRestSource } from '@/features/checklist/shared/checklist.rest'
+import { useChecklistRestResult } from '@/features/checklist/shared/checklist.rest'
 import { normalizeApplication } from '@/lib/convex'
 import { useDraft } from '@/lib/forms'
 import { enqueueOp, useEntity, useEntityList } from '@/lib/offline-queue'
@@ -47,7 +48,7 @@ export function useChecklistDetailContainer({
   checklistId,
   navigation,
 }: UseChecklistDetailContainerProps) {
-  const checklistRest = useChecklistEntityRestSource(checklistId)
+  const checklistRest = useChecklistRestResult(checklistId)
   const checklistData = useEntity<Checklist>(
     api.checklists.findById,
     { id: checklistId },
@@ -62,10 +63,12 @@ export function useChecklistDetailContainer({
     (application: Application) => application.checklistId === checklistId,
     [checklistId],
   )
+  const applicationsRest = useApplicationsListRestResult(checklistId)
   const applicationsData = useEntityList<Application>(
     api.applications.listByChecklistId,
     { checklistId },
     { kind: 'application', getId: getApplicationId, belongs: belongsToChecklist },
+    applicationsRest,
   )
 
   const checklist = checklistData ?? null
@@ -177,6 +180,7 @@ export function useChecklistDetailContainer({
     for (const application of editingGroup.applications) {
       enqueueOp(updateMeta, {
         applicationId: application.id,
+        checklistId,
         tagsIds: form.getValues().tagsIds,
         updatedAt,
       })

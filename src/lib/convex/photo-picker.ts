@@ -37,7 +37,7 @@ export async function prepareAsset(asset: RawAsset): Promise<PreparedAsset> {
     asset.uri,
     asset.width > 1600 ? [{ resize: { width: 400 } }] : [],
     {
-      compress: 0.2,
+      compress: 0.5,
       format: ImageManipulator.SaveFormat.WEBP,
     },
   )

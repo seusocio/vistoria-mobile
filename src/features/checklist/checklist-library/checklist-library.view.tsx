@@ -74,6 +74,8 @@ export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
               />
             }
             ItemSeparatorComponent={ChecklistSeparator}
+            onEndReached={c.onEndReached}
+            onEndReachedThreshold={0.2}
             estimatedItemSize={140}
             recycleItems
             showsVerticalScrollIndicator={false}

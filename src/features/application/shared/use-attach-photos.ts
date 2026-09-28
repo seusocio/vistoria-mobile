@@ -5,7 +5,8 @@ import type { Attachment } from '@/features/application/shared/application.types
 import { generateId } from '@/lib/id'
 import { createAttachment } from '@/features/application/shared/application.utils'
 import { useUploadStore } from '@/lib/uploads/upload-store'
-import { addAttachment, purgeAttachment, setAttachmentDeletedAt } from './application.ops'
+import { useAttachmentVisibility } from './attachment-visibility'
+import { addAttachment, deleteAttachment } from './application.ops'
 
 interface CommitAssetParams extends RawAsset {
   attachmentId: string
@@ -79,33 +80,24 @@ export function useAttachPhotos() {
     })
   }
 
+  /**
+   * The undo-toast window is local-only state (`attachment-visibility.ts`)
+   * now, not a queued op: nothing is enqueued until "Desfazer" can no longer
+   * apply, so undoing is just un-hiding rather than reversing a write the
+   * server may already have seen.
+   */
   function removeAttachment(params: RemoveAttachmentParams) {
     const { applicationId, itemId, attachment } = params
-    const deletedAt = new Date().toISOString()
-    enqueueOp(setAttachmentDeletedAt, {
-      applicationId,
-      itemId,
-      attachmentId: attachment.id,
-      deletedAt,
-      updatedAt: deletedAt,
-    })
+    useAttachmentVisibility.getState().hide(attachment.id)
 
     showUndo({
       message: 'Foto removida',
-      onUndo: () => {
-        const updatedAt = new Date().toISOString()
-        enqueueOp(setAttachmentDeletedAt, {
-          applicationId,
-          itemId,
-          attachmentId: attachment.id,
-          deletedAt: null,
-          updatedAt,
-        })
-      },
+      onUndo: () => useAttachmentVisibility.getState().show(attachment.id),
       onCommit: () => {
         useUploadStore.getState().cancel(attachment.id)
         void deleteLocalUpload(attachment.localUri)
-        enqueueOp(purgeAttachment, { applicationId, itemId, attachmentId: attachment.id })
+        enqueueOp(deleteAttachment, { applicationId, itemId, attachmentId: attachment.id })
+        useAttachmentVisibility.getState().show(attachment.id)
       },
     })
   }

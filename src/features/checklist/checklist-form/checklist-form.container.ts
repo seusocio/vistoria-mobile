@@ -6,7 +6,7 @@ import { useUndoToast } from '@/components'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { checklistTemplates, type ChecklistTemplate } from '@/features/checklist/shared/checklist.templates'
-import { useChecklistEntityRestSource } from '@/features/checklist/shared/checklist.rest'
+import { useChecklistRestResult } from '@/features/checklist/shared/checklist.rest'
 import { useDraft } from '@/lib/forms'
 import { enqueueOp, useEntity } from '@/lib/offline-queue'
 import type { StackRoutesList } from '@/routes/types'
@@ -21,6 +21,7 @@ import {
 } from './checklist-form.schema'
 import { checklistSave } from './checklist-form.ops'
 import { buildChecklistEntity } from './checklist-form.utils'
+import { useCreateChecklist } from '@/lib/api/endpoints'
 
 export type ItemSheetState = { mode: 'new' } | { mode: 'edit'; index: number } | null
 export type PendingDeleteState = { type: 'item' | 'option'; index: number } | null
@@ -40,7 +41,7 @@ export interface UseChecklistFormContainerProps {
  */
 export function useChecklistFormContainer({ checklistId, navigation }: UseChecklistFormContainerProps) {
   const isEditing = Boolean(checklistId)
-  const existingRest = useChecklistEntityRestSource(checklistId)
+  const existingRest = useChecklistRestResult(checklistId)
   const existing = useEntity<Checklist>(
     api.checklists.findById,
     { id: checklistId ?? '' },

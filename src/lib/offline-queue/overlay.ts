@@ -1,4 +1,4 @@
-import { useIsRestoring, useQuery, type QueryKey } from '@tanstack/react-query'
+import { useIsRestoring, useQuery } from '@tanstack/react-query'
 import { useConvex, useConvexConnectionState } from 'convex/react'
 import { getFunctionName, type FunctionReference } from 'convex/server'
 import { useMemo } from 'react'
@@ -9,15 +9,19 @@ import { getOp, type EntityKind } from './ops'
 import { useOutbox, type QueuedOp } from './queue.store'
 
 /**
- * The REST half of a read, alongside the Convex query every entity still
- * defines. `useServerOrSnapshot` picks whichever half matches the entity's
+ * The REST half of a read, already fetched by the caller through the
+ * entity's own orval-generated hook (`useGetChecklist`, `useListChecklists`,
+ * ...) rather than built here — that hook is a real `useQuery` under the
+ * hood, called unconditionally with `enabled` gating whether it actually
+ * fires, so it satisfies rules-of-hooks the same way the Convex query below
+ * does. `useServerOrSnapshot` just picks whichever half matches the entity's
  * `isRestEnabled` flag — the Convex `query`/`args` stay required so an
  * entity keeps reading from Convex right up until this is supplied and its
  * flag flips, with no call site needing to change twice.
  */
-export interface RestSource<Value> {
-  queryKey: QueryKey
-  queryFn: () => Promise<Value>
+export interface RestQueryResult<Value> {
+  data: Value | undefined
+  isFetchedAfterMount: boolean
 }
 
 /**
@@ -79,34 +83,40 @@ export function resolveOverlayBase<Value>(input: {
  * by importing the module. The socket state is a fine proxy either way — a
  * device with no network has no Convex socket either.
  *
- * `rest`, when given and the entity's flag is on, swaps the query this reads
- * without changing which hooks get called or in what order: `useQuery` is
- * still invoked exactly once, just with a different `queryKey`/`queryFn`.
- * That's what lets a container decide Convex vs. REST from a plain flag
- * check instead of calling one hook or the other — a real conditional hook
- * call here would trip `react-hooks/rules-of-hooks`.
+ * `rest`, when given and the entity's flag is on, is read instead of the
+ * Convex query's result — but the Convex `useQuery` below is still called on
+ * every render either way (just `enabled: false` once REST is live), so hook
+ * count/order never changes when the flag flips. That's what lets a
+ * container decide Convex vs. REST from a plain flag check instead of
+ * calling one hook or the other — a real conditional hook call here would
+ * trip `react-hooks/rules-of-hooks`. The REST-backed `useQuery` this reads
+ * from lives in the caller's own generated hook, gated the same way.
  */
 function useServerOrSnapshot<Value>(
   query: FunctionReference<'query'>,
   args: Record<string, unknown>,
   kind: EntityKind,
-  rest?: RestSource<Value>,
+  rest?: RestQueryResult<Value>,
 ): { value: Value | undefined; settled: boolean } {
   const convex = useConvex()
   const { isWebSocketConnected } = useConvexConnectionState()
   const isRestoring = useIsRestoring()
   const useRest = isRestEnabled(kind) && rest !== undefined
-  const result = useQuery<Value>({
-    queryKey: useRest ? rest.queryKey : [getFunctionName(query), args],
-    queryFn: useRest ? rest.queryFn : () => convex.query(query, args) as Promise<Value>,
+  const convexResult = useQuery<Value>({
+    queryKey: [getFunctionName(query), args],
+    queryFn: () => convex.query(query, args) as Promise<Value>,
+    enabled: !useRest,
   })
+
+  const data = useRest && rest ? rest.data : convexResult.data
+  const isFetchedAfterMount = useRest && rest ? rest.isFetchedAfterMount : convexResult.isFetchedAfterMount
 
   return resolveOverlayBase<Value>({
     // Only this mount's own fetch counts as "the server answered" — data
     // present before that (restored from disk, or left from a previous
     // mount) is the cached fallback instead.
-    server: result.isFetchedAfterMount ? result.data : undefined,
-    cached: result.isFetchedAfterMount ? undefined : result.data,
+    server: isFetchedAfterMount ? data : undefined,
+    cached: isFetchedAfterMount ? undefined : data,
     snapshotsHydrated: !isRestoring,
     connected: isWebSocketConnected,
   })
@@ -132,7 +142,7 @@ export function useEntity<Entity>(
   args: Record<string, unknown>,
   entityId: string,
   kind: EntityKind,
-  rest?: RestSource<Entity | null>,
+  rest?: RestQueryResult<Entity | null>,
 ): Entity | null | undefined {
   const usingRest = isRestEnabled(kind) && rest !== undefined
   const { value, settled } = useServerOrSnapshot<unknown>(query, args, kind, rest)
@@ -224,7 +234,7 @@ export function useEntityList<Entity>(
   query: FunctionReference<'query'>,
   args: Record<string, unknown>,
   options: EntityListOptions<Entity>,
-  rest?: RestSource<Entity[]>,
+  rest?: RestQueryResult<Entity[]>,
 ): Entity[] | undefined {
   const { kind, getId, belongs } = options
   const usingRest = isRestEnabled(kind) && rest !== undefined

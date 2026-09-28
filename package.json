@@ -24,7 +24,11 @@
 		"seed:clone:dry": "convex dev --once && convex run seedApplications:cloneBaselineForward '{\"dryRun\":true}'",
 		"seed:clone": "convex dev --once && convex run seedApplications:cloneBaselineForward",
 		"convex:migrate": "convex dev --once --run migrations:backfillChecklistItemIds",
-		"convex:resync-applications": "convex dev --once --run migrations:resyncApplicationItemsFromChecklist"
+		"convex:resync-applications": "convex dev --once --run migrations:resyncApplicationItemsFromChecklist",
+		"migrate:rest:dry": "bun scripts/migrate-convex-to-rest.ts --dry-run",
+		"migrate:rest": "bun scripts/migrate-convex-to-rest.ts",
+		"migrate:assets:dry": "bun scripts/migrate-convex-attachments.ts --dry-run",
+		"migrate:assets": "bun scripts/migrate-convex-attachments.ts"
 	},
 	"dependencies": {
 		"@expo-google-fonts/lato": "^0.4.1",

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { isRestEnabled } from '@/lib/backend-flags'
 import { convexClient } from '@/lib/convex/client'
 import { normalizeApplication } from '@/lib/convex/normalize'
 import type { Application } from '@/features/application/shared/application.types'
@@ -37,8 +38,27 @@ async function readCollection<T>(key: string): Promise<T[]> {
   }
 }
 
+/**
+ * The three kinds this import writes. Once all of them read from REST, every
+ * mutation below targets a backend nothing in the app queries anymore.
+ */
+const MIGRATION_KINDS = ['tag', 'checklist', 'application'] as const
+
 export async function migrateLocalDataToConvex(): Promise<void> {
   if (await AsyncStorage.getItem(KEYS.MIGRATED)) return
+
+  // Past the REST cutover this import has no destination: anything it pushed
+  // into Convex would be invisible to every read in the app. It was also
+  // *loud* about it — `App.tsx` runs this on every launch and the flag below
+  // is only set on success, so a device with legacy data logged a
+  // `[CONVEX M(checklists:save)]` failure for each entity, on every boot,
+  // forever.
+  //
+  // Returning without setting `MIGRATED` is deliberate: the legacy keys stay
+  // untouched in AsyncStorage, so a REST-side import can still find that data
+  // if one is ever needed. Marking it migrated here would be the one action
+  // that really does lose it.
+  if (MIGRATION_KINDS.every(isRestEnabled)) return
 
   const [tags, checklists, applications] = await Promise.all([
     readCollection<Tag>(KEYS.TAGS),

@@ -76,6 +76,8 @@ export function ReportOverviewView() {
             { paddingBottom: 32 + tabBarClearance },
           ]}
           ItemSeparatorComponent={PendingSeparator}
+          onEndReached={c.onEndReached}
+          onEndReachedThreshold={0.2}
           estimatedItemSize={180}
           recycleItems
           showsVerticalScrollIndicator={false}

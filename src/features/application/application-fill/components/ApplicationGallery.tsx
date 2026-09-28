@@ -1,5 +1,8 @@
 import { memo, useMemo } from 'react'
 import { PhotoGalleryRow } from '@/components'
+import { resolvePreviewUri } from '@/features/application/shared/attachment-preview'
+import { useAttachmentVisibility } from '@/features/application/shared/attachment-visibility'
+import { useLocalUploadUris } from '@/lib/uploads/upload-store'
 import type { Attachment } from '@/features/application/shared/application.types'
 
 interface ApplicationGalleryProps {
@@ -17,13 +20,15 @@ export const ApplicationGallery = memo(function ApplicationGallery({
   onRetryAttachment,
   onOpenPhoto,
 }: ApplicationGalleryProps) {
+  const hiddenIds = useAttachmentVisibility((state) => state.hiddenIds)
+  const localUris = useLocalUploadUris()
   const photos = useMemo(
     () =>
       attachments
-        .filter((attachment) => !attachment.deletedAt)
+        .filter((attachment) => !attachment.deletedAt && !hiddenIds[attachment.id])
         .map((attachment, index) => ({
           id: attachment.id,
-          uri: attachment.url ?? attachment.localUri,
+          uri: resolvePreviewUri(attachment, localUris),
           uploading: attachment.uploadStatus === 'pending',
           failed: attachment.uploadStatus === 'failed',
           progress: uploadProgress[attachment.id] ?? 0,
@@ -31,7 +36,7 @@ export const ApplicationGallery = memo(function ApplicationGallery({
           onRemove: () => onRemoveAttachment(attachment.id),
           onRetry: () => onRetryAttachment(attachment.id),
         })),
-    [attachments, onOpenPhoto, onRemoveAttachment, onRetryAttachment, uploadProgress],
+    [attachments, hiddenIds, localUris, onOpenPhoto, onRemoveAttachment, onRetryAttachment, uploadProgress],
   )
   return <PhotoGalleryRow photos={photos} />
 })

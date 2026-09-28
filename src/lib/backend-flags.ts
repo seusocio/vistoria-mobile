@@ -7,9 +7,9 @@ import type { EntityKind } from '@/lib/offline-queue'
  * wiring would just point the app at a backend that doesn't answer yet.
  */
 const REST_ENABLED: Record<EntityKind, boolean> = {
-  application: false,
-  checklist: false,
-  tag: false,
+  application: true,
+  checklist: true,
+  tag: true,
 }
 
 export function isRestEnabled(kind: EntityKind): boolean {

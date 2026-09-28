@@ -1,6 +1,9 @@
 import { BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet'
 import { Pressable, Text, View } from 'react-native'
 import { ItemCard, type ItemCompletionVariant } from '@/components/ItemCard'
+import { resolvePreviewUri } from '@/features/application/shared/attachment-preview'
+import { useAttachmentVisibility } from '@/features/application/shared/attachment-visibility'
+import { useLocalUploadUris } from '@/lib/uploads/upload-store'
 import { Attachment } from '@/features/application/shared/application.types'
 import { Tag } from '@/features/tag/shared/tag.types'
 import { colors } from '@/styles'
@@ -72,10 +75,12 @@ export function ItemDrawer({
   onOpenPhoto,
   onSave,
 }: ItemDrawerProps) {
-  const activeAttachments = attachments.filter((attachment) => !attachment.deletedAt)
+  const hiddenIds = useAttachmentVisibility((state) => state.hiddenIds)
+  const localUris = useLocalUploadUris()
+  const activeAttachments = attachments.filter((attachment) => !attachment.deletedAt && !hiddenIds[attachment.id])
   const galleryPhotos = activeAttachments.map((attachment, index) => ({
     id: attachment.id,
-    uri: attachment.url ?? attachment.localUri,
+    uri: resolvePreviewUri(attachment, localUris),
     uploading: attachment.uploadStatus === 'pending',
     failed: attachment.uploadStatus === 'failed',
     progress: uploadProgress[attachment.id] ?? 0,

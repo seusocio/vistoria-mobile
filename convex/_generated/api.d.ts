@@ -10,6 +10,7 @@
 
 import type * as applications from "../applications.js";
 import type * as checklists from "../checklists.js";
+import type * as exportForMigration from "../exportForMigration.js";
 import type * as files from "../files.js";
 import type * as migrations from "../migrations.js";
 import type * as seed from "../seed.js";
@@ -28,6 +29,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   applications: typeof applications;
   checklists: typeof checklists;
+  exportForMigration: typeof exportForMigration;
   files: typeof files;
   migrations: typeof migrations;
   seed: typeof seed;

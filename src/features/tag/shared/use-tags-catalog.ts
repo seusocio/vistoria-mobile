@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { tagCreate } from '@/features/tag/shared/tag.ops'
+import { useTagsListRestResult } from '@/features/tag/shared/tag.rest'
 import { Tag, normalizeTagLabel } from '@/features/tag/shared/tag.types'
 import { tagLabelSchema } from '@/features/tag/shared/tag.schema'
 import { generateId } from '@/lib/id'
@@ -11,14 +12,20 @@ const EMPTY_TAGS: Tag[] = []
 const getTagId = (tag: Tag) => tag.id
 
 export function useTagsCatalog() {
-  const activeTagsData = useEntityList<Tag>(api.tags.list, {}, {
-    kind: 'tag',
-    getId: getTagId,
-  })
-  const allTagsData = useEntityList<Tag>(api.tags.listAll, {}, {
-    kind: 'tag',
-    getId: getTagId,
-  })
+  // Both reads share one REST result — see `useTagsListRestResult`'s doc.
+  const tagsRest = useTagsListRestResult()
+  const activeTagsData = useEntityList<Tag>(
+    api.tags.list,
+    {},
+    { kind: 'tag', getId: getTagId },
+    tagsRest,
+  )
+  const allTagsData = useEntityList<Tag>(
+    api.tags.listAll,
+    {},
+    { kind: 'tag', getId: getTagId },
+    tagsRest,
+  )
 
   const activeTags = useMemo(
     () => (activeTagsData ?? EMPTY_TAGS).filter((tag) => !tag.deletedAt),

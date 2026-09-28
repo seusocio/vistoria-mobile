@@ -1,18 +1,17 @@
-import { useMemo } from 'react'
 import type { ResponseOption } from '@/features/checklist/shared/checklist.types'
 import type { Checklist, ChecklistItem } from '@/features/checklist/shared/checklist.types'
 import {
   createChecklist,
   deleteChecklist,
-  getChecklist,
-  getGetChecklistQueryKey,
   getListChecklistsQueryKey,
-  listChecklists,
   updateChecklist,
+  useGetChecklist,
+  useListChecklists,
 } from '@/lib/api/endpoints/default/default'
 import type { CreateChecklistBodyOne } from '@/lib/api/models/createChecklistBodyOne'
 import type { UpdateChecklistBodyOne } from '@/lib/api/models/updateChecklistBodyOne'
-import type { RestSource } from '@/lib/offline-queue'
+import { isRestEnabled } from '@/lib/backend-flags'
+import type { RestQueryResult } from '@/lib/offline-queue'
 import { useSessionStore } from '@/lib/session/session.store'
 
 /**
@@ -95,39 +94,24 @@ function asEntityRecord(response: unknown): Record<string, unknown> {
   return response as Record<string, unknown>
 }
 
-export async function createChecklistRest(
-  orgId: string,
-  projectId: string,
-  entity: Checklist,
-): Promise<Checklist> {
-  const response = await createChecklist(orgId, projectId, toCreateChecklistBody(entity))
-  return fromChecklistResponse(asEntityRecord(response))
+/**
+ * The write half of Seam A: still the plain orval functions, called with a
+ * built request body. `checklists.save`'s `onServerResponse` writes this
+ * raw, un-normalized return value straight into the same query cache
+ * `useGetChecklist` reads from below — keeping the cache in the one shape
+ * both paths agree on, instead of `Checklist`-shaping it here and again on
+ * every read.
+ */
+export function createChecklistRest(orgId: string, projectId: string, entity: Checklist) {
+  return createChecklist(orgId, projectId, toCreateChecklistBody(entity))
 }
 
-export async function updateChecklistRest(
-  orgId: string,
-  projectId: string,
-  entity: Checklist,
-): Promise<Checklist> {
-  const response = await updateChecklist(orgId, projectId, entity.id, toUpdateChecklistBody(entity))
-  return fromChecklistResponse(asEntityRecord(response))
+export function updateChecklistRest(orgId: string, projectId: string, entity: Checklist) {
+  return updateChecklist(orgId, projectId, entity.id, toUpdateChecklistBody(entity))
 }
 
-export async function deleteChecklistRest(
-  orgId: string,
-  projectId: string,
-  id: string,
-): Promise<void> {
-  await deleteChecklist(orgId, projectId, id)
-}
-
-export async function fetchChecklistRest(
-  orgId: string,
-  projectId: string,
-  id: string,
-): Promise<Checklist | null> {
-  const response = await getChecklist(orgId, projectId, id)
-  return fromChecklistResponse(asEntityRecord(response))
+export function deleteChecklistRest(orgId: string, projectId: string, id: string) {
+  return deleteChecklist(orgId, projectId, id)
 }
 
 /**
@@ -145,48 +129,45 @@ function assertSinglePage(meta: unknown): void {
   }
 }
 
-export async function fetchChecklistsRest(orgId: string, projectId: string): Promise<Checklist[]> {
-  const response = await listChecklists(orgId, projectId, CHECKLISTS_LIST_PARAMS)
-  const envelope = response as unknown as { data: Record<string, unknown>[]; meta?: unknown }
-  assertSinglePage(envelope.meta)
-  return envelope.data.map(fromChecklistResponse)
-}
-
-export function checklistQueryKey(orgId: string, projectId: string, id: string) {
-  return getGetChecklistQueryKey(orgId, projectId, id)
-}
-
 export function checklistsListQueryKey(orgId: string, projectId: string) {
   return getListChecklistsQueryKey(orgId, projectId, CHECKLISTS_LIST_PARAMS)
 }
 
 /**
- * The `RestSource` for one checklist, built from whatever project is active
- * right now. `undefined` until there's a session to scope the request to, or
- * no id to read yet (the checklist-form's "new" mode) — `useEntity` treats a
- * missing `rest` exactly like an entity whose flag is still off.
+ * The `RestQueryResult` for one checklist — `useGetChecklist` is the real
+ * orval-generated hook, called unconditionally (rules-of-hooks) with
+ * `enabled` gating whether it actually fetches. `undefined` until there's a
+ * session to scope the request to, or no id to read yet (the checklist-
+ * form's "new" mode) — `useEntity` treats a missing `rest` exactly like an
+ * entity whose flag is still off.
  */
-export function useChecklistEntityRestSource(id: string | undefined): RestSource<Checklist | null> | undefined {
+export function useChecklistRestResult(id: string | undefined): RestQueryResult<Checklist | null> | undefined {
   const activeOrgId = useSessionStore((state) => state.activeOrgId)
   const activeProjectId = useSessionStore((state) => state.activeProjectId)
-  return useMemo(() => {
-    if (!activeOrgId || !activeProjectId || !id) return undefined
-    return {
-      queryKey: checklistQueryKey(activeOrgId, activeProjectId, id),
-      queryFn: () => fetchChecklistRest(activeOrgId, activeProjectId, id),
-    }
-  }, [activeOrgId, activeProjectId, id])
+  const enabled = isRestEnabled('checklist') && Boolean(activeOrgId && activeProjectId && id)
+  const query = useGetChecklist(activeOrgId ?? '', activeProjectId ?? '', id ?? '', { query: { enabled } })
+  if (!enabled) return undefined
+  return {
+    data: query.data === undefined ? undefined : fromChecklistResponse(asEntityRecord(query.data)),
+    isFetchedAfterMount: query.isFetchedAfterMount,
+  }
 }
 
-/** The `RestSource` for the checklist list — see `useChecklistEntityRestSource`. */
-export function useChecklistsListRestSource(): RestSource<Checklist[]> | undefined {
+/** The `RestQueryResult` for the checklist list — see `useChecklistRestResult`. */
+export function useChecklistsListRestResult(): RestQueryResult<Checklist[]> | undefined {
   const activeOrgId = useSessionStore((state) => state.activeOrgId)
   const activeProjectId = useSessionStore((state) => state.activeProjectId)
-  return useMemo(() => {
-    if (!activeOrgId || !activeProjectId) return undefined
-    return {
-      queryKey: checklistsListQueryKey(activeOrgId, activeProjectId),
-      queryFn: () => fetchChecklistsRest(activeOrgId, activeProjectId),
-    }
-  }, [activeOrgId, activeProjectId])
+  const enabled = isRestEnabled('checklist') && Boolean(activeOrgId && activeProjectId)
+  const query = useListChecklists(activeOrgId ?? '', activeProjectId ?? '', CHECKLISTS_LIST_PARAMS, {
+    query: { enabled },
+  })
+
+  if (!enabled) return undefined
+  if (query.data === undefined) return { data: undefined, isFetchedAfterMount: query.isFetchedAfterMount }
+  const envelope = query.data as unknown as { data: Record<string, unknown>[]; meta?: unknown }
+  assertSinglePage(envelope.meta)
+  return {
+    data: envelope.data.map(fromChecklistResponse),
+    isFetchedAfterMount: query.isFetchedAfterMount,
+  }
 }

@@ -377,16 +377,23 @@ export function groupApplicationsByTagSet(
 
   const result = Array.from(groups.values())
   for (const group of result) {
-    group.applications.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    )
+    group.applications.sort(compareApplicationRecency)
   }
-  result.sort(
-    (a, b) =>
-      new Date(b.applications[0].date).getTime() -
-      new Date(a.applications[0].date).getTime(),
-  )
+  result.sort((a, b) => compareApplicationRecency(a.applications[0], b.applications[0]))
   return result
+}
+
+/**
+ * Descending recency: by `date` first, falling back to `createdAt` when two
+ * applications share the same `date` (same-day repeat visits, or one edited
+ * by hand to match another) - without it, a tie resolves to whichever
+ * application happened to come first in the input array instead of the one
+ * actually created last.
+ */
+function compareApplicationRecency(a: Application, b: Application): number {
+  const byDate = new Date(b.date).getTime() - new Date(a.date).getTime()
+  if (byDate !== 0) return byDate
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 }
 
 /**
@@ -406,7 +413,7 @@ export function findLatestApplicationByTagSet(
   for (const application of applications) {
     if (application.deletedAt) continue
     if (tagsKey(application.tagsIds) !== key) continue
-    if (!latest || new Date(application.date).getTime() > new Date(latest.date).getTime()) {
+    if (!latest || compareApplicationRecency(application, latest) < 0) {
       latest = application
     }
   }

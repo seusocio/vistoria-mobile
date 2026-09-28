@@ -5,18 +5,22 @@ import type { VoiceState } from '@/components/VoiceCard'
 import type { ItemCompletionVariant } from '@/components/ItemCard'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
 import { useVoiceRecorder } from '@/features/application/shared/use-voice-recorder'
+import { useApplicationRestResult } from '@/features/application/shared/application.rest'
 import type { Application, ApplicationItem, WorkflowStatus } from '@/features/application/shared/application.types'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import { useChecklistRestResult } from '@/features/checklist/shared/checklist.rest'
 import { applicationItemDraftSchema, applicationMetaSchema, newApplicationItemSchema, type ApplicationItemDraftFormValues, type ApplicationMetaFormValues, type NewApplicationItemFormValues } from '@/features/application/shared/application.schema'
 import { generateId } from '@/lib/id'
-import { getDerivedState, getProgress, groupItemsByTitlePrefix, isItemAnswerComplete, sortItemsByChecklistOrder, type ApplicationItemPatch } from '@/features/application/shared/application.utils'
+import { applyApplicationItemPatch, getDerivedState, getProgress, groupItemsByTitlePrefix, isItemAnswerComplete, sortItemsByChecklistOrder, type ApplicationItemPatch } from '@/features/application/shared/application.utils'
 import { generateSuggestions, prepareTranscriber, transcribeAudio } from '@/lib/voice/voice-service'
 import { normalizeApplication } from '@/lib/convex'
-import { useUploadStore } from '@/lib/uploads/upload-store'
+import { useLocalUploadUris, useUploadStore } from '@/lib/uploads/upload-store'
 import { enqueueOp, useEntity } from '@/lib/offline-queue'
 import { useDraft } from '@/lib/forms'
 import type { StackRoutesList } from '@/routes/types'
 import { useAttachPhotos } from '../shared/use-attach-photos'
+import { resolvePreviewUri } from '../shared/attachment-preview'
+import { useAttachmentVisibility } from '../shared/attachment-visibility'
 import { addItem, patchItem, softDelete, updateMeta } from '../shared/application.ops'
 import { api } from '../../../../convex/_generated/api'
 
@@ -72,17 +76,21 @@ export function useApplicationFillContainer({
   applicationId,
   navigation,
 }: UseApplicationFillContainerProps) {
+  const checklistRest = useChecklistRestResult(checklistId)
   const checklistData = useEntity<Checklist>(
     api.checklists.findById,
     { id: checklistId },
     checklistId,
     'checklist',
+    checklistRest,
   )
+  const applicationRest = useApplicationRestResult(applicationId)
   const rawApplication = useEntity<Application>(
     api.applications.findById,
     { id: applicationId },
     applicationId,
     'application',
+    applicationRest,
   )
   const normalizedApplication = useMemo(
     () => (rawApplication ? normalizeApplication(rawApplication) : null),
@@ -95,12 +103,46 @@ export function useApplicationFillContainer({
     !normalizedApplication
 
   const checklist = checklistData ?? EMPTY_CHECKLIST
-  const application = normalizedApplication ?? EMPTY_APPLICATION
+
+  /**
+   * Item edits (answer taps, notes, workflow status, ad-hoc adds) no longer
+   * enqueue on every change — each one used to become its own REST round
+   * trip the instant it happened, which was fine for a cheap Convex mutation
+   * over an open socket but is a lot of network chatter for one HTTP request
+   * per keystroke. These accumulate locally instead and flush as one op per
+   * touched item at the three points that actually leave this screen with
+   * intent to keep the work (`onBack`, "salvar rascunho", "concluir") — the
+   * tradeoff being that an app kill before any of those, or a route away
+   * this screen doesn't model as one of them, loses everything typed since
+   * it opened. Deleting the application discards instead of flushing:
+   * patching items on an entity about to be soft-deleted is just a wasted
+   * write. `pendingItemPatches` merges cumulatively per item (a second tap
+   * on the same item combines with the first, matching what N sequential
+   * ops would have produced).
+   */
+  const [pendingItemPatches, setPendingItemPatches] = useState<
+    Record<string, { patch: ApplicationItemPatch; updatedAt: string }>
+  >({})
+  const [pendingNewItems, setPendingNewItems] = useState<ApplicationItem[]>([])
+
+  const application = useMemo(() => {
+    const base = normalizedApplication ?? EMPTY_APPLICATION
+    let next = base
+    for (const [itemId, { patch, updatedAt }] of Object.entries(pendingItemPatches)) {
+      next = applyApplicationItemPatch(next, itemId, patch, updatedAt)
+    }
+    if (pendingNewItems.length > 0) {
+      next = { ...next, items: [...next.items, ...pendingNewItems] }
+    }
+    return next
+  }, [normalizedApplication, pendingItemPatches, pendingNewItems])
 
   const tagsCatalog = useTagsCatalog()
   const { removeAttachment: removeAttachmentPipeline } = useAttachPhotos()
   const { startRecording, stopRecording } = useVoiceRecorder()
   const uploadProgress = useUploadStore((state) => state.progress)
+  const hiddenAttachmentIds = useAttachmentVisibility((state) => state.hiddenIds)
+  const localUploadUris = useLocalUploadUris()
 
   const [viewer, setViewer] = useState<{ itemId: string | null; index: number } | null>(null)
   const [voiceState, setVoiceState] = useState<VoiceState>('idle')
@@ -156,17 +198,13 @@ export function useApplicationFillContainer({
   )
   const derivedState = getDerivedState(application)
 
-  const editItem = useCallback(
-    (itemId: string, patch: ApplicationItemPatch) => {
-      enqueueOp(patchItem, {
-        applicationId: application.id,
-        itemId,
-        patch,
-        updatedAt: new Date().toISOString(),
-      })
-    },
-    [application.id],
-  )
+  const editItem = useCallback((itemId: string, patch: ApplicationItemPatch) => {
+    const updatedAt = new Date().toISOString()
+    setPendingItemPatches((prev) => ({
+      ...prev,
+      [itemId]: { patch: { ...prev[itemId]?.patch, ...patch }, updatedAt },
+    }))
+  }, [])
 
   const resolveTagLabels = tagsCatalog.resolveLabels
   const resolveTagLabel = useCallback(
@@ -289,6 +327,7 @@ export function useApplicationFillContainer({
     onCommit: (values) => {
       enqueueOp(updateMeta, {
         applicationId: application.id,
+        checklistId,
         tagsIds: values.tagsIds,
         date: values.date,
         updatedAt: new Date().toISOString(),
@@ -336,7 +375,7 @@ export function useApplicationFillContainer({
         updatedAt: now,
         deletedAt: null,
       }
-      enqueueOp(addItem, { applicationId: application.id, item, updatedAt: now })
+      setPendingNewItems((prev) => [...prev, item])
     },
   })
 
@@ -405,6 +444,7 @@ export function useApplicationFillContainer({
       const transcript = await transcribeAudio(uri)
       enqueueOp(updateMeta, {
         applicationId: application.id,
+        checklistId,
         transcript,
         updatedAt: new Date().toISOString(),
       })
@@ -436,14 +476,46 @@ export function useApplicationFillContainer({
   }
 
   // --- lifecycle: draft / complete / delete ------------------------------
+  /**
+   * Turns the accumulated local edits into real ops — one `patchItem` per
+   * touched item (each carrying that item's fully-merged patch, not one op
+   * per tap that built it up) and one `addItem` per ad-hoc item. Called
+   * explicitly at every point that leaves this screen with intent to keep
+   * the work: the header back arrow, "salvar rascunho", and "concluir".
+   * `confirmDelete` deliberately does not call this — patching items on an
+   * entity about to be soft-deleted is a wasted write, so it discards
+   * instead.
+   */
+  const flushPendingChanges = useCallback(() => {
+    const applicationId = normalizedApplication?.id
+    if (applicationId) {
+      for (const [itemId, { patch, updatedAt }] of Object.entries(pendingItemPatches)) {
+        enqueueOp(patchItem, { applicationId, checklistId, itemId, patch, updatedAt })
+      }
+      for (const item of pendingNewItems) {
+        enqueueOp(addItem, { applicationId, checklistId, item, updatedAt: item.updatedAt })
+      }
+    }
+    setPendingItemPatches({})
+    setPendingNewItems([])
+  }, [normalizedApplication?.id, checklistId, pendingItemPatches, pendingNewItems])
+
+  function handleBack() {
+    flushPendingChanges()
+    navigation.goBack()
+  }
+
   function handleSaveDraft() {
+    flushPendingChanges()
     navigation.goBack()
   }
 
   function handleComplete() {
+    flushPendingChanges()
     const updatedAt = new Date().toISOString()
     enqueueOp(updateMeta, {
       applicationId: application.id,
+      checklistId,
       status: 'completed',
       completedAt: updatedAt,
       updatedAt,
@@ -456,7 +528,7 @@ export function useApplicationFillContainer({
   }
 
   function confirmDelete() {
-    enqueueOp(softDelete, { id: application.id, deletedAt: new Date().toISOString() })
+    enqueueOp(softDelete, { id: application.id, deletedAt: new Date().toISOString(), checklistId })
     setDeleteConfirmationVisible(false)
     navigation.replace('checklistDetail', { checklistId })
   }
@@ -482,11 +554,11 @@ export function useApplicationFillContainer({
     ? (viewer.itemId === null
         ? application.attachments
         : (application.items.find((item) => item.id === viewer.itemId)?.attachments ?? [])
-      ).filter((attachment) => !attachment.deletedAt)
+      ).filter((attachment) => !attachment.deletedAt && !hiddenAttachmentIds[attachment.id])
     : []
   const viewerPhotos = viewerAttachments.map((attachment) => ({
     id: attachment.id,
-    uri: attachment.url ?? attachment.localUri,
+    uri: resolvePreviewUri(attachment, localUploadUris),
     uploading: attachment.uploadStatus === 'pending',
     progress: uploadProgress[attachment.id] ?? 0,
   }))
@@ -517,7 +589,7 @@ export function useApplicationFillContainer({
     itemDraftValues,
     itemForm: itemDraft.form,
     editingItemCompletionVariant,
-    onBack: () => navigation.goBack(),
+    onBack: handleBack,
     onDelete: handleDelete,
     onSaveDraft: handleSaveDraft,
     onComplete: handleComplete,

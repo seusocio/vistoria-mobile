@@ -36,13 +36,34 @@ interface ApiEnvelope<T> {
  * helpers already prepend `EXPO_PUBLIC_BACKEND_BASE_URL` (configured as
  * `orval.config.ts`'s `baseUrl.runtime`), so `url` arrives here absolute —
  * this instance carries no `prefixUrl` of its own.
+ *
+ * The OpenAPI spec labels every endpoint `security: bearerAuth`, but this
+ * deployment's `better-auth` only actually validates the signed session
+ * cookie it issues (`__Secure-better-auth.session_token=<token>.<hmac>`) —
+ * confirmed by hand: the same value 401s as `Authorization: Bearer`
+ * (both the raw token and the full signed value) but succeeds as a `Cookie`
+ * header. `token` in the session store is that full `<token>.<hmac>` value,
+ * not a bearer credential.
  */
 const client = ky.create({
   hooks: {
     beforeRequest: [
       ({ request }) => {
         const { token } = useSessionStore.getState()
-        if (token) request.headers.set('Authorization', `Bearer ${token}`)
+        if (token) request.headers.set('Cookie', `__Secure-better-auth.session_token=${token}`)
+        // Every generated write (`createChecklist`, `updateChecklist`, ...)
+        // hands `f` an already-`JSON.stringify`'d string as `body`, not ky's
+        // own `json` option — so `Request` defaults it to
+        // `text/plain;charset=UTF-8` *at construction*, before this hook
+        // ever runs, which is why checking "is Content-Type missing" doesn't
+        // catch it: it's already present, just wrong. The server can't parse
+        // that as JSON and 422s even a request whose payload is
+        // byte-for-byte identical to one sent with the right header. Only
+        // that specific default gets corrected — a `multipart/form-data`
+        // upload's auto-generated boundary must survive untouched.
+        if (request.headers.get('Content-Type')?.startsWith('text/plain')) {
+          request.headers.set('Content-Type', 'application/json')
+        }
       },
     ],
   },

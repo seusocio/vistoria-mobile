@@ -41,3 +41,6 @@ yarn-error.*
 /android
 
 .env
+# one-off Convex -> REST migration checkpoint (scripts/migrate-convex-to-rest.ts)
+.migration-state.json
+.migration-attachments-state.json

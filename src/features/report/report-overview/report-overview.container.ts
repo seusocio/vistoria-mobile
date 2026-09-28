@@ -1,4 +1,8 @@
 import { useCallback, useMemo, useState } from 'react'
+import {
+  applicationsListAllQueryKey,
+  useApplicationsListRestResult,
+} from '@/features/application/shared/application.rest'
 import type { Application } from '@/features/application/shared/application.types'
 import {
   queryApplicationsByTags,
@@ -6,8 +10,11 @@ import {
   type ReportPendingGroup,
 } from '@/features/report/shared/report.utils'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
+import { tagsListQueryKey } from '@/features/tag/shared/tag.rest'
+import { useRefreshOnEndReached } from '@/lib/api/use-refresh-on-end-reached'
 import { normalizeApplication } from '@/lib/convex'
 import { useEntityList } from '@/lib/offline-queue'
+import { useSessionStore } from '@/lib/session/session.store'
 import {
   endOfDayIso,
   formatBrDateShort,
@@ -54,10 +61,13 @@ export function useReportOverviewContainer() {
     }
   }, [preset, customFrom, customTo])
 
-  const applicationsData = useEntityList<Application>(api.applications.listAll, {}, {
-    kind: 'application',
-    getId: getApplicationId,
-  })
+  const applicationsRest = useApplicationsListRestResult()
+  const applicationsData = useEntityList<Application>(
+    api.applications.listAll,
+    {},
+    { kind: 'application', getId: getApplicationId },
+    applicationsRest,
+  )
   const applications = useMemo(
     () =>
       (applicationsData ?? [])
@@ -98,6 +108,17 @@ export function useReportOverviewContainer() {
 
   const onPresetChange = useCallback((value: PeriodPreset) => setPreset(value), [])
 
+  const activeOrgId = useSessionStore((state) => state.activeOrgId)
+  const activeProjectId = useSessionStore((state) => state.activeProjectId)
+  const onEndReached = useRefreshOnEndReached(
+    activeOrgId && activeProjectId
+      ? [
+          applicationsListAllQueryKey(activeOrgId, activeProjectId),
+          tagsListQueryKey(activeOrgId, activeProjectId),
+        ]
+      : [],
+  )
+
   return {
     loading,
     result,
@@ -114,5 +135,6 @@ export function useReportOverviewContainer() {
     onPresetChange,
     onCustomFromChange: setCustomFrom,
     onCustomToChange: setCustomTo,
+    onEndReached,
   }
 }

@@ -71,7 +71,16 @@ export function defineOp<Args, Entity>(
   type: string,
   config: Omit<OpDefinition<Args, Entity>, 'type'>,
 ): OpDefinition<Args, Entity> {
-  if (registry.has(type)) {
+  // `registry` is a module-scope singleton Fast Refresh doesn't reset, but
+  // Fast Refresh *does* re-execute a `*.ops.ts` module whenever something it
+  // transitively imports changes — so a duplicate registration in dev is a
+  // routine reload, not a bug, and should replace the old definition rather
+  // than crash the module (and everything that imports `checklistSave` etc.
+  // from it) on every unrelated edit elsewhere in the app. In production,
+  // where nothing hot-reloads, the same duplicate can only mean a real
+  // `type` collision between two ops — that should still throw.
+  const isDev = typeof __DEV__ !== 'undefined' && __DEV__
+  if (registry.has(type) && !isDev) {
     throw new Error(`offline-queue: op "${type}" is already defined`)
   }
   const op: OpDefinition<Args, Entity> = { type, ...config }

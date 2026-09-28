@@ -5,6 +5,7 @@ import {
   type ApplicationMetaFormValues,
 } from '@/features/application/shared/application.schema'
 import { create as createApplication } from '@/features/application/shared/application.ops'
+import { useApplicationsListRestResult } from '@/features/application/shared/application.rest'
 import type { Application } from '@/features/application/shared/application.types'
 import {
   buildApplication,
@@ -12,6 +13,7 @@ import {
   findLatestApplicationByTagSet,
 } from '@/features/application/shared/application.utils'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import { useChecklistRestResult } from '@/features/checklist/shared/checklist.rest'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
 import { normalizeApplication } from '@/lib/convex'
 import { useDraft } from '@/lib/forms'
@@ -36,11 +38,13 @@ export function useApplicationNewContainer({
   // Through the overlay, not a bare useQuery: a checklist created offline
   // exists only as a pending op until it reaches the server, and starting a
   // vistoria on it has to work in the meantime.
+  const checklistRest = useChecklistRestResult(checklistId)
   const checklistData = useEntity<Checklist>(
     api.checklists.findById,
     { id: checklistId },
     checklistId,
     'checklist',
+    checklistRest,
   )
   const checklist = checklistData ?? null
   const loading = checklistData === undefined
@@ -54,10 +58,12 @@ export function useApplicationNewContainer({
     (application: Application) => application.checklistId === checklistId,
     [checklistId],
   )
+  const applicationsRest = useApplicationsListRestResult(checklistId)
   const applicationsData = useEntityList<Application>(
     api.applications.listByChecklistId,
     { checklistId },
     { kind: 'application', getId: getApplicationId, belongs: belongsToChecklist },
+    applicationsRest,
   )
   const applications = useMemo(
     () =>

@@ -1,10 +1,19 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
+import {
+  applicationsListAllQueryKey,
+  useApplicationsListRestResult,
+} from '@/features/application/shared/application.rest'
 import type { Application } from '@/features/application/shared/application.types'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
-import { useChecklistsListRestSource } from '@/features/checklist/shared/checklist.rest'
+import {
+  checklistsListQueryKey,
+  useChecklistsListRestResult,
+} from '@/features/checklist/shared/checklist.rest'
+import { useRefreshOnEndReached } from '@/lib/api/use-refresh-on-end-reached'
 import { normalizeApplication } from '@/lib/convex'
 import { useEntityList } from '@/lib/offline-queue'
+import { useSessionStore } from '@/lib/session/session.store'
 import type { TabRoutesProps } from '@/routes/types'
 import { api } from '../../../../convex/_generated/api'
 
@@ -23,17 +32,20 @@ export interface UseChecklistLibraryContainerProps {
 export function useChecklistLibraryContainer({
   navigation,
 }: UseChecklistLibraryContainerProps) {
-  const checklistsRest = useChecklistsListRestSource()
+  const checklistsRest = useChecklistsListRestResult()
   const checklistsData = useEntityList<Checklist>(
     api.checklists.list,
     {},
     { kind: 'checklist', getId: getChecklistId },
     checklistsRest,
   )
-  const applicationsData = useEntityList<Application>(api.applications.listAll, {}, {
-    kind: 'application',
-    getId: getApplicationId,
-  })
+  const applicationsRest = useApplicationsListRestResult()
+  const applicationsData = useEntityList<Application>(
+    api.applications.listAll,
+    {},
+    { kind: 'application', getId: getApplicationId },
+    applicationsRest,
+  )
 
   // `api.checklists.list` already filters deleted rows server-side, but a
   // soft-delete that is still in the outbox has only been applied by the
@@ -58,6 +70,17 @@ export function useChecklistLibraryContainer({
   }, [applicationsData, checklists])
 
   const loading = checklistsData === undefined || applicationsData === undefined
+
+  const activeOrgId = useSessionStore((state) => state.activeOrgId)
+  const activeProjectId = useSessionStore((state) => state.activeProjectId)
+  const onEndReached = useRefreshOnEndReached(
+    activeOrgId && activeProjectId
+      ? [
+          checklistsListQueryKey(activeOrgId, activeProjectId),
+          applicationsListAllQueryKey(activeOrgId, activeProjectId),
+        ]
+      : [],
+  )
 
   const { tagsById, resolveLabels } = useTagsCatalog()
   const [search, setSearch] = useState('')
@@ -142,5 +165,6 @@ export function useChecklistLibraryContainer({
     onClearFilters: clearFilters,
     onOpenChecklist,
     onCreateChecklist,
+    onEndReached,
   }
 }
