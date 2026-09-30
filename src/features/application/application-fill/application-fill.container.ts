@@ -520,7 +520,10 @@ export function useApplicationFillContainer({
       completedAt: updatedAt,
       updatedAt,
     })
-    navigation.navigate('checklistDetail', { checklistId })
+    // popTo, not navigate/replace: checklistDetail is already below this
+    // screen in the stack (it is the only way in here), so concluir must pop
+    // back to it instead of stacking a second copy on top.
+    navigation.popTo('checklistDetail', { checklistId })
   }
 
   function handleDelete() {
@@ -530,7 +533,7 @@ export function useApplicationFillContainer({
   function confirmDelete() {
     enqueueOp(softDelete, { id: application.id, deletedAt: new Date().toISOString(), checklistId })
     setDeleteConfirmationVisible(false)
-    navigation.replace('checklistDetail', { checklistId })
+    navigation.popTo('checklistDetail', { checklistId })
   }
 
   const editingItem = editingItemId

@@ -7,6 +7,12 @@ import type { HistoryLayout } from '@/lib/preferences'
 type ApplicationGroupWithEntries = ApplicationGroup & {
   tagLabels: string[]
   entries: ApplicationRowEntry[]
+  /**
+   * Visits in the group before the server truncated the embedded ones
+   * (`applicationsPerGroup`), so the card's count can exceed the rows it
+   * lists.
+   */
+  applicationsCount: number
 }
 
 interface ApplicationGroupRowProps {
@@ -50,6 +56,7 @@ export const ApplicationGroupRow = memo(function ApplicationGroupRow({
         group.applications[0].status === 'completed' ? 'completed' : 'draft'
       }
       entries={group.entries}
+      visitsCount={group.applicationsCount}
       defaultExpanded={defaultExpanded}
       onOpenEntry={onOpenEntry}
       onRepeat={handleRepeat}

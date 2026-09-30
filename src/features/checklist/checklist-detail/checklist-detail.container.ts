@@ -1,4 +1,5 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ApplicationRowEntry } from '@/components/ApplicationRow'
 import {
@@ -9,7 +10,11 @@ import {
   batchTagEditSchema,
   type BatchTagEditFormValues,
 } from '@/features/application/shared/application.schema'
-import { useApplicationsListRestResult } from '@/features/application/shared/application.rest'
+import {
+  type ApplicationGroupSnapshot,
+  ensureApplicationRest,
+  useApplicationGroupsRestResult,
+} from '@/features/application/shared/application.rest'
 import type { Application } from '@/features/application/shared/application.types'
 import {
   buildRepeatedApplication,
@@ -17,6 +22,7 @@ import {
   groupApplicationsByTagSet,
   type HistorySortMode,
   sortGroupsByTagLabels,
+  tagsKey,
 } from '@/features/application/shared/application.utils'
 import {
   checklistSave,
@@ -28,9 +34,10 @@ import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
 import { useChecklistRestResult } from '@/features/checklist/shared/checklist.rest'
 import { normalizeApplication } from '@/lib/convex'
 import { useDraft } from '@/lib/forms'
-import { enqueueOp, useEntity, useEntityList } from '@/lib/offline-queue'
+import { enqueueOp, useEntity, useEntityList, useOutbox } from '@/lib/offline-queue'
 import { useHasHydratedPreferences, usePreferences } from '@/lib/preferences'
 import type { StackRoutesList } from '@/routes/types'
+import { useSessionStore } from '@/lib/session/session.store'
 import { formatBrDateShort } from '@/utils/date'
 import { api } from '../../../../convex/_generated/api'
 import { presentHistorySortPicker } from './history-sort-picker'
@@ -63,12 +70,43 @@ export function useChecklistDetailContainer({
     (application: Application) => application.checklistId === checklistId,
     [checklistId],
   )
-  const applicationsRest = useApplicationsListRestResult(checklistId)
+  /**
+   * The histórico reads groups, not a flat page: the server keys them on the
+   * tag set and embeds the last visits of each, so the screen no longer
+   * downloads every item and attachment row in the checklist just to label a
+   * card (see `APPLICATION_GROUPS_PARAMS`).
+   */
+  const applicationGroupsRest = useApplicationGroupsRestResult(checklistId)
+  const serverGroups = applicationGroupsRest?.data
+  /**
+   * The embedded applications, flattened, fed to `useEntityList` as this
+   * screen's server half. The groups are a read projection — the outbox tracks
+   * *applications* — so flattening is what keeps the overlay working on the
+   * only thing it can key on: an entity id. It patches a pending tag edit onto
+   * its row and injects a vistoria created offline, exactly as before.
+   */
+  const applicationsRest = applicationGroupsRest && {
+    data: applicationGroupsRest.data?.flatMap((group) => group.applications),
+    isFetchedAfterMount: applicationGroupsRest.isFetchedAfterMount,
+  }
   const applicationsData = useEntityList<Application>(
     api.applications.listByChecklistId,
     { checklistId },
     { kind: 'application', getId: getApplicationId, belongs: belongsToChecklist },
     applicationsRest,
+  )
+  /**
+   * Whether the server's own grouping can be trusted for this render. A
+   * pending write can move an application between groups (a batch tag edit), add
+   * one the server has never seen, or remove one — none of which the server's
+   * pre-grouped answer knows about until the queue drains and it re-groups. So
+   * with anything in the outbox the screen re-groups the overlaid flat list
+   * with `groupApplicationsByTagSet`, the same function it used before this
+   * endpoint existed: one grouping implementation, not a second one that has to
+   * agree with the server's key.
+   */
+  const hasPendingApplicationWrites = useOutbox((state) =>
+    state.items.some((item) => item.kind === 'application'),
   )
 
   const checklist = checklistData ?? null
@@ -82,27 +120,39 @@ export function useChecklistDetailContainer({
   const loading = checklistData === undefined || applicationsData === undefined
 
   const { resolveLabels, activeTags, tagsById, createTag } = useTagsCatalog()
+  const queryClient = useQueryClient()
+  const activeOrgId = useSessionStore((state) => state.activeOrgId)
+  const activeProjectId = useSessionStore((state) => state.activeProjectId)
   const historyLayout = usePreferences((state) => state.historyLayout)
   const toggleHistoryLayout = usePreferences((state) => state.toggleHistoryLayout)
   const preferencesReady = useHasHydratedPreferences()
   const submitted = useRef(false)
 
-  const allGroups = useMemo(
-    () =>
-      checklist
-        ? groupApplicationsByTagSet(applications).map((group) => ({
-            ...group,
-            tagLabels: resolveLabels(group.tagsIds),
-            entries: group.applications.map((application): ApplicationRowEntry => ({
-              id: application.id,
-              dateLabel: formatBrDateShort(application.date),
-              negativeCount: countNegativeAnswers(application, checklist),
-              status: application.status,
-            })),
+  const allGroups = useMemo(() => {
+    if (!checklist) return []
+    const base: ApplicationGroupSnapshot[] =
+      serverGroups && !hasPendingApplicationWrites
+        ? serverGroups
+        : groupApplicationsByTagSet(applications).map((group) => ({
+            tagsIds: group.tagsIds,
+            applicationsCount: group.applications.length,
+            applications: group.applications,
           }))
-        : [],
-    [applications, checklist, resolveLabels],
-  )
+    return base.map((group) => ({
+      ...group,
+      key: tagsKey(group.tagsIds),
+      tagLabels: resolveLabels(group.tagsIds),
+      entries: group.applications.map((application): ApplicationRowEntry => ({
+        id: application.id,
+        dateLabel: formatBrDateShort(application.date),
+        // The server's count when the payload carried one, counted from items
+        // otherwise — an application created offline has its items locally and
+        // no counts, and one read from the API has counts and no items.
+        negativeCount: application.negativeCount ?? countNegativeAnswers(application, checklist),
+        status: application.status,
+      })),
+    }))
+  }, [applications, checklist, hasPendingApplicationWrites, resolveLabels, serverGroups])
 
   const [historySearch, setHistorySearch] = useState('')
   const [historySortMode, setHistorySortMode] = useState<HistorySortMode>('numeric')
@@ -134,6 +184,14 @@ export function useChecklistDetailContainer({
     autoCommit: false,
   })
 
+  /**
+   * Summed from the groups, not `applications.length`: the flat list is the
+   * *embedded* visits, which the server truncates per group, while
+   * `applicationsCount` is the real total. `completedCount` has no such field
+   * to read and is counted from what came down — it can undercount a group past
+   * `applicationsPerGroup` visits.
+   */
+  const applicationsCount = allGroups.reduce((total, group) => total + group.applicationsCount, 0)
   const completedCount = applications.filter(
     (application) => application.status === 'completed',
   ).length
@@ -155,7 +213,10 @@ export function useChecklistDetailContainer({
       deletedAt: new Date().toISOString(),
     })
     setDeleteConfirmationVisible(false)
-    navigation.navigate('tabs', { screen: 'home' })
+    // popTo, not navigate: `tabs` is the stack's root route, and navigate only
+    // reuses a route when it is the *focused* one — from here it would push a
+    // second tabs screen on top of the checklist we just deleted.
+    navigation.popTo('tabs', { screen: 'home' })
   }
 
   const onEditTags = useCallback(
@@ -200,18 +261,51 @@ export function useChecklistDetailContainer({
     [checklistId, navigation],
   )
 
+  /**
+   * "Repetir" copies the previous visit's answers, and the histórico's read
+   * carries no items (`APPLICATION_GROUPS_PARAMS`) — so the group's latest
+   * application is a header, not a source, and the real one has to be resolved
+   * before it can be copied. From the cache when it is there, from the server
+   * otherwise; a pending application created offline already has its items and
+   * skips both.
+   */
+  const loadRepeatSource = useCallback(
+    async (latest: Application): Promise<Application> => {
+      if (latest.items.length > 0) return latest
+      if (!activeOrgId || !activeProjectId) return latest
+      try {
+        return await ensureApplicationRest(queryClient, activeOrgId, activeProjectId, latest.id)
+      } catch {
+        // Offline and never opened on this device. Copying nothing gives a new
+        // visit with the same tags and no carried-over answers, which is worse
+        // than the old behavior but better than refusing to start a vistoria
+        // the user asked for — the answers were never on the device to copy.
+        return latest
+      }
+    },
+    [activeOrgId, activeProjectId, queryClient],
+  )
+
   const onRepeat = useCallback(
-    (groupApplications: Application[]) => {
+    async (groupApplications: Application[]) => {
       if (!checklist || submitted.current || groupApplications.length === 0) return
       submitted.current = true
-      const newApplication = buildRepeatedApplication(groupApplications[0], checklist)
-      enqueueOp(createApplication, { entity: newApplication })
-      navigation.navigate('applicationFill', {
-        checklistId,
-        applicationId: newApplication.id,
-      })
+      try {
+        const source = await loadRepeatSource(groupApplications[0])
+        const newApplication = buildRepeatedApplication(source, checklist)
+        enqueueOp(createApplication, { entity: newApplication })
+        navigation.navigate('applicationFill', {
+          checklistId,
+          applicationId: newApplication.id,
+        })
+      } finally {
+        // Released, not left set: the fill screen pops *back* to this still
+        // mounted screen, so a guard that stays true would make "repetir" work
+        // once per visit to the checklist.
+        submitted.current = false
+      }
     },
-    [checklist, checklistId, navigation],
+    [checklist, checklistId, loadRepeatSource, navigation],
   )
 
   return {
@@ -225,10 +319,10 @@ export function useChecklistDetailContainer({
     checklist,
     checklistId,
     applications,
-    applicationsCount: applications.length,
+    applicationsCount,
     completedCount,
     groups,
-    hasApplications: applications.length > 0,
+    hasApplications: applicationsCount > 0,
     historySearch,
     onHistorySearchChange: setHistorySearch,
     historySortMode,

@@ -353,7 +353,14 @@ export interface ApplicationGroup {
   applications: Application[]
 }
 
-function tagsKey(tagsIds: string[]): string {
+/**
+ * The order-insensitive identity of a tag set — `[a, b]` and `[b, a]` key the
+ * same group. Exported because the histórico's groups now arrive from the
+ * server keyed on the same (sorted) tag set, and the screen still has to
+ * produce a list key for them: one implementation of the key, used on both the
+ * server-grouped and the locally-grouped path.
+ */
+export function tagsKey(tagsIds: string[]): string {
   return [...tagsIds].sort().join('|')
 }
 

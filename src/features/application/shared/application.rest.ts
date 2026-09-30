@@ -18,6 +18,8 @@ import {
   updateApplication,
   updateApplicationItem,
   updateAttachment,
+  getGetByOrgIdProjectsByProjectIdApplicationGroupsQueryKey as getApplicationGroupsQueryKey,
+  useGetByOrgIdProjectsByProjectIdApplicationGroups as useApplicationGroups,
   useGetApplication,
   useListApplications,
 } from '@/lib/api/endpoints/default/default'
@@ -56,6 +58,34 @@ export const APPLICATION_GET_PARAMS = { include: APPLICATION_INCLUDE }
  * built, so one page has to be the whole result.
  */
 export const APPLICATIONS_LIST_PARAMS = { pageSize: '100', include: APPLICATION_INCLUDE }
+
+/**
+ * The histórico's read: tag-set groups, already grouped/ordered by the server,
+ * with **no `include`** — the endpoint doesn't accept one, and that absence is
+ * the point. The flat `/applications` read this replaced had to carry
+ * `include=items,attachments` only so the screen could count negative answers
+ * itself; those counts are plain `Application` fields
+ * (`fromApplicationResponse` maps them), so a card now renders off a payload
+ * that holds no item or attachment rows at all.
+ *
+ * - `sort=recent` is the wire's canonical order (newest visit first inside a
+ *   group, groups by their newest visit). The sort *picker* stays client-side:
+ *   re-ordering a page of groups is instant and works offline, where sending
+ *   `sort`/`q` on the request would mean a round trip per keystroke and a
+ *   separate cache entry — and therefore a separate offline snapshot — per
+ *   filter combination.
+ * - `pageSize=100` — same reasoning as every other list here: pagination isn't
+ *   built, so one page has to be the whole result. It counts *groups*.
+ * - `applicationsPerGroup=50` is the endpoint's maximum. The card lists the
+ *   visits it is given and labels the total from `applicationsCount`, so a
+ *   group past 50 visits shows the right number and lists the latest 50.
+ */
+export const APPLICATION_GROUPS_PARAMS = {
+  groupBy: 'tagSet',
+  sort: 'recent',
+  pageSize: '100',
+  applicationsPerGroup: '50',
+} as const
 
 const UPLOAD_STATUSES: readonly UploadStatus[] = ['pending', 'uploaded', 'failed']
 
@@ -123,6 +153,16 @@ function fromApplicationResponse(raw: Record<string, unknown>): Application {
     updatedAt: raw.updatedAt as string,
     completedAt: (raw.completedAt as string | null | undefined) ?? null,
     deletedAt: null,
+    // First-class fields on the `Application` response schema, not something
+    // assembled here — and the only reason a list read can drop `include`:
+    // with no items on the wire there is nothing left to count locally. Left
+    // undefined when absent rather than defaulted to 0, so a reader can tell
+    // "the server says none" from "this payload never carried counts" (a
+    // locally created application) and fall back to counting items.
+    answeredCount: raw.answeredCount as number | undefined,
+    totalCount: raw.totalCount as number | undefined,
+    negativeCount: raw.negativeCount as number | undefined,
+    attachmentsCount: raw.attachmentsCount as number | undefined,
   }
 }
 
@@ -408,4 +448,95 @@ export function useApplicationsListRestResult(
     data: envelope.data.map(fromApplicationResponse),
     isFetchedAfterMount: query.isFetchedAfterMount,
   }
+}
+
+/**
+ * One tag-set group as the histórico reads it. `applications` are core
+ * `Application` objects — the endpoint embeds the same schema `/applications`
+ * returns, which is why `fromApplicationResponse` is reused verbatim and there
+ * is no second entry shape to keep in sync.
+ */
+export interface ApplicationGroupSnapshot {
+  /** Canonical (sorted) tag set. Empty = the untagged group. */
+  tagsIds: string[]
+  /** Visits in the group *before* `applicationsPerGroup` truncation. */
+  applicationsCount: number
+  /** Newest first; truncated to `applicationsPerGroup`. */
+  applications: Application[]
+}
+
+export function applicationGroupsQueryKey(
+  orgId: string,
+  projectId: string,
+  checklistId: string,
+) {
+  return getApplicationGroupsQueryKey(orgId, projectId, {
+    ...APPLICATION_GROUPS_PARAMS,
+    checklistId,
+  })
+}
+
+/**
+ * The `RestQueryResult` behind the histórico — server-grouped, so the screen
+ * gets its groups instead of deriving them from a flat page.
+ *
+ * Shaped as a `RestQueryResult` like every other read here even though groups
+ * aren't an entity the outbox tracks: the container still feeds the embedded
+ * applications through `useEntityList`, which is what keeps pending writes
+ * visible (see the container for how a pending write falls back to grouping
+ * locally).
+ */
+export function useApplicationGroupsRestResult(
+  checklistId: string,
+): RestQueryResult<ApplicationGroupSnapshot[]> | undefined {
+  const activeOrgId = useSessionStore((state) => state.activeOrgId)
+  const activeProjectId = useSessionStore((state) => state.activeProjectId)
+  const enabled = isRestEnabled('application') && Boolean(activeOrgId && activeProjectId && checklistId)
+  const query = useApplicationGroups(
+    activeOrgId ?? '',
+    activeProjectId ?? '',
+    { ...APPLICATION_GROUPS_PARAMS, checklistId },
+    { query: { enabled } },
+  )
+
+  if (!enabled) return undefined
+  if (query.data === undefined) {
+    return { data: undefined, isFetchedAfterMount: query.isFetchedAfterMount }
+  }
+  const envelope = query.data as unknown as {
+    data: { tagsIds: string[]; applicationsCount: number; applications: Record<string, unknown>[] }[]
+  }
+  return {
+    data: envelope.data.map((group) => ({
+      tagsIds: group.tagsIds,
+      applicationsCount: group.applicationsCount,
+      applications: group.applications.map(fromApplicationResponse),
+    })),
+    isFetchedAfterMount: query.isFetchedAfterMount,
+  }
+}
+
+/**
+ * One application *with its items*, from the cache when it is there and from
+ * the server otherwise — `ensureQueryData` writes into the very key
+ * `useApplicationRestResult` reads, so a fetch here also warms the fill
+ * screen.
+ *
+ * Exists because "repetir" copies the previous visit's answers, and the
+ * histórico's own read no longer carries items (see
+ * `APPLICATION_GROUPS_PARAMS`). Offline this resolves from the persisted cache
+ * when the application has been opened before, and rejects when it hasn't —
+ * the caller decides what a missing source means.
+ */
+export async function ensureApplicationRest(
+  queryClient: QueryClient,
+  orgId: string,
+  projectId: string,
+  applicationId: string,
+): Promise<Application> {
+  const response = await queryClient.ensureQueryData({
+    queryKey: applicationQueryKey(orgId, projectId, applicationId),
+    queryFn: () => getApplication(orgId, projectId, applicationId, APPLICATION_GET_PARAMS),
+  })
+  return fromApplicationResponse(asRecord(response))
 }

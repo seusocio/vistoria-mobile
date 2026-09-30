@@ -19,6 +19,7 @@ import type { ApplicationRowProps } from './types'
 export function DenseCard({
   tagLabels,
   entries,
+  visitsCount,
   onOpenEntry,
   onRepeat,
   onEditTags,
@@ -56,7 +57,7 @@ export function DenseCard({
           >
             <Icon name="repeat" size={15} color={colors.blue.base} />
           </Pressable>
-          <Collapsible.HeaderCount>{entries.length}</Collapsible.HeaderCount>
+          <Collapsible.HeaderCount>{visitsCount ?? entries.length}</Collapsible.HeaderCount>
         </Collapsible.Header>
 
         <Collapsible.Content>

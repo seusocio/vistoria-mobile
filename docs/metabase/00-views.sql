@@ -1,0 +1,142 @@
+-- =====================================================================
+-- Base de todos os dashboards. Rode este arquivo UMA VEZ no Postgres.
+-- Depois disso o Metabase enxerga 4 "tabelas" novas e todas as
+-- perguntas (inclusive as do construtor visual) saem delas.
+--
+-- Regras de negócio embutidas aqui (espelham o app):
+--   * "concluído"    = a resposta do item é uma opção de semantic 'positivo'
+--   * "não conforme" = a resposta é uma opção de semantic 'negativo'
+--   * "respondido"   = answer <> '' (inclui neutro/negativo)
+--   * grupo do item  = prefixo antes de ": " no título ("Cozinha: Pintura")
+--   * tag_set        = conjunto de tags ORDENADO — é o que liga duas
+--                      aplicações como "mesma coisa medida de novo"
+-- =====================================================================
+
+-- Idempotente: CREATE OR REPLACE VIEW falha com "cannot drop columns from view"
+-- quando a view já existe com outra lista de colunas. Derrubamos antes, na
+-- ordem inversa da dependência. CASCADE leva junto qualquer view derivada —
+-- se você já criou vw_applications_autor (card 2.0b), recrie-a depois daqui.
+DROP VIEW IF EXISTS vw_applications_autor CASCADE;
+DROP VIEW IF EXISTS vw_applications CASCADE;
+DROP VIEW IF EXISTS vw_application_items CASCADE;
+DROP VIEW IF EXISTS vw_application_tags CASCADE;
+DROP VIEW IF EXISTS vw_checklist_option_semantics CASCADE;
+
+-- 1) label da resposta -> semantic, por checklist -------------------------
+CREATE VIEW vw_checklist_option_semantics AS
+SELECT c.id            AS checklist_id,
+       opt->>'label'   AS label,
+       opt->>'semantic' AS semantic
+FROM checklists c,
+     LATERAL jsonb_array_elements(c.options) AS opt;
+
+-- 2) tags de cada aplicação (1 linha por tag) -----------------------------
+CREATE VIEW vw_application_tags AS
+SELECT a.id      AS application_id,
+       a.org_id,
+       tid       AS tag_id,
+       COALESCE(t.label, '(tag removida)') AS tag
+FROM applications a
+CROSS JOIN LATERAL unnest(a.tags_ids) AS tid
+LEFT JOIN tags t ON t.id = tid;
+
+-- 3) item de aplicação enriquecido ---------------------------------------
+CREATE VIEW vw_application_items AS
+SELECT
+  ai.id                       AS item_id,
+  ai.application_id,
+  a.org_id,
+  c.project_id,
+  a.checklist_id,
+  c.title                     AS checklist,
+  a.status                    AS status_aplicacao,
+  a.date                      AS data_aplicacao,
+  ai.position,
+  ai.title                    AS item_titulo,
+  NULLIF(split_part(ai.title, ': ', 1), ai.title) AS grupo,
+  ai.answer                   AS resposta,
+  os.semantic,
+  ai.answer <> ''                              AS respondido,
+  COALESCE(os.semantic = 'positivo', FALSE)    AS concluido,
+  COALESCE(os.semantic = 'negativo', FALSE)    AS nao_conforme,
+  COALESCE(os.semantic = 'neutro',   FALSE)    AS parcial,
+  ai.workflow_status,
+  ai.answered_at,
+  ai.note,
+  ai.note <> ''               AS tem_nota,
+  ai.quantity                 AS quantidade,
+  ai.suggested,
+  ai.suggestion_source,
+  ai.tags_ids                 AS item_tags_ids,
+  ai.created_at,
+  ai.updated_at,
+  (SELECT count(*) FROM attachments att WHERE att.application_item_id = ai.id) AS fotos
+FROM application_items ai
+JOIN applications a ON a.id = ai.application_id
+JOIN checklists   c ON c.id = a.checklist_id
+LEFT JOIN vw_checklist_option_semantics os
+       ON os.checklist_id = a.checklist_id
+      AND os.label        = ai.answer;
+
+-- 4) aplicação com progresso consolidado ---------------------------------
+CREATE VIEW vw_applications AS
+WITH agg AS (
+  SELECT application_id,
+         count(*)                                          AS total_itens,
+         count(*) FILTER (WHERE respondido)                AS itens_respondidos,
+         count(*) FILTER (WHERE concluido)                 AS itens_concluidos,
+         count(*) FILTER (WHERE nao_conforme)              AS itens_nao_conformes,
+         count(*) FILTER (WHERE parcial)                   AS itens_parciais,
+         count(*) FILTER (WHERE NOT respondido)            AS itens_pendentes,
+         count(*) FILTER (WHERE workflow_status IS NOT NULL
+                            AND NOT respondido)            AS itens_em_workflow,
+         count(*) FILTER (WHERE tem_nota)                  AS itens_com_nota,
+         COALESCE(sum(fotos), 0)                           AS fotos,
+         min(answered_at)                                  AS primeira_resposta,
+         max(answered_at)                                  AS ultima_resposta
+  FROM vw_application_items
+  GROUP BY 1
+)
+SELECT
+  a.id                AS application_id,
+  a.org_id,
+  c.project_id,
+  p.name              AS projeto,
+  a.checklist_id,
+  c.title             AS checklist,
+  a.status,
+  a.date              AS data,
+  a.created_at,
+  a.updated_at,
+  COALESCE(a.completed_at,
+           CASE WHEN a.status = 'completed' THEN a.updated_at END) AS concluida_em,
+  a.transcript IS NOT NULL                    AS usou_voz,
+  a.gallery_source_application_id IS NOT NULL AS repetida_de_outra,
+  a.tags_ids,
+  -- chave estável do conjunto de tags: é isto que agrupa "a mesma coisa"
+  array_to_string(ARRAY(SELECT unnest(a.tags_ids) ORDER BY 1), '|') AS tag_set_key,
+  COALESCE(
+    (SELECT string_agg(vt.tag, ' · ' ORDER BY vt.tag)
+     FROM vw_application_tags vt WHERE vt.application_id = a.id),
+    '(sem tag)')                              AS tag_set,
+  COALESCE(agg.total_itens, 0)        AS total_itens,
+  COALESCE(agg.itens_respondidos, 0)  AS itens_respondidos,
+  COALESCE(agg.itens_concluidos, 0)   AS itens_concluidos,
+  COALESCE(agg.itens_nao_conformes,0) AS itens_nao_conformes,
+  COALESCE(agg.itens_parciais, 0)     AS itens_parciais,
+  COALESCE(agg.itens_pendentes, 0)    AS itens_pendentes,
+  COALESCE(agg.itens_em_workflow, 0)  AS itens_em_workflow,
+  COALESCE(agg.itens_com_nota, 0)     AS itens_com_nota,
+  COALESCE(agg.fotos, 0)              AS fotos,
+  agg.primeira_resposta,
+  agg.ultima_resposta,
+  ROUND(100.0 * COALESCE(agg.itens_concluidos,0)
+        / NULLIF(agg.total_itens, 0), 1)      AS pct_concluido,
+  ROUND(100.0 * COALESCE(agg.itens_respondidos,0)
+        / NULLIF(agg.total_itens, 0), 1)      AS pct_respondido,
+  ROUND(EXTRACT(EPOCH FROM (agg.ultima_resposta - agg.primeira_resposta))/60.0, 1)
+                                              AS minutos_em_campo
+FROM applications a
+JOIN checklists c  ON c.id = a.checklist_id
+LEFT JOIN projects p ON p.id = c.project_id
+LEFT JOIN agg ON agg.application_id = a.id;

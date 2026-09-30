@@ -28,7 +28,10 @@
 		"migrate:rest:dry": "bun scripts/migrate-convex-to-rest.ts --dry-run",
 		"migrate:rest": "bun scripts/migrate-convex-to-rest.ts",
 		"migrate:assets:dry": "bun scripts/migrate-convex-attachments.ts --dry-run",
-		"migrate:assets": "bun scripts/migrate-convex-attachments.ts"
+		"migrate:assets": "bun scripts/migrate-convex-attachments.ts",
+		"vistoria:28set:complete": "bun scripts/vistoria-28set.ts complete-drafts",
+		"vistoria:28set:create": "bun scripts/vistoria-28set.ts create",
+		"vistoria:parede-lavanderia": "bun scripts/vistoria-parede-lavanderia.ts"
 	},
 	"dependencies": {
 		"@expo-google-fonts/lato": "^0.4.1",

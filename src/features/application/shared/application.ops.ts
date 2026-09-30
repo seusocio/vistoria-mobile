@@ -3,6 +3,7 @@ import type { Application, Attachment } from '@/features/application/shared/appl
 import {
   addAttachmentRest,
   addApplicationItemRest,
+  applicationGroupsQueryKey,
   applicationQueryKey,
   applicationsListAllQueryKey,
   applicationsListByChecklistQueryKey,
@@ -59,6 +60,7 @@ export const create = defineOp<{ entity: Application }, Application>('applicatio
     return [
       applicationsListAllQueryKey(orgId, projectId),
       applicationsListByChecklistQueryKey(orgId, projectId, args.entity.checklistId),
+      applicationGroupsQueryKey(orgId, projectId, args.entity.checklistId),
     ]
   },
 })
@@ -112,6 +114,7 @@ export const patchItem = defineOp<
       applicationQueryKey(orgId, projectId, args.applicationId),
       applicationsListAllQueryKey(orgId, projectId),
       applicationsListByChecklistQueryKey(orgId, projectId, args.checklistId),
+      applicationGroupsQueryKey(orgId, projectId, args.checklistId),
     ]
   },
 })
@@ -139,6 +142,7 @@ export const addItem = defineOp<
       applicationQueryKey(orgId, projectId, args.applicationId),
       applicationsListAllQueryKey(orgId, projectId),
       applicationsListByChecklistQueryKey(orgId, projectId, args.checklistId),
+      applicationGroupsQueryKey(orgId, projectId, args.checklistId),
     ]
   },
   applyLocal: (entity, args) => {
@@ -370,6 +374,7 @@ export const updateMeta = defineOp<
     return [
       applicationsListAllQueryKey(orgId, projectId),
       applicationsListByChecklistQueryKey(orgId, projectId, args.checklistId),
+      applicationGroupsQueryKey(orgId, projectId, args.checklistId),
     ]
   },
 })
@@ -394,6 +399,7 @@ export const softDelete = defineOp<
     return [
       applicationsListAllQueryKey(orgId, projectId),
       applicationsListByChecklistQueryKey(orgId, projectId, args.checklistId),
+      applicationGroupsQueryKey(orgId, projectId, args.checklistId),
     ]
   },
 })

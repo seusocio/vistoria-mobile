@@ -359,6 +359,28 @@ import type {
   GetApplication503Three,
   GetApplication503Two,
   GetApplicationParams,
+  GetByOrgIdProjectsByProjectIdApplicationGroups200One,
+  GetByOrgIdProjectsByProjectIdApplicationGroups200Three,
+  GetByOrgIdProjectsByProjectIdApplicationGroups200Two,
+  GetByOrgIdProjectsByProjectIdApplicationGroups400One,
+  GetByOrgIdProjectsByProjectIdApplicationGroups400Three,
+  GetByOrgIdProjectsByProjectIdApplicationGroups400Two,
+  GetByOrgIdProjectsByProjectIdApplicationGroups404One,
+  GetByOrgIdProjectsByProjectIdApplicationGroups404Three,
+  GetByOrgIdProjectsByProjectIdApplicationGroups404Two,
+  GetByOrgIdProjectsByProjectIdApplicationGroups409One,
+  GetByOrgIdProjectsByProjectIdApplicationGroups409Three,
+  GetByOrgIdProjectsByProjectIdApplicationGroups409Two,
+  GetByOrgIdProjectsByProjectIdApplicationGroups422One,
+  GetByOrgIdProjectsByProjectIdApplicationGroups422Three,
+  GetByOrgIdProjectsByProjectIdApplicationGroups422Two,
+  GetByOrgIdProjectsByProjectIdApplicationGroups500One,
+  GetByOrgIdProjectsByProjectIdApplicationGroups500Three,
+  GetByOrgIdProjectsByProjectIdApplicationGroups500Two,
+  GetByOrgIdProjectsByProjectIdApplicationGroups503One,
+  GetByOrgIdProjectsByProjectIdApplicationGroups503Three,
+  GetByOrgIdProjectsByProjectIdApplicationGroups503Two,
+  GetByOrgIdProjectsByProjectIdApplicationGroupsParams,
   GetChecklist200One,
   GetChecklist200Three,
   GetChecklist200Two,
@@ -3657,7 +3679,238 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateApplicationMutationOptions(options), queryClient);
     }
-    export type getApplicationResponse200ApplicationJson = {
+    export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse200ApplicationJson = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups200One
+  status: 200
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse200MultipartFormData = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups200Two
+  status: 200
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse200TextPlain = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups200Three
+  status: 200
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse400ApplicationJson = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups400One
+  status: 400
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse400MultipartFormData = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups400Two
+  status: 400
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse400TextPlain = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups400Three
+  status: 400
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse404ApplicationJson = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups404One
+  status: 404
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse404MultipartFormData = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups404Two
+  status: 404
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse404TextPlain = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups404Three
+  status: 404
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse409ApplicationJson = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups409One
+  status: 409
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse409MultipartFormData = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups409Two
+  status: 409
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse409TextPlain = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups409Three
+  status: 409
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse422ApplicationJson = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups422One
+  status: 422
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse422MultipartFormData = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups422Two
+  status: 422
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse422TextPlain = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups422Three
+  status: 422
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse500ApplicationJson = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups500One
+  status: 500
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse500MultipartFormData = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups500Two
+  status: 500
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse500TextPlain = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups500Three
+  status: 500
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse503ApplicationJson = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups503One
+  status: 503
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse503MultipartFormData = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups503Two
+  status: 503
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse503TextPlain = {
+  data: GetByOrgIdProjectsByProjectIdApplicationGroups503Three
+  status: 503
+}
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponseSuccess = (getByOrgIdProjectsByProjectIdApplicationGroupsResponse200ApplicationJson | getByOrgIdProjectsByProjectIdApplicationGroupsResponse200MultipartFormData | getByOrgIdProjectsByProjectIdApplicationGroupsResponse200TextPlain) & {
+  headers: Headers;
+};
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponseError = (getByOrgIdProjectsByProjectIdApplicationGroupsResponse400ApplicationJson | getByOrgIdProjectsByProjectIdApplicationGroupsResponse400MultipartFormData | getByOrgIdProjectsByProjectIdApplicationGroupsResponse400TextPlain | getByOrgIdProjectsByProjectIdApplicationGroupsResponse404ApplicationJson | getByOrgIdProjectsByProjectIdApplicationGroupsResponse404MultipartFormData | getByOrgIdProjectsByProjectIdApplicationGroupsResponse404TextPlain | getByOrgIdProjectsByProjectIdApplicationGroupsResponse409ApplicationJson | getByOrgIdProjectsByProjectIdApplicationGroupsResponse409MultipartFormData | getByOrgIdProjectsByProjectIdApplicationGroupsResponse409TextPlain | getByOrgIdProjectsByProjectIdApplicationGroupsResponse422ApplicationJson | getByOrgIdProjectsByProjectIdApplicationGroupsResponse422MultipartFormData | getByOrgIdProjectsByProjectIdApplicationGroupsResponse422TextPlain | getByOrgIdProjectsByProjectIdApplicationGroupsResponse500ApplicationJson | getByOrgIdProjectsByProjectIdApplicationGroupsResponse500MultipartFormData | getByOrgIdProjectsByProjectIdApplicationGroupsResponse500TextPlain | getByOrgIdProjectsByProjectIdApplicationGroupsResponse503ApplicationJson | getByOrgIdProjectsByProjectIdApplicationGroupsResponse503MultipartFormData | getByOrgIdProjectsByProjectIdApplicationGroupsResponse503TextPlain) & {
+  headers: Headers;
+};
+
+export type getByOrgIdProjectsByProjectIdApplicationGroupsResponse = (getByOrgIdProjectsByProjectIdApplicationGroupsResponseSuccess | getByOrgIdProjectsByProjectIdApplicationGroupsResponseError)
+
+export const getGetByOrgIdProjectsByProjectIdApplicationGroupsUrl = (orgId: string,
+    projectId: string,
+    params: GetByOrgIdProjectsByProjectIdApplicationGroupsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:3000'}/${orgId}/projects/${projectId}/application-groups?${stringifiedParams}` : `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:3000'}/${orgId}/projects/${projectId}/application-groups`
+}
+
+export const getByOrgIdProjectsByProjectIdApplicationGroups = async (orgId: string,
+    projectId: string,
+    params: GetByOrgIdProjectsByProjectIdApplicationGroupsParams, options?: Parameters<typeof f>[1]): Promise<getByOrgIdProjectsByProjectIdApplicationGroupsResponse> => {
+
+  return f<getByOrgIdProjectsByProjectIdApplicationGroupsResponse>(getGetByOrgIdProjectsByProjectIdApplicationGroupsUrl(orgId,projectId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetByOrgIdProjectsByProjectIdApplicationGroupsQueryKey = (orgId: string,
+    projectId: string,
+    params?: GetByOrgIdProjectsByProjectIdApplicationGroupsParams,) => {
+    return [
+    `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:3000'}/${orgId}/projects/${projectId}/application-groups`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetByOrgIdProjectsByProjectIdApplicationGroupsQueryOptions = <TData = Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError = GetByOrgIdProjectsByProjectIdApplicationGroups400One | GetByOrgIdProjectsByProjectIdApplicationGroups400Two | GetByOrgIdProjectsByProjectIdApplicationGroups400Three | GetByOrgIdProjectsByProjectIdApplicationGroups404One | GetByOrgIdProjectsByProjectIdApplicationGroups404Two | GetByOrgIdProjectsByProjectIdApplicationGroups404Three | GetByOrgIdProjectsByProjectIdApplicationGroups409One | GetByOrgIdProjectsByProjectIdApplicationGroups409Two | GetByOrgIdProjectsByProjectIdApplicationGroups409Three | GetByOrgIdProjectsByProjectIdApplicationGroups422One | GetByOrgIdProjectsByProjectIdApplicationGroups422Two | GetByOrgIdProjectsByProjectIdApplicationGroups422Three | GetByOrgIdProjectsByProjectIdApplicationGroups500One | GetByOrgIdProjectsByProjectIdApplicationGroups500Two | GetByOrgIdProjectsByProjectIdApplicationGroups500Three | GetByOrgIdProjectsByProjectIdApplicationGroups503One | GetByOrgIdProjectsByProjectIdApplicationGroups503Two | GetByOrgIdProjectsByProjectIdApplicationGroups503Three>(orgId: string,
+    projectId: string,
+    params: GetByOrgIdProjectsByProjectIdApplicationGroupsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError, TData>>, request?: SecondParameter<typeof f>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetByOrgIdProjectsByProjectIdApplicationGroupsQueryKey(orgId,projectId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>> = ({ signal }) => getByOrgIdProjectsByProjectIdApplicationGroups(orgId,projectId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgId !== null && orgId !== undefined && projectId !== null && projectId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetByOrgIdProjectsByProjectIdApplicationGroupsQueryResult = NonNullable<Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>>
+export type GetByOrgIdProjectsByProjectIdApplicationGroupsQueryError = GetByOrgIdProjectsByProjectIdApplicationGroups400One | GetByOrgIdProjectsByProjectIdApplicationGroups400Two | GetByOrgIdProjectsByProjectIdApplicationGroups400Three | GetByOrgIdProjectsByProjectIdApplicationGroups404One | GetByOrgIdProjectsByProjectIdApplicationGroups404Two | GetByOrgIdProjectsByProjectIdApplicationGroups404Three | GetByOrgIdProjectsByProjectIdApplicationGroups409One | GetByOrgIdProjectsByProjectIdApplicationGroups409Two | GetByOrgIdProjectsByProjectIdApplicationGroups409Three | GetByOrgIdProjectsByProjectIdApplicationGroups422One | GetByOrgIdProjectsByProjectIdApplicationGroups422Two | GetByOrgIdProjectsByProjectIdApplicationGroups422Three | GetByOrgIdProjectsByProjectIdApplicationGroups500One | GetByOrgIdProjectsByProjectIdApplicationGroups500Two | GetByOrgIdProjectsByProjectIdApplicationGroups500Three | GetByOrgIdProjectsByProjectIdApplicationGroups503One | GetByOrgIdProjectsByProjectIdApplicationGroups503Two | GetByOrgIdProjectsByProjectIdApplicationGroups503Three
+
+
+export function useGetByOrgIdProjectsByProjectIdApplicationGroups<TData = Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError = GetByOrgIdProjectsByProjectIdApplicationGroups400One | GetByOrgIdProjectsByProjectIdApplicationGroups400Two | GetByOrgIdProjectsByProjectIdApplicationGroups400Three | GetByOrgIdProjectsByProjectIdApplicationGroups404One | GetByOrgIdProjectsByProjectIdApplicationGroups404Two | GetByOrgIdProjectsByProjectIdApplicationGroups404Three | GetByOrgIdProjectsByProjectIdApplicationGroups409One | GetByOrgIdProjectsByProjectIdApplicationGroups409Two | GetByOrgIdProjectsByProjectIdApplicationGroups409Three | GetByOrgIdProjectsByProjectIdApplicationGroups422One | GetByOrgIdProjectsByProjectIdApplicationGroups422Two | GetByOrgIdProjectsByProjectIdApplicationGroups422Three | GetByOrgIdProjectsByProjectIdApplicationGroups500One | GetByOrgIdProjectsByProjectIdApplicationGroups500Two | GetByOrgIdProjectsByProjectIdApplicationGroups500Three | GetByOrgIdProjectsByProjectIdApplicationGroups503One | GetByOrgIdProjectsByProjectIdApplicationGroups503Two | GetByOrgIdProjectsByProjectIdApplicationGroups503Three>(
+ orgId: string,
+    projectId: string,
+    params: GetByOrgIdProjectsByProjectIdApplicationGroupsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>,
+          TError,
+          Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetByOrgIdProjectsByProjectIdApplicationGroups<TData = Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError = GetByOrgIdProjectsByProjectIdApplicationGroups400One | GetByOrgIdProjectsByProjectIdApplicationGroups400Two | GetByOrgIdProjectsByProjectIdApplicationGroups400Three | GetByOrgIdProjectsByProjectIdApplicationGroups404One | GetByOrgIdProjectsByProjectIdApplicationGroups404Two | GetByOrgIdProjectsByProjectIdApplicationGroups404Three | GetByOrgIdProjectsByProjectIdApplicationGroups409One | GetByOrgIdProjectsByProjectIdApplicationGroups409Two | GetByOrgIdProjectsByProjectIdApplicationGroups409Three | GetByOrgIdProjectsByProjectIdApplicationGroups422One | GetByOrgIdProjectsByProjectIdApplicationGroups422Two | GetByOrgIdProjectsByProjectIdApplicationGroups422Three | GetByOrgIdProjectsByProjectIdApplicationGroups500One | GetByOrgIdProjectsByProjectIdApplicationGroups500Two | GetByOrgIdProjectsByProjectIdApplicationGroups500Three | GetByOrgIdProjectsByProjectIdApplicationGroups503One | GetByOrgIdProjectsByProjectIdApplicationGroups503Two | GetByOrgIdProjectsByProjectIdApplicationGroups503Three>(
+ orgId: string,
+    projectId: string,
+    params: GetByOrgIdProjectsByProjectIdApplicationGroupsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>,
+          TError,
+          Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetByOrgIdProjectsByProjectIdApplicationGroups<TData = Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError = GetByOrgIdProjectsByProjectIdApplicationGroups400One | GetByOrgIdProjectsByProjectIdApplicationGroups400Two | GetByOrgIdProjectsByProjectIdApplicationGroups400Three | GetByOrgIdProjectsByProjectIdApplicationGroups404One | GetByOrgIdProjectsByProjectIdApplicationGroups404Two | GetByOrgIdProjectsByProjectIdApplicationGroups404Three | GetByOrgIdProjectsByProjectIdApplicationGroups409One | GetByOrgIdProjectsByProjectIdApplicationGroups409Two | GetByOrgIdProjectsByProjectIdApplicationGroups409Three | GetByOrgIdProjectsByProjectIdApplicationGroups422One | GetByOrgIdProjectsByProjectIdApplicationGroups422Two | GetByOrgIdProjectsByProjectIdApplicationGroups422Three | GetByOrgIdProjectsByProjectIdApplicationGroups500One | GetByOrgIdProjectsByProjectIdApplicationGroups500Two | GetByOrgIdProjectsByProjectIdApplicationGroups500Three | GetByOrgIdProjectsByProjectIdApplicationGroups503One | GetByOrgIdProjectsByProjectIdApplicationGroups503Two | GetByOrgIdProjectsByProjectIdApplicationGroups503Three>(
+ orgId: string,
+    projectId: string,
+    params: GetByOrgIdProjectsByProjectIdApplicationGroupsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError, TData>>, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetByOrgIdProjectsByProjectIdApplicationGroups<TData = Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError = GetByOrgIdProjectsByProjectIdApplicationGroups400One | GetByOrgIdProjectsByProjectIdApplicationGroups400Two | GetByOrgIdProjectsByProjectIdApplicationGroups400Three | GetByOrgIdProjectsByProjectIdApplicationGroups404One | GetByOrgIdProjectsByProjectIdApplicationGroups404Two | GetByOrgIdProjectsByProjectIdApplicationGroups404Three | GetByOrgIdProjectsByProjectIdApplicationGroups409One | GetByOrgIdProjectsByProjectIdApplicationGroups409Two | GetByOrgIdProjectsByProjectIdApplicationGroups409Three | GetByOrgIdProjectsByProjectIdApplicationGroups422One | GetByOrgIdProjectsByProjectIdApplicationGroups422Two | GetByOrgIdProjectsByProjectIdApplicationGroups422Three | GetByOrgIdProjectsByProjectIdApplicationGroups500One | GetByOrgIdProjectsByProjectIdApplicationGroups500Two | GetByOrgIdProjectsByProjectIdApplicationGroups500Three | GetByOrgIdProjectsByProjectIdApplicationGroups503One | GetByOrgIdProjectsByProjectIdApplicationGroups503Two | GetByOrgIdProjectsByProjectIdApplicationGroups503Three>(
+ orgId: string,
+    projectId: string,
+    params: GetByOrgIdProjectsByProjectIdApplicationGroupsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getByOrgIdProjectsByProjectIdApplicationGroups>>, TError, TData>>, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetByOrgIdProjectsByProjectIdApplicationGroupsQueryOptions(orgId,projectId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type getApplicationResponse200ApplicationJson = {
   data: GetApplication200One
   status: 200
 }

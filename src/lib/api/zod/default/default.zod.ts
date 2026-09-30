@@ -594,6 +594,116 @@ export const PostByOrgIdProjectsByProjectIdApplicationsResponse = zod.strictObje
 })
 })
 
+export const GetByOrgIdProjectsByProjectIdApplicationGroupsParams = zod.strictObject({
+  "orgId": zod.string(),
+  "projectId": zod.string()
+})
+
+export const GetByOrgIdProjectsByProjectIdApplicationGroupsQueryParams = zod.strictObject({
+  "page": zod.string().optional(),
+  "pageSize": zod.string().optional(),
+  "checklistId": zod.string(),
+  "groupBy": zod.literal("tagSet").optional(),
+  "sort": zod.union([zod.literal("recent"),zod.literal("alpha"),zod.literal("numeric")]).optional(),
+  "q": zod.string().optional(),
+  "applicationsPerGroup": zod.string().optional()
+})
+
+export const GetByOrgIdProjectsByProjectIdApplicationGroupsResponse = zod.strictObject({
+  "data": zod.array(zod.strictObject({
+  "tagsIds": zod.array(zod.string()),
+  "applicationsCount": zod.number(),
+  "applications": zod.array(zod.strictObject({
+  "id": zod.string(),
+  "checklistId": zod.string(),
+  "tagsIds": zod.array(zod.string()),
+  "date": zod.string(),
+  "status": zod.string(),
+  "transcript": zod.union([zod.string(),zod.null()]),
+  "gallerySourceApplicationId": zod.union([zod.string(),zod.null()]),
+  "metadata": zod.looseObject({
+
+}),
+  "answeredCount": zod.number(),
+  "totalCount": zod.number(),
+  "negativeCount": zod.number(),
+  "attachmentsCount": zod.number(),
+  "attachments": zod.array(zod.strictObject({
+  "id": zod.string(),
+  "applicationId": zod.string(),
+  "itemId": zod.union([zod.string(),zod.null()]),
+  "position": zod.number(),
+  "name": zod.string(),
+  "storageKey": zod.union([zod.string(),zod.null()]),
+  "uploadStatus": zod.string(),
+  "url": zod.union([zod.string(),zod.null()]),
+  "sizeBytes": zod.union([zod.number(),zod.null()]),
+  "checksum": zod.union([zod.string(),zod.null()]),
+  "mimeType": zod.union([zod.string(),zod.null()]),
+  "width": zod.union([zod.number(),zod.null()]),
+  "height": zod.union([zod.number(),zod.null()]),
+  "metadata": zod.looseObject({
+
+}),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "items": zod.array(zod.strictObject({
+  "id": zod.string(),
+  "position": zod.number(),
+  "checklistItemId": zod.union([zod.string(),zod.null()]),
+  "parentId": zod.union([zod.string(),zod.null()]),
+  "title": zod.string(),
+  "description": zod.string(),
+  "tagsIds": zod.array(zod.string()),
+  "answer": zod.string(),
+  "answeredAt": zod.union([zod.string(),zod.null()]),
+  "note": zod.string(),
+  "quantity": zod.union([zod.number(),zod.null()]),
+  "suggested": zod.boolean(),
+  "suggestionSource": zod.union([zod.string(),zod.null()]),
+  "workflowStatus": zod.union([zod.string(),zod.null()]),
+  "metadata": zod.looseObject({
+
+}),
+  "attachments": zod.array(zod.strictObject({
+  "id": zod.string(),
+  "applicationId": zod.string(),
+  "itemId": zod.union([zod.string(),zod.null()]),
+  "position": zod.number(),
+  "name": zod.string(),
+  "storageKey": zod.union([zod.string(),zod.null()]),
+  "uploadStatus": zod.string(),
+  "url": zod.union([zod.string(),zod.null()]),
+  "sizeBytes": zod.union([zod.number(),zod.null()]),
+  "checksum": zod.union([zod.string(),zod.null()]),
+  "mimeType": zod.union([zod.string(),zod.null()]),
+  "width": zod.union([zod.number(),zod.null()]),
+  "height": zod.union([zod.number(),zod.null()]),
+  "metadata": zod.looseObject({
+
+}),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "completedAt": zod.union([zod.string(),zod.null()])
+}))
+})),
+  "meta": zod.strictObject({
+  "pagination": zod.strictObject({
+  "page": zod.number(),
+  "pageSize": zod.number(),
+  "pageCount": zod.number(),
+  "total": zod.number()
+})
+})
+})
+
 export const GetByOrgIdProjectsByProjectIdApplicationsByIdParams = zod.strictObject({
   "orgId": zod.string(),
   "projectId": zod.string(),

@@ -167,6 +167,10 @@ export class Rest {
     }
   }
 
+  get<T>(path: string) {
+    return this.call<T>('GET', this.scoped(path))
+  }
+
   post<T>(path: string, body: unknown) {
     return this.call<T>('POST', this.scoped(path), body)
   }

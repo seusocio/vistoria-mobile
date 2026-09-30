@@ -1,0 +1,324 @@
+[
+  {
+    "id": "placar",
+    "arquivo": "01-placar.sql",
+    "titulo": "Placar da obra",
+    "secao": "Retrato",
+    "viz": "table",
+    "size": [
+      24,
+      3
+    ],
+    "pergunta": "Quanto está pronto, quanto falta, em que ritmo e quanto falta para fechar.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "data_a",
+      "data_b",
+      "locais",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "pizza",
+    "arquivo": "02-pizza.sql",
+    "titulo": "Quanto da obra está pronto",
+    "secao": "Retrato",
+    "viz": "pie",
+    "size": [
+      8,
+      6
+    ],
+    "pergunta": "A divisão do escopo em já pronto, feito no período e falta.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "data_a",
+      "data_b",
+      "locais",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "curva",
+    "arquivo": "03-curva.sql",
+    "titulo": "Curva de avanço",
+    "secao": "Retrato",
+    "viz": "line",
+    "size": [
+      16,
+      6
+    ],
+    "pergunta": "Em que data a obra andou, e quanto estava pronto em cada data.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "locais",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "pavimento",
+    "arquivo": "04-pavimento.sql",
+    "titulo": "Por pavimento",
+    "secao": "A geometria do prédio",
+    "viz": "row",
+    "size": [
+      12,
+      7
+    ],
+    "pergunta": "Em que pavimento a obra está adiantada e em qual está parada.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "data_a",
+      "data_b",
+      "locais",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "prumada",
+    "arquivo": "05-prumada.sql",
+    "titulo": "Por prumada",
+    "secao": "A geometria do prédio",
+    "viz": "row",
+    "size": [
+      12,
+      7
+    ],
+    "pergunta": "Alguma coluna vertical do prédio ficou para trás?",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "data_a",
+      "data_b",
+      "locais",
+      "pavimentos",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "mapa_predio",
+    "arquivo": "06-mapa_predio.sql",
+    "titulo": "Mapa do prédio",
+    "secao": "A geometria do prédio",
+    "viz": "heatmap",
+    "size": [
+      24,
+      8
+    ],
+    "pergunta": "O prédio inteiro numa grade: % concluído de cada apartamento.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "locais",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "servico",
+    "arquivo": "07-servico.sql",
+    "titulo": "Por serviço",
+    "secao": "O que falta",
+    "viz": "row",
+    "size": [
+      12,
+      7
+    ],
+    "pergunta": "Qual serviço está mais atrasado.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "data_a",
+      "data_b",
+      "locais",
+      "pavimentos",
+      "prumadas",
+      "tags"
+    ]
+  },
+  {
+    "id": "local",
+    "arquivo": "08-local.sql",
+    "titulo": "Por local",
+    "secao": "O que falta",
+    "viz": "row",
+    "size": [
+      12,
+      7
+    ],
+    "pergunta": "Qual cômodo concentra a pendência.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "data_a",
+      "data_b",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "item",
+    "arquivo": "09-item.sql",
+    "titulo": "Por item do checklist",
+    "secao": "O que falta",
+    "viz": "table",
+    "size": [
+      24,
+      8
+    ],
+    "pergunta": "Os 30 itens do checklist, um a um, com serviço e local separados.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "data_a",
+      "data_b",
+      "locais",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "mapa_servico_local",
+    "arquivo": "10-mapa_servico_local.sql",
+    "titulo": "Mapa serviço × local",
+    "secao": "O que falta",
+    "viz": "heatmap_falta",
+    "size": [
+      24,
+      8
+    ],
+    "pergunta": "Onde estão os buracos, cruzando serviço com cômodo — a célula é quanto falta.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "avanco_por_dia",
+    "arquivo": "11-avanco_por_dia.sql",
+    "titulo": "O que avançou em cada data",
+    "secao": "Quando",
+    "viz": "table",
+    "size": [
+      12,
+      7
+    ],
+    "pergunta": "Em 24/09 andou o quê, em quantos apartamentos, e quais.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "locais",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "paradas",
+    "arquivo": "12-paradas.sql",
+    "titulo": "Frentes paradas",
+    "secao": "Quando",
+    "viz": "table",
+    "size": [
+      12,
+      7
+    ],
+    "pergunta": "Que apartamentos não avançam há mais tempo, e quanto ainda devem.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "locais",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "onde_falta",
+    "arquivo": "13-onde_falta.sql",
+    "titulo": "Onde falta",
+    "secao": "Onde ir",
+    "viz": "table",
+    "size": [
+      12,
+      7
+    ],
+    "pergunta": "Para cada serviço e cômodo, em quais apartamentos ainda falta.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "locais",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "onde_foi_feito",
+    "arquivo": "14-onde_foi_feito.sql",
+    "titulo": "Onde foi feito",
+    "secao": "Onde ir",
+    "viz": "table",
+    "size": [
+      12,
+      7
+    ],
+    "pergunta": "O espelho do anterior — onde já está pronto, e desde quando.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "locais",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  },
+  {
+    "id": "lista",
+    "arquivo": "15-lista.sql",
+    "titulo": "Lista de pendências",
+    "secao": "Onde ir",
+    "viz": "table",
+    "size": [
+      24,
+      8
+    ],
+    "pergunta": "Uma linha por serviço pendente num lugar específico. É o que se leva a campo.",
+    "pivot": "",
+    "variaveis": [
+      "checklist_id",
+      "locais",
+      "pavimentos",
+      "prumadas",
+      "servicos",
+      "tags"
+    ]
+  }
+]

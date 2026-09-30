@@ -22,6 +22,7 @@ export function DetailedCard({
   latestStatusLabel,
   latestStatusTone,
   entries,
+  visitsCount,
   onOpenEntry,
   onRepeat,
   onEditTags,
@@ -34,7 +35,8 @@ export function DetailedCard({
   const previous = entries.slice(1).reverse()
   const highlightRepeat = latest ? latest.negativeCount > 0 : false
 
-  const visitsLabel = `${entries.length} ${entries.length === 1 ? 'vistoria' : 'vistorias'}`
+  const visits = visitsCount ?? entries.length
+  const visitsLabel = `${visits} ${visits === 1 ? 'vistoria' : 'vistorias'}`
   const tagsTitle =
     tagLabels.length > 0 ? tagLabels.join('  ·  ') : 'Sem tags associadas'
 

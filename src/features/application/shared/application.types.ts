@@ -67,4 +67,20 @@ export interface Application {
   updatedAt: string
   completedAt: string | null
   deletedAt: string | null
+  /**
+   * Counts the server derives from the items/attachments it holds, present
+   * only on an application that came back from the API. A locally built one
+   * (`buildApplication`, or one reconstructed by a pending `create` op) leaves
+   * them undefined, so every reader needs a fallback that counts `items`
+   * itself — `countNegativeAnswers` for the negative badge.
+   *
+   * They exist so a list screen can render a card without asking for
+   * `include=items,attachments`: the histórico's group read
+   * (`useApplicationGroupsRestResult`) has no `include` at all, which is the
+   * whole point of that endpoint, and these four are what survives it.
+   */
+  answeredCount?: number
+  totalCount?: number
+  negativeCount?: number
+  attachmentsCount?: number
 }
