@@ -7,6 +7,7 @@ import {
   ConfirmBottomSheet,
   FloatingAction,
   Form,
+  ListLoadingFooter,
   Screen,
 } from '@/components'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
@@ -58,8 +59,13 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
         ) : null
       }
       ListFooterComponent={
-        c.groups.length > 0 ? <View style={styles.listEndRule} /> : null
+        <>
+          {c.groups.length > 0 ? <View style={styles.listEndRule} /> : null}
+          <ListLoadingFooter loading={c.isLoadingMore} />
+        </>
       }
+      onEndReached={c.onEndReached}
+      onEndReachedThreshold={0.4}
       ListEmptyComponent={
         <View style={styles.emptyState}>
           <Text style={styles.emptyText}>

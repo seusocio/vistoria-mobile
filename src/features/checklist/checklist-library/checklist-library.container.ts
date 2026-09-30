@@ -73,14 +73,27 @@ export function useChecklistLibraryContainer({
 
   const activeOrgId = useSessionStore((state) => state.activeOrgId)
   const activeProjectId = useSessionStore((state) => state.activeProjectId)
-  const onEndReached = useRefreshOnEndReached(
+  /**
+   * Real pagination for the checklists, a refresh for the applications — they
+   * are two different reads with two different constraints.
+   *
+   * `useChecklistsListRestResult` pages, so reaching the end fetches the next
+   * page of checklists. The applications read cannot: it feeds
+   * `applicationStatsByChecklist`, an aggregate over *every* application in the
+   * project, and a paged source would make every card's "N vistorias" count
+   * whatever happened to be loaded. So that one keeps the invalidate-on-end
+   * behavior, which at least re-reads it.
+   */
+  const refreshApplications = useRefreshOnEndReached(
     activeOrgId && activeProjectId
-      ? [
-          checklistsListQueryKey(activeOrgId, activeProjectId),
-          applicationsListAllQueryKey(activeOrgId, activeProjectId),
-        ]
+      ? [applicationsListAllQueryKey(activeOrgId, activeProjectId)]
       : [],
   )
+  const fetchNextChecklists = checklistsRest?.fetchNextPage
+  const onEndReached = useCallback(() => {
+    fetchNextChecklists?.()
+    refreshApplications()
+  }, [fetchNextChecklists, refreshApplications])
 
   const { tagsById, resolveLabels } = useTagsCatalog()
   const [search, setSearch] = useState('')
@@ -166,5 +179,6 @@ export function useChecklistLibraryContainer({
     onOpenChecklist,
     onCreateChecklist,
     onEndReached,
+    isLoadingMore: checklistsRest?.isFetchingNextPage ?? false,
   }
 }

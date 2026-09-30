@@ -1,7 +1,7 @@
 import { LegendList, type LegendListRenderItemProps } from '@legendapp/list/react-native'
 import { useCallback } from 'react'
 import { View } from 'react-native'
-import { Screen, useFloatingTabBarClearance } from '@/components'
+import { ListLoadingFooter, Screen, useFloatingTabBarClearance } from '@/components'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { space } from '@/styles'
 import {
@@ -74,6 +74,7 @@ export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
               />
             }
             ItemSeparatorComponent={ChecklistSeparator}
+            ListFooterComponent={<ListLoadingFooter loading={c.isLoadingMore} />}
             onEndReached={c.onEndReached}
             onEndReachedThreshold={0.2}
             estimatedItemSize={140}
