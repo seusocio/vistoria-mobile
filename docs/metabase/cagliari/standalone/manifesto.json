@@ -181,9 +181,9 @@
     "viz": "table",
     "size": [
       24,
-      8
+      10
     ],
-    "pergunta": "Os 30 itens do checklist, um a um, com serviço e local separados.",
+    "pergunta": "Cada item com quantos foram feitos de quantos, em quais apartamentos, e o total de cada serviço.",
     "pivot": "",
     "variaveis": [
       "checklist_id",

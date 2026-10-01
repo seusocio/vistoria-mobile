@@ -118,12 +118,20 @@ export function useApplicationFillContainer({
    * patching items on an entity about to be soft-deleted is just a wasted
    * write. `pendingItemPatches` merges cumulatively per item (a second tap
    * on the same item combines with the first, matching what N sequential
-   * ops would have produced).
+   * ops would have produced). The voice transcript buffers the same way —
+   * see `pendingTranscript`.
    */
   const [pendingItemPatches, setPendingItemPatches] = useState<
     Record<string, { patch: ApplicationItemPatch; updatedAt: string }>
   >({})
   const [pendingNewItems, setPendingNewItems] = useState<ApplicationItem[]>([])
+  /**
+   * Transcription runs fully on-device, so the transcript is just a string
+   * by the time recording stops — it rides the same flush points as every
+   * other edit on this screen instead of costing its own request the
+   * moment the user lifts their finger.
+   */
+  const [pendingTranscript, setPendingTranscript] = useState<string | null>(null)
 
   const application = useMemo(() => {
     const base = normalizedApplication ?? EMPTY_APPLICATION
@@ -134,8 +142,11 @@ export function useApplicationFillContainer({
     if (pendingNewItems.length > 0) {
       next = { ...next, items: [...next.items, ...pendingNewItems] }
     }
+    if (pendingTranscript !== null) {
+      next = { ...next, transcript: pendingTranscript }
+    }
     return next
-  }, [normalizedApplication, pendingItemPatches, pendingNewItems])
+  }, [normalizedApplication, pendingItemPatches, pendingNewItems, pendingTranscript])
 
   const tagsCatalog = useTagsCatalog()
   const { removeAttachment: removeAttachmentPipeline } = useAttachPhotos()
@@ -442,12 +453,7 @@ export function useApplicationFillContainer({
       const uri = await stopRecording()
       if (!uri) throw new Error('Gravação vazia')
       const transcript = await transcribeAudio(uri)
-      enqueueOp(updateMeta, {
-        applicationId: application.id,
-        checklistId,
-        transcript,
-        updatedAt: new Date().toISOString(),
-      })
+      setPendingTranscript(transcript)
       setVoiceState('ready')
     } catch (error) {
       setApplicationError(
@@ -495,10 +501,25 @@ export function useApplicationFillContainer({
       for (const item of pendingNewItems) {
         enqueueOp(addItem, { applicationId, checklistId, item, updatedAt: item.updatedAt })
       }
+      if (pendingTranscript !== null) {
+        enqueueOp(updateMeta, {
+          applicationId,
+          checklistId,
+          transcript: pendingTranscript,
+          updatedAt: new Date().toISOString(),
+        })
+      }
     }
     setPendingItemPatches({})
     setPendingNewItems([])
-  }, [normalizedApplication?.id, checklistId, pendingItemPatches, pendingNewItems])
+    setPendingTranscript(null)
+  }, [
+    normalizedApplication?.id,
+    checklistId,
+    pendingItemPatches,
+    pendingNewItems,
+    pendingTranscript,
+  ])
 
   function handleBack() {
     flushPendingChanges()

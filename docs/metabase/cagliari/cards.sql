@@ -226,26 +226,98 @@ ORDER BY "3 · falta" DESC, local;
 -- titulo: Por item do checklist
 -- secao: O que falta
 -- viz: table
--- size: 24x8
--- pergunta: Os 30 itens do checklist, um a um, com serviço e local separados.
+-- size: 24x10
+-- pergunta: Cada item com quantos foram feitos de quantos, em quais apartamentos, e o total de cada serviço.
 -- filtros: padrao
-SELECT item,
-       servico,
-       local,
-       count(*)                                                     AS previsto,
-       count(*) FILTER (WHERE concluido_em < {{data_a}})            AS ja_estava_pronto,
-       count(*) FILTER (WHERE concluido_em >= {{data_a}}
-                          AND concluido_em <= {{data_b}})           AS feito_no_periodo,
-       count(*) FILTER (WHERE concluido_em IS NULL
-                          OR concluido_em > {{data_b}})             AS falta,
-       ROUND(100.0 * count(*) FILTER (WHERE concluido_em IS NOT NULL)
-             / count(*), 1)                                         AS pct_concluido,
-       MAX(concluido_em)                                            AS ultimo_avanco
-FROM cag_item
-WHERE 1 = 1
+--   Uma linha por item (`Base shaft: Cozinha`) e, ao fim de cada serviço,
+--   uma linha de TOTAL somando seus locais. Sai de um `GROUPING SETS`:
+--   dois níveis de agregação numa passada só, em vez de dois cards.
+--   `GROUPING(item) = 1` marca a linha de total.
+--
+--   ATENÇÃO ao significado de `feitos_onde` nas duas linhas — são
+--   perguntas diferentes, e misturá-las faria a coluna mentir:
+--     linha de ITEM  -> apartamentos onde AQUELE item está pronto
+--     linha de TOTAL -> apartamentos onde o serviço INTEIRO está pronto,
+--                       isto é, nenhum dos seus locais pendente
+--   Sem essa distinção, um apartamento com a cozinha pronta e o WC
+--   pendente apareceria como "feito" no total de Base shaft.
+WITH base AS (
+  SELECT * FROM cag_item
+  WHERE 1 = 1
   /*@filtros*/
-GROUP BY item, servico, local
-ORDER BY falta DESC, servico, local;
+),
+-- pendência de cada serviço, só para ordenar os blocos: o serviço mais
+-- atrasado primeiro, e não em ordem alfabética
+ordem AS (
+  SELECT servico, count(*) FILTER (WHERE concluido_em IS NULL) AS falta_do_servico
+  FROM base GROUP BY servico
+),
+-- os apartamentos de cada ITEM, nomeados e em ordem natural
+onde_item AS (
+  SELECT servico, item,
+         string_agg(apartamento, ', ' ORDER BY ord NULLS LAST, apartamento)
+           FILTER (WHERE feito)                                   AS feitos_onde,
+         string_agg(apartamento, ', ' ORDER BY ord NULLS LAST, apartamento)
+           FILTER (WHERE NOT feito)                               AS restantes_onde
+  FROM (
+    SELECT DISTINCT servico, item, apartamento,
+           concluido_em IS NOT NULL                               AS feito,
+           NULLIF(regexp_replace(apartamento, '\D', '', 'g'), '')::int AS ord
+    FROM base WHERE apartamento IS NOT NULL
+  ) d
+  GROUP BY servico, item
+),
+-- os apartamentos de cada SERVIÇO: completo = zero itens pendentes nele
+onde_servico AS (
+  SELECT servico,
+         string_agg(apartamento, ', ' ORDER BY ord NULLS LAST, apartamento)
+           FILTER (WHERE pendentes = 0)                           AS feitos_onde,
+         string_agg(apartamento, ', ' ORDER BY ord NULLS LAST, apartamento)
+           FILTER (WHERE pendentes > 0)                           AS restantes_onde
+  FROM (
+    SELECT servico, apartamento,
+           count(*) FILTER (WHERE concluido_em IS NULL)           AS pendentes,
+           MIN(NULLIF(regexp_replace(apartamento, '\D', '', 'g'), '')::int) AS ord
+    FROM base WHERE apartamento IS NOT NULL
+    GROUP BY servico, apartamento
+  ) d
+  GROUP BY servico
+)
+SELECT
+  CASE WHEN GROUPING(b.item) = 1
+       THEN '▸ ' || b.servico || ' — TOTAL'
+       ELSE b.item END                                                  AS item,
+  count(*) FILTER (WHERE b.concluido_em IS NOT NULL)
+    || CASE WHEN count(*) FILTER (WHERE b.concluido_em IS NOT NULL) = 1
+            THEN ' feito de ' ELSE ' feitos de ' END
+    || count(*)                                                         AS resumo,
+  count(*) FILTER (WHERE b.concluido_em IS NULL)                        AS restantes,
+  -- uma casa decimal, e não inteiro: com inteiro, 239 de 240 arredonda
+  -- para "100%" e some o item que falta. 99,6% não deixa margem.
+  ROUND(100.0 * count(*) FILTER (WHERE b.concluido_em IS NOT NULL)
+        / count(*), 1)                                                  AS "%",
+  CASE WHEN GROUPING(b.item) = 1
+       THEN MAX(os.feitos_onde) ELSE MAX(oi.feitos_onde) END            AS feitos_onde,
+  CASE WHEN GROUPING(b.item) = 1
+       THEN MAX(os.restantes_onde) ELSE MAX(oi.restantes_onde) END      AS restantes_onde,
+  count(*) FILTER (WHERE b.concluido_em >= {{data_a}}
+                     AND b.concluido_em <= {{data_b}})                  AS feito_no_periodo
+FROM base b
+JOIN ordem o        ON o.servico  = b.servico
+LEFT JOIN onde_item oi ON oi.servico = b.servico AND oi.item = b.item
+LEFT JOIN onde_servico os ON os.servico = b.servico
+GROUP BY GROUPING SETS (
+  (o.falta_do_servico, b.servico, b.item),   -- uma linha por item
+  (o.falta_do_servico, b.servico)            -- o total do serviço
+)
+-- Serviço de um item só (Lixa parede, Gás, Parede Lavanderia) não ganha
+-- linha de total: ela repetiria a linha de detalhe palavra por palavra.
+HAVING GROUPING(b.item) = 0 OR count(DISTINCT b.item) > 1
+ORDER BY o.falta_do_servico DESC,
+         b.servico,
+         GROUPING(b.item),                    -- o total vai por último no bloco
+         restantes DESC,
+         b.item;
 
 -- @card mapa_servico_local
 -- titulo: Mapa serviço × local
