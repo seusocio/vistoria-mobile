@@ -50,7 +50,7 @@ const client = ky.create({
     beforeRequest: [
       ({ request }) => {
         const { token } = useSessionStore.getState()
-        if (token) request.headers.set('Cookie', `__Secure-better-auth.session_token=${token}`)
+        if (token) request.headers.set('Authorization', `Bearer ${token}`)
         // Every generated write (`createChecklist`, `updateChecklist`, ...)
         // hands `f` an already-`JSON.stringify`'d string as `body`, not ky's
         // own `json` option — so `Request` defaults it to
