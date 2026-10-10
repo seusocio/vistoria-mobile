@@ -380,9 +380,6 @@ export const GetByOrgIdProjectsByProjectIdApplicationsResponse = zod.strictObjec
   "metadata": zod.looseObject({
 
 }),
-  "answeredCount": zod.number(),
-  "totalCount": zod.number(),
-  "negativeCount": zod.number(),
   "attachmentsCount": zod.number(),
   "attachments": zod.array(zod.strictObject({
   "id": zod.string(),
@@ -520,9 +517,6 @@ export const PostByOrgIdProjectsByProjectIdApplicationsResponse = zod.strictObje
   "metadata": zod.looseObject({
 
 }),
-  "answeredCount": zod.number(),
-  "totalCount": zod.number(),
-  "negativeCount": zod.number(),
   "attachmentsCount": zod.number(),
   "attachments": zod.array(zod.strictObject({
   "id": zod.string(),
@@ -624,9 +618,6 @@ export const GetByOrgIdProjectsByProjectIdApplicationGroupsResponse = zod.strict
   "metadata": zod.looseObject({
 
 }),
-  "answeredCount": zod.number(),
-  "totalCount": zod.number(),
-  "negativeCount": zod.number(),
   "attachmentsCount": zod.number(),
   "attachments": zod.array(zod.strictObject({
   "id": zod.string(),
@@ -726,9 +717,6 @@ export const GetByOrgIdProjectsByProjectIdApplicationsByIdResponse = zod.strictO
   "metadata": zod.looseObject({
 
 }),
-  "answeredCount": zod.number(),
-  "totalCount": zod.number(),
-  "negativeCount": zod.number(),
   "attachmentsCount": zod.number(),
   "attachments": zod.array(zod.strictObject({
   "id": zod.string(),
@@ -830,9 +818,6 @@ export const PatchByOrgIdProjectsByProjectIdApplicationsByIdResponse = zod.stric
   "metadata": zod.looseObject({
 
 }),
-  "answeredCount": zod.number(),
-  "totalCount": zod.number(),
-  "negativeCount": zod.number(),
   "attachmentsCount": zod.number(),
   "attachments": zod.array(zod.strictObject({
   "id": zod.string(),

@@ -18,9 +18,6 @@ export type UpdateApplication200ThreeData = {
   transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: UpdateApplication200ThreeDataMetadata;
-  answeredCount: number;
-  totalCount: number;
-  negativeCount: number;
   attachmentsCount: number;
   attachments: UpdateApplication200ThreeDataAttachmentsItem[];
   items: UpdateApplication200ThreeDataItemsItem[];

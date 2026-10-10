@@ -163,15 +163,6 @@ function fromApplicationResponse(raw: Record<string, unknown>): Application {
     updatedAt: raw.updatedAt as string,
     completedAt: (raw.completedAt as string | null | undefined) ?? null,
     deletedAt: null,
-    // First-class fields on the `Application` response schema, not something
-    // assembled here — and the only reason a list read can drop `include`:
-    // with no items on the wire there is nothing left to count locally. Left
-    // undefined when absent rather than defaulted to 0, so a reader can tell
-    // "the server says none" from "this payload never carried counts" (a
-    // locally created application) and fall back to counting items.
-    answeredCount: raw.answeredCount as number | undefined,
-    totalCount: raw.totalCount as number | undefined,
-    negativeCount: raw.negativeCount as number | undefined,
     attachmentsCount: raw.attachmentsCount as number | undefined,
   }
 }

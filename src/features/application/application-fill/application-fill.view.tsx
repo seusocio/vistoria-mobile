@@ -114,10 +114,10 @@ export function ApplicationFillView(props: UseApplicationFillContainerProps) {
 
       <View style={styles.progressCol}>
         <Text style={styles.progressText}>
-          {c.progress.answered}/{c.progress.total} respondidos · {DERIVED_STATE_LABEL[c.derivedState]}
+          {c.progress.done}/{c.progress.total} concluídos · {DERIVED_STATE_LABEL[c.derivedState]}
         </Text>
         {c.applicationError ? <Text style={styles.modalError}>{c.applicationError}</Text> : null}
-        <ProgressBar progress={c.progress.total > 0 ? c.progress.answered / c.progress.total : 0} />
+        <ProgressBar progress={c.progress.total > 0 ? c.progress.done / c.progress.total : 0} />
       </View>
 
       <View style={styles.gallerySection}>

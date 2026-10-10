@@ -192,10 +192,7 @@ export function useChecklistDetailContainer({
       entries: group.applications.map((application): ApplicationRowEntry => ({
         id: application.id,
         dateLabel: formatBrDateShort(application.date),
-        // The server's count when the payload carried one, counted from items
-        // otherwise — an application created offline has its items locally and
-        // no counts, and one read from the API has counts and no items.
-        negativeCount: application.negativeCount ?? countNegativeAnswers(application, checklist),
+        negativeCount: countNegativeAnswers(application, checklist),
         status: application.status,
       })),
     }))

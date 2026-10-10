@@ -18,9 +18,6 @@ export type CreateApplication200ThreeData = {
   transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: CreateApplication200ThreeDataMetadata;
-  answeredCount: number;
-  totalCount: number;
-  negativeCount: number;
   attachmentsCount: number;
   attachments: CreateApplication200ThreeDataAttachmentsItem[];
   items: CreateApplication200ThreeDataItemsItem[];

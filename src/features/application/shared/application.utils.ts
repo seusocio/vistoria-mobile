@@ -232,13 +232,27 @@ export function sortItemsByChecklistOrder(
     .map(({ item }) => item)
 }
 
-export function getProgress(application: Application): {
+/**
+ * `done` is the progress: items declared "sim" (a positive answer). Empty,
+ * "não" and não-conforme items are all still pending. `answered` is any answer
+ * at all and only tells a draft that was never touched from one in execution.
+ * Both are independent of `application.status`, which only says whether the
+ * review is finished.
+ */
+export function getProgress(
+  application: Application,
+  checklist: Checklist,
+): {
+  done: number
   answered: number
   total: number
 } {
   const total = application.items.length
   const answered = application.items.filter((item) => item.answer).length
-  return { answered, total }
+  const done = application.items.filter((item) =>
+    isItemAnswerComplete(item, checklist),
+  ).length
+  return { done, answered, total }
 }
 
 export type ApplicationDerivedState =
@@ -248,9 +262,10 @@ export type ApplicationDerivedState =
 
 export function getDerivedState(
   application: Application,
+  checklist: Checklist,
 ): ApplicationDerivedState {
   if (application.status === 'completed') return 'completed'
-  const { answered } = getProgress(application)
+  const { answered } = getProgress(application, checklist)
   return answered === 0 ? 'not_started' : 'in_progress'
 }
 

@@ -18,9 +18,6 @@ export type GetByOrgIdProjectsByProjectIdApplicationGroups200TwoDataItemApplicat
   transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: GetByOrgIdProjectsByProjectIdApplicationGroups200TwoDataItemApplicationsItemMetadata;
-  answeredCount: number;
-  totalCount: number;
-  negativeCount: number;
   attachmentsCount: number;
   attachments: GetByOrgIdProjectsByProjectIdApplicationGroups200TwoDataItemApplicationsItemAttachmentsItem[];
   items: GetByOrgIdProjectsByProjectIdApplicationGroups200TwoDataItemApplicationsItemItemsItem[];

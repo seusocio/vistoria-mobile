@@ -18,9 +18,6 @@ export type GetApplication200TwoData = {
   transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: GetApplication200TwoDataMetadata;
-  answeredCount: number;
-  totalCount: number;
-  negativeCount: number;
   attachmentsCount: number;
   attachments: GetApplication200TwoDataAttachmentsItem[];
   items: GetApplication200TwoDataItemsItem[];

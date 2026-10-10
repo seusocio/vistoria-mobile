@@ -18,9 +18,6 @@ export type ApplicationGroupApplicationsItem = {
   transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: ApplicationGroupApplicationsItemMetadata;
-  answeredCount: number;
-  totalCount: number;
-  negativeCount: number;
   attachmentsCount: number;
   attachments: ApplicationGroupApplicationsItemAttachmentsItem[];
   items: ApplicationGroupApplicationsItemItemsItem[];

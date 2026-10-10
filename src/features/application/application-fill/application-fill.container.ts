@@ -175,7 +175,7 @@ export function useApplicationFillContainer({
     if (FEATURE_FLAG.voice) void prepareTranscriber()
   }, [])
 
-  const progress = useMemo(() => getProgress(application), [application])
+  const progress = useMemo(() => getProgress(application, checklist), [application, checklist])
   // One sort and one completeness pass feed both lists below, instead of each
   // re-sorting every item and re-deriving completeness on every answer tap.
   const sortedItems = useMemo(
@@ -207,7 +207,7 @@ export function useApplicationFillContainer({
       }),
     [sortedItems, completedIds],
   )
-  const derivedState = getDerivedState(application)
+  const derivedState = getDerivedState(application, checklist)
 
   const editItem = useCallback((itemId: string, patch: ApplicationItemPatch) => {
     const updatedAt = new Date().toISOString()

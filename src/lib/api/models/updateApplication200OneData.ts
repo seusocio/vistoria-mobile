@@ -18,9 +18,6 @@ export type UpdateApplication200OneData = {
   transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: UpdateApplication200OneDataMetadata;
-  answeredCount: number;
-  totalCount: number;
-  negativeCount: number;
   attachmentsCount: number;
   attachments: UpdateApplication200OneDataAttachmentsItem[];
   items: UpdateApplication200OneDataItemsItem[];

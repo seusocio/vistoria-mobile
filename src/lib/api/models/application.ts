@@ -18,9 +18,6 @@ export interface Application {
   transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: ApplicationMetadata;
-  answeredCount: number;
-  totalCount: number;
-  negativeCount: number;
   attachmentsCount: number;
   attachments: ApplicationAttachmentsItem[];
   items: ApplicationItemsItem[];
