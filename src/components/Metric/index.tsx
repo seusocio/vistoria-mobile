@@ -26,4 +26,5 @@ export function Metric({ label, value, detail, valueColor }: MetricProps) {
 export const metricValueColors = {
   blue: colors.blue.base,
   green: colors.success.base,
+  red: colors.danger.base,
 }

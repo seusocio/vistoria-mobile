@@ -1,4 +1,6 @@
+import { isItemAnswerComplete } from '@/features/application/shared/application.utils'
 import { Application } from '@/features/application/shared/application.types'
+import type { Checklist } from '@/features/checklist/shared/checklist.types'
 
 export interface ReportPendingItem {
   applicationId: string
@@ -12,8 +14,8 @@ export interface ReportPendingGroup {
 }
 
 export interface ReportResult {
-  itemProgress: { answered: number; total: number }
-  applicationProgress: { completed: number; total: number }
+  /** `done` = items declared "sim"; `negative` = não conformes. Not status-based. */
+  itemProgress: { done: number; negative: number; total: number }
   pendingGroups: ReportPendingGroup[]
 }
 
@@ -45,6 +47,7 @@ function applicationInRange(
 
 export function queryApplicationsByTags(
   applications: Application[],
+  checklistsById: Map<string, Checklist>,
   tagIds: string[],
   dateRange: DateRange | null = null,
 ): ReportResult {
@@ -52,9 +55,9 @@ export function queryApplicationsByTags(
     .filter((application) => applicationMatchesTags(application, tagIds))
     .filter((application) => applicationInRange(application, dateRange))
 
-  let answered = 0
+  let done = 0
+  let negative = 0
   let total = 0
-  let completed = 0
   const pendingGroups: ReportPendingGroup[] = []
 
   for (const application of matching) {
@@ -71,10 +74,21 @@ export function queryApplicationsByTags(
           )
 
     total += scopedItems.length
-    answered += scopedItems.filter((item) => item.answer).length
-    if (application.status === 'completed') completed += 1
+    const checklist = checklistsById.get(application.checklistId)
+    // Without its checklist an answer can't be classified, so nothing is done.
+    const negativeLabels = new Set(
+      checklist?.options
+        .filter((option) => option.semantic === 'negativo')
+        .map((option) => option.label) ?? [],
+    )
+    const unanswered = scopedItems.filter(
+      (item) => !checklist || !isItemAnswerComplete(item, checklist),
+    )
+    done += scopedItems.length - unanswered.length
+    negative += scopedItems.filter(
+      (item) => item.answer && negativeLabels.has(item.answer),
+    ).length
 
-    const unanswered = scopedItems.filter((item) => !item.answer)
     if (unanswered.length > 0) {
       pendingGroups.push({
         application,
@@ -88,8 +102,7 @@ export function queryApplicationsByTags(
   }
 
   return {
-    itemProgress: { answered, total },
-    applicationProgress: { completed, total: matching.length },
+    itemProgress: { done, negative, total },
     pendingGroups,
   }
 }

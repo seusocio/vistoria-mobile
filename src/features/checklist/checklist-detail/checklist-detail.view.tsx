@@ -50,7 +50,6 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
             checklist={c.checklist}
             tagLabels={c.resolveLabels(c.checklist.tagsIds)}
             applicationsCount={c.applicationsCount}
-            completedCount={c.completedCount}
             historySearch={c.historySearch}
             onHistorySearchChange={c.onHistorySearchChange}
             historyHasFilter={c.historyHasFilter}

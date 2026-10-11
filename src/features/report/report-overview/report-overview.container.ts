@@ -4,6 +4,10 @@ import {
   useApplicationsListRestResult,
 } from '@/features/application/shared/application.rest'
 import type { Application } from '@/features/application/shared/application.types'
+import type { Checklist } from '@/features/checklist/shared/checklist.types'
+import {
+  useChecklistsListRestResult,
+} from '@/features/checklist/shared/checklist.rest'
 import {
   queryApplicationsByTags,
   type DateRange,
@@ -34,6 +38,7 @@ export interface PendingListData {
 }
 
 const getApplicationId = (application: Application) => application.id
+const getChecklistId = (checklist: Checklist) => checklist.id
 
 export function useReportOverviewContainer() {
   const [tagsIds, setTagsIds] = useState<string[]>([])
@@ -75,23 +80,29 @@ export function useReportOverviewContainer() {
         .map(normalizeApplication),
     [applicationsData],
   )
-  const loading = applicationsData === undefined
+  const checklistsRest = useChecklistsListRestResult()
+  const checklistsData = useEntityList<Checklist>(
+    api.checklists.list,
+    {},
+    { kind: 'checklist', getId: getChecklistId },
+    checklistsRest,
+  )
+  const checklistsById = useMemo(
+    () => new Map((checklistsData ?? []).map((checklist) => [checklist.id, checklist])),
+    [checklistsData],
+  )
+  const loading = applicationsData === undefined || checklistsData === undefined
 
   const result = useMemo(() => {
     if (tagsIds.length === 0) return null
-    return queryApplicationsByTags(applications, tagsIds, dateRange)
-  }, [applications, tagsIds, dateRange])
+    return queryApplicationsByTags(applications, checklistsById, tagsIds, dateRange)
+  }, [applications, checklistsById, tagsIds, dateRange])
 
   const itemPercent =
     result && result.itemProgress.total > 0
-      ? Math.round((result.itemProgress.answered / result.itemProgress.total) * 100)
+      ? Math.round((result.itemProgress.done / result.itemProgress.total) * 100)
       : 0
-  const appPercent =
-    result && result.applicationProgress.total > 0
-      ? Math.round(
-          (result.applicationProgress.completed / result.applicationProgress.total) * 100,
-        )
-      : 0
+  const negativeCount = result?.itemProgress.negative ?? 0
   const totalPendingItems =
     result?.pendingGroups.reduce((sum, group) => sum + group.items.length, 0) ?? 0
 
@@ -128,7 +139,7 @@ export function useReportOverviewContainer() {
     customFrom,
     customTo,
     itemPercent,
-    appPercent,
+    negativeCount,
     totalPendingItems,
     pendingListData,
     onChangeTags: setTagsIds,

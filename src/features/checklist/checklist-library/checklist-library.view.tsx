@@ -27,7 +27,8 @@ export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
         stats={
           c.applicationStatsByChecklist.get(item.id) ?? {
             applications: 0,
-            completed: 0,
+            done: 0,
+            total: 0,
           }
         }
         tagLabels={c.resolveLabels(item.tagsIds)}
@@ -57,7 +58,8 @@ export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
               <LibraryHeader
                 checklistCount={c.checklistCount}
                 applicationsCount={c.applicationsCount}
-                completedCount={c.completedCount}
+                itemsDone={c.itemsDone}
+                itemsTotal={c.itemsTotal}
                 search={c.search}
                 onSearchChange={c.onSearchChange}
                 activeTagId={c.activeTagId}

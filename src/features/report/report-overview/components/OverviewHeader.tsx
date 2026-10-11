@@ -25,7 +25,7 @@ interface OverviewHeaderProps {
   onCustomToChange: (value: string) => void
   result: ReportResult | null
   itemPercent: number
-  appPercent: number
+  negativeCount: number
   totalPendingItems: number
 }
 
@@ -43,7 +43,7 @@ export const OverviewHeader = memo(function OverviewHeader({
   onCustomToChange,
   result,
   itemPercent,
-  appPercent,
+  negativeCount,
   totalPendingItems,
 }: OverviewHeaderProps) {
   return (
@@ -90,13 +90,13 @@ export const OverviewHeader = memo(function OverviewHeader({
               label="Progresso por item"
               value={`${itemPercent}%`}
               valueColor={metricValueColors.blue}
-              detail={`${result.itemProgress.answered}/${result.itemProgress.total} itens respondidos`}
+              detail={`${result.itemProgress.done}/${result.itemProgress.total} itens concluídos`}
             />
             <Metric
-              label="Progresso por aplicação"
-              value={`${appPercent}%`}
-              valueColor={metricValueColors.green}
-              detail={`${result.applicationProgress.completed}/${result.applicationProgress.total} aplicações concluídas`}
+              label="Não conformes"
+              value={String(negativeCount)}
+              valueColor={metricValueColors.red}
+              detail="itens com resposta negativa"
             />
           </View>
           <View style={styles.pendHeader}>

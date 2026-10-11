@@ -10,12 +10,19 @@ import {
   checklistsListQueryKey,
   useChecklistsListRestResult,
 } from '@/features/checklist/shared/checklist.rest'
+import { isItemAnswerComplete } from '@/features/application/shared/application.utils'
 import { useRefreshOnEndReached } from '@/lib/api/use-refresh-on-end-reached'
 import { normalizeApplication } from '@/lib/convex'
 import { useEntityList } from '@/lib/offline-queue'
 import { useSessionStore } from '@/lib/session/session.store'
 import type { TabRoutesProps } from '@/routes/types'
 import { api } from '../../../../convex/_generated/api'
+
+export interface ChecklistStats {
+  applications: number
+  done: number
+  total: number
+}
 
 const EMPTY_CHECKLISTS: Checklist[] = []
 const EMPTY_APPLICATIONS: Application[] = []
@@ -129,19 +136,29 @@ export function useChecklistLibraryContainer({
     })
   }, [checklists, search, activeTagId, resolveLabels])
 
+  // Progress is items declared "sim" over all items — never the applications'
+  // `status`, which only says whether a review was closed.
   const applicationStatsByChecklist = useMemo(() => {
-    const stats = new Map<string, { applications: number; completed: number }>()
+    const checklistsById = new Map(checklists.map((checklist) => [checklist.id, checklist]))
+    const stats = new Map<string, ChecklistStats>()
     for (const application of applications) {
       const current = stats.get(application.checklistId) ?? {
         applications: 0,
-        completed: 0,
+        done: 0,
+        total: 0,
       }
+      const checklist = checklistsById.get(application.checklistId)
       current.applications += 1
-      if (application.status === 'completed') current.completed += 1
+      current.total += application.items.length
+      if (checklist) {
+        current.done += application.items.filter((item) =>
+          isItemAnswerComplete(item, checklist),
+        ).length
+      }
       stats.set(application.checklistId, current)
     }
     return stats
-  }, [applications])
+  }, [applications, checklists])
 
   const onOpenChecklist = useCallback(
     (checklistId: string) => {
@@ -161,8 +178,8 @@ export function useChecklistLibraryContainer({
     loading,
     checklistCount: checklists.length,
     applicationsCount: applications.length,
-    completedCount: applications.filter((application) => application.status === 'completed')
-      .length,
+    itemsDone: Array.from(applicationStatsByChecklist.values()).reduce((sum, s) => sum + s.done, 0),
+    itemsTotal: Array.from(applicationStatsByChecklist.values()).reduce((sum, s) => sum + s.total, 0),
     filteredChecklists,
     applicationStatsByChecklist,
     filterTags,

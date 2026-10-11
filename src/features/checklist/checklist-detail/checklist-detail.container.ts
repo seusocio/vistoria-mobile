@@ -241,14 +241,9 @@ export function useChecklistDetailContainer({
   /**
    * Summed from the groups, not `applications.length`: the flat list is the
    * *embedded* visits, which the server truncates per group, while
-   * `applicationsCount` is the real total. `completedCount` has no such field
-   * to read and is counted from what came down — it can undercount a group past
-   * `applicationsPerGroup` visits.
+   * `applicationsCount` is the real total.
    */
   const applicationsCount = allGroups.reduce((total, group) => total + group.applicationsCount, 0)
-  const completedCount = applications.filter(
-    (application) => application.status === 'completed',
-  ).length
 
   function handleDuplicate() {
     if (!checklist || submitted.current) return
@@ -383,7 +378,6 @@ export function useChecklistDetailContainer({
     checklistId,
     applications,
     applicationsCount,
-    completedCount,
     groups,
     hasApplications: applicationsCount > 0,
     historySearch,

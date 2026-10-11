@@ -8,7 +8,8 @@ import { styles } from '../checklist-library.styles'
 interface LibraryHeaderProps {
   checklistCount: number
   applicationsCount: number
-  completedCount: number
+  itemsDone: number
+  itemsTotal: number
   search: string
   onSearchChange: (value: string) => void
   activeTagId: string | null
@@ -20,7 +21,8 @@ interface LibraryHeaderProps {
 export const LibraryHeader = memo(function LibraryHeader({
   checklistCount,
   applicationsCount,
-  completedCount,
+  itemsDone,
+  itemsTotal,
   search,
   onSearchChange,
   activeTagId,
@@ -33,7 +35,7 @@ export const LibraryHeader = memo(function LibraryHeader({
       <View style={styles.metricsRow}>
         <Metric label="Modelos" value={String(checklistCount)} />
         <Metric label="Aplicações" value={String(applicationsCount)} />
-        <Metric label="Concluídas" value={String(completedCount)} />
+        <Metric label="Itens concluídos" value={`${itemsDone}/${itemsTotal}`} />
       </View>
       <Pressable
         style={({ pressed }) => [styles.ctaButton, pressed && styles.pressed]}

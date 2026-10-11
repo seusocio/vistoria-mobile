@@ -10,7 +10,8 @@ export interface ChecklistCardProps {
   itemsCount: number
   tagLabels: string[]
   applicationsCount: number
-  completedCount: number
+  itemsDone: number
+  itemsTotal: number
   onPress: () => void
 }
 
@@ -20,7 +21,8 @@ export const ChecklistCard = memo(function ChecklistCard({
   itemsCount,
   tagLabels,
   applicationsCount,
-  completedCount,
+  itemsDone,
+  itemsTotal,
   onPress,
 }: ChecklistCardProps) {
   return (
@@ -28,7 +30,7 @@ export const ChecklistCard = memo(function ChecklistCard({
       style={({ pressed }) => [styles.container, pressed && { opacity: 0.85 }]}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${itemsCount} itens, ${applicationsCount} aplicações, ${completedCount} concluídas`}
+      accessibilityLabel={`${title}, ${itemsCount} itens, ${applicationsCount} aplicações, ${itemsDone}/${itemsTotal} itens concluídos`}
     >
       <View style={styles.topRow}>
         <Text style={styles.title} numberOfLines={1}>
@@ -48,7 +50,7 @@ export const ChecklistCard = memo(function ChecklistCard({
 
       <View style={styles.bottomRow}>
         <Text style={styles.bottomText}>
-          {applicationsCount} aplicações · {completedCount} concluídas
+          {applicationsCount} aplicações · {itemsDone}/{itemsTotal} itens concluídos
         </Text>
       </View>
     </Pressable>

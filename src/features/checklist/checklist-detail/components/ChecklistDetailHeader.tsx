@@ -10,7 +10,6 @@ interface ChecklistDetailHeaderProps {
   checklist: Checklist
   tagLabels: string[]
   applicationsCount: number
-  completedCount: number
   historySearch: string
   onHistorySearchChange: (value: string) => void
   historyHasFilter: boolean
@@ -21,7 +20,6 @@ export const ChecklistDetailHeader = memo(function ChecklistDetailHeader({
   checklist,
   tagLabels,
   applicationsCount,
-  completedCount,
   historySearch,
   onHistorySearchChange,
   historyHasFilter,
@@ -35,7 +33,6 @@ export const ChecklistDetailHeader = memo(function ChecklistDetailHeader({
       </View>
       {/* <View style={styles.metricsRow}>
         <Metric label="Aplicações" value={String(applicationsCount)} />
-        <Metric label="Concluídas" value={String(completedCount)} />
         <Metric label="Itens/visita" value={String(checklist.items.length)} />
       </View> */}
       <View style={styles.historyRow}>

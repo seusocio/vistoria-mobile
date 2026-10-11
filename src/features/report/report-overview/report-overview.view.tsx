@@ -66,7 +66,7 @@ export function ReportOverviewView() {
               onCustomToChange={c.onCustomToChange}
               result={c.result}
               itemPercent={c.itemPercent}
-              appPercent={c.appPercent}
+              negativeCount={c.negativeCount}
               totalPendingItems={c.totalPendingItems}
             />
           }

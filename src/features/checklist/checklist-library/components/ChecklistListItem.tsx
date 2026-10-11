@@ -1,10 +1,11 @@
 import { memo, useCallback } from 'react'
 import { Checklist } from '@/features/checklist/shared/checklist.types'
+import type { ChecklistStats } from '../checklist-library.container'
 import { ChecklistCard } from '@/components/ChecklistCard'
 
 interface ChecklistListItemProps {
   checklist: Checklist
-  stats: { applications: number; completed: number }
+  stats: ChecklistStats
   tagLabels: string[]
   onPress: (checklistId: string) => void
 }
@@ -25,7 +26,8 @@ export const ChecklistListItem = memo(function ChecklistListItem({
       itemsCount={checklist.items.length}
       tagLabels={tagLabels}
       applicationsCount={stats.applications}
-      completedCount={stats.completed}
+      itemsDone={stats.done}
+      itemsTotal={stats.total}
       onPress={handlePress}
     />
   )
