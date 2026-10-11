@@ -74,7 +74,28 @@ export function prepareAssetQueued(asset: RawAsset): Promise<PreparedAsset> {
   return result
 }
 
+/**
+ * Re-points a persisted `.../uploads/<file>` URI at the current app container.
+ *
+ * iOS puts `documentDirectory` under a container UUID that changes whenever
+ * the app is rebuilt/updated, while the persisted upload queue (and the
+ * outbox ops carrying a `localUri`) keep the absolute path from the previous
+ * install. The file itself is migrated with the container, so only the prefix
+ * is stale — and left alone, every pending photo fails with "file not found"
+ * and blocks the sync bar red forever.
+ */
+export function rebaseLocalUri(uri: string): string
+export function rebaseLocalUri(uri: string | undefined): string | undefined
+export function rebaseLocalUri(uri: string | undefined): string | undefined {
+  const directory = FileSystem.documentDirectory
+  if (!uri || !directory) return uri
+  const marker = '/uploads/'
+  const index = uri.lastIndexOf(marker)
+  if (index === -1) return uri
+  return `${directory}uploads/${uri.slice(index + marker.length)}`
+}
+
 export async function deleteLocalUpload(uri?: string): Promise<void> {
   if (!uri || !uri.includes('/uploads/')) return
-  await FileSystem.deleteAsync(uri, { idempotent: true })
+  await FileSystem.deleteAsync(rebaseLocalUri(uri), { idempotent: true })
 }

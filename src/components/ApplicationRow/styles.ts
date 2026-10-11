@@ -123,6 +123,9 @@ export const styles = StyleSheet.create({
     ...textStyles.body,
     flex: 1,
   },
+  progressText: {
+    ...textStyles.metaLabel,
+  },
   negPill: {
     flexDirection: 'row',
     alignItems: 'center',

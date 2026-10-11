@@ -15,7 +15,7 @@ import { useSessionStore } from '@/lib/session/session.store'
 import { api } from '../../../convex/_generated/api'
 import { presignAttachmentUpload, uploadAttachmentFile } from '../api/uploads'
 import { convexClient } from '../convex/client'
-import { deleteLocalUpload } from '../convex/photo-picker'
+import { deleteLocalUpload, rebaseLocalUri } from '../convex/photo-picker'
 import { uploadImage } from '../convex/file-storage'
 
 export interface UploadJob {
@@ -142,10 +142,10 @@ async function processJob(job: UploadJob) {
             attachmentId,
             job.attachment.mimeType ?? 'image/jpeg',
           )
-          await uploadAttachmentFile(job.attachment.localUri ?? '', job.attachment.mimeType, presigned, reportProgress)
+          await uploadAttachmentFile(rebaseLocalUri(job.attachment.localUri) ?? '', job.attachment.mimeType, presigned, reportProgress)
           storageKey = presigned.key
         } else {
-          storageKey = await uploadImage(job.attachment.localUri ?? '', job.attachment.mimeType, reportProgress, job.uploadUrl)
+          storageKey = await uploadImage(rebaseLocalUri(job.attachment.localUri) ?? '', job.attachment.mimeType, reportProgress, job.uploadUrl)
         }
         break
       } catch (error) {
@@ -370,7 +370,7 @@ export function useLocalUploadUris(): Record<string, string> {
     useShallow((state) => {
       const uris: Record<string, string> = {}
       for (const job of state.queue) {
-        if (job.attachment.localUri) uris[job.attachment.id] = job.attachment.localUri
+        if (job.attachment.localUri) uris[job.attachment.id] = rebaseLocalUri(job.attachment.localUri)
       }
       return uris
     }),

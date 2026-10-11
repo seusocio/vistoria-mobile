@@ -22,7 +22,9 @@ export function resolvePreviewUri(
   attachment: Attachment,
   localUris: Record<string, string>,
 ): string | undefined {
-  const localUri = attachment.localUri ?? localUris[attachment.id]
+  // `localUris` first: it is rebased onto the current app container, while
+  // `attachment.localUri` is whatever absolute path an old build persisted.
+  const localUri = localUris[attachment.id] ?? attachment.localUri
   if (attachment.uploadStatus !== 'uploaded' && localUri) return localUri
   return attachment.url ?? localUri
 }

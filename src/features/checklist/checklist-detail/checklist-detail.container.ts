@@ -20,6 +20,7 @@ import type { Application } from '@/features/application/shared/application.type
 import {
   buildRepeatedApplication,
   countNegativeAnswers,
+  getProgress,
   groupApplicationsByTagSet,
   type HistorySortMode,
   sortGroupsByTagLabels,
@@ -189,12 +190,17 @@ export function useChecklistDetailContainer({
       ...group,
       key: tagsKey(group.tagsIds),
       tagLabels: resolveLabels(group.tagsIds),
-      entries: group.applications.map((application): ApplicationRowEntry => ({
-        id: application.id,
-        dateLabel: formatBrDateShort(application.date),
-        negativeCount: countNegativeAnswers(application, checklist),
-        status: application.status,
-      })),
+      entries: group.applications.map((application): ApplicationRowEntry => {
+        const { done, total } = getProgress(application, checklist)
+        return {
+          id: application.id,
+          dateLabel: formatBrDateShort(application.date),
+          done,
+          total,
+          negativeCount: countNegativeAnswers(application, checklist),
+          status: application.status,
+        }
+      }),
     }))
   }, [applications, checklist, resolveLabels, serverGroups, usingServerGroups])
 

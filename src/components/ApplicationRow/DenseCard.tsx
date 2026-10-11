@@ -76,14 +76,18 @@ export function DenseCard({
                     styles.tick,
                     entry.negativeCount > 0
                       ? styles.tickWarning
-                      : styles.tickSuccess,
-                    entry.status === 'draft' && styles.tickDraft,
+                      : entry.total > 0 && entry.done === entry.total
+                        ? styles.tickSuccess
+                        : styles.tickDraft,
                   ]}
                 />
                 <Text style={styles.rowDate}>{entry.dateLabel}</Text>
                 {entry.status === 'draft' ? (
                   <Text style={styles.rowDraft}>rascunho</Text>
                 ) : null}
+                <Text style={styles.countOk}>
+                  {entry.done}/{entry.total}
+                </Text>
                 <Text
                   style={
                     entry.negativeCount > 0 ? styles.countWarn : styles.countOk

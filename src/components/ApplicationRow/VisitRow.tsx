@@ -29,6 +29,9 @@ export const VisitRow = memo(function VisitRow({
       <Text style={strong ? styles.dateTextStrong : styles.dateText}>
         {entry.dateLabel}
       </Text>
+      <Text style={styles.progressText}>
+        {entry.done}/{entry.total}
+      </Text>
       {entry.negativeCount > 0 ? (
         <View style={[styles.negPill, styles.negPillWarning]}>
           <Icon name="alert-triangle" size={12} color={colors.warning.base} />
@@ -36,12 +39,12 @@ export const VisitRow = memo(function VisitRow({
             {entry.negativeCount} negativas
           </Text>
         </View>
-      ) : (
+      ) : entry.total > 0 && entry.done === entry.total ? (
         <View style={[styles.negPill, styles.negPillSuccess]}>
           <Icon name="check" size={12} color={colors.success.base} />
-          <Text style={styles.negPillSuccessText}>Sem negativas</Text>
+          <Text style={styles.negPillSuccessText}>Concluídos</Text>
         </View>
-      )}
+      ) : null}
       {/* The row opens the vistoria; at full width that needs saying. */}
       <Icon name="chevron-right" size={14} color={colors.gray[400]} />
     </Pressable>

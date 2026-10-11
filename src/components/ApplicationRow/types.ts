@@ -3,6 +3,9 @@ import type { BadgeTone } from '../Badge'
 export interface ApplicationRowEntry {
   id: string
   dateLabel: string
+  /** Items declared "sim"; see `getProgress`. Independent of `status`. */
+  done: number
+  total: number
   negativeCount: number
   /** Drives the dense layout's per-row tick; the detailed layout shows status only for the group. */
   status?: 'draft' | 'completed'
