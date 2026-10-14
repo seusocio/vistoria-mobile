@@ -1,7 +1,7 @@
-import { MotiView } from 'moti'
+import { AnimatePresence, MotiView } from 'moti'
 import { memo } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
-import { PhotoGalleryRow } from '@/components'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { PhotoThumb } from '@/components'
 import { Icon } from '@/components/Icon'
 import type { Attachment } from '@/features/application/shared/application.types'
 import { acceptTranscriptionCandidate } from '@/features/note/shared/note.actions'
@@ -14,7 +14,7 @@ export interface NoteAttachmentView {
   attachment: Attachment
   uri: string | undefined
   progress: number
-  /** Index into the visit gallery the PhotoViewer opens on; null for audio, or a photo the app only remembers (mid-refresh). */
+  /** Index into the visit gallery the PhotoViewer opens on; null for audio. */
   viewerIndex: number | null
 }
 
@@ -130,20 +130,33 @@ export const NoteCard = memo(function NoteCard({
         ) : null}
 
         {images.length > 0 ? (
-          <PhotoGalleryRow
-            photos={images.map((image) => ({
-              id: image.attachment.id,
-              uri: image.uri,
-              uploading: image.attachment.uploadStatus === 'pending',
-              failed: image.attachment.uploadStatus === 'failed',
-              progress: image.progress,
-              onPress: () => {
-                if (image.viewerIndex !== null) onOpenPhoto(image.viewerIndex)
-              },
-              onRetry: () => onRetryAttachment(image.attachment.id),
-              onRemove: () => onRemoveAttachment(image.attachment.id),
-            }))}
-          />
+          // Not PhotoGalleryRow: a virtualized list can't animate a tile out,
+          // and a note holds a handful of photos at most.
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.images}>
+            <AnimatePresence initial={false}>
+              {images.map((image) => (
+                <MotiView
+                  key={image.attachment.id}
+                  from={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ type: 'timing', duration: 200 }}
+                >
+                  <PhotoThumb
+                    uri={image.uri}
+                    uploading={image.attachment.uploadStatus === 'pending'}
+                    failed={image.attachment.uploadStatus === 'failed'}
+                    progress={image.progress}
+                    onPress={() => {
+                      if (image.viewerIndex !== null) onOpenPhoto(image.viewerIndex)
+                    }}
+                    onRetry={() => onRetryAttachment(image.attachment.id)}
+                    onRemove={() => onRemoveAttachment(image.attachment.id)}
+                  />
+                </MotiView>
+              ))}
+            </AnimatePresence>
+          </ScrollView>
         ) : null}
       </Pressable>
     </MotiView>
@@ -191,6 +204,7 @@ const styles = StyleSheet.create({
   },
   candidatePrimary: { backgroundColor: colors.blue.base, borderColor: colors.blue.base },
   candidateButtonText: { fontFamily: fontFamily.bold, fontSize: 12, color: colors.ink.base },
+  images: { gap: space.sm },
   transcribing: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   noTranscript: {
     ...textStyles.body,

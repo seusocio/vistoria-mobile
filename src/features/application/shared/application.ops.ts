@@ -11,12 +11,14 @@ import {
   createApplicationRest,
   deleteApplicationRest,
   deleteAttachmentRest,
+  patchCachedAttachments,
   refreshApplicationCache,
   updateApplicationItemRest,
   updateApplicationMetaRest,
   updateAttachmentUploadStatusRest,
 } from '@/features/application/shared/application.rest'
 import { applyApplicationItemPatch, type ApplicationItemPatch } from '@/features/application/shared/application.utils'
+import { notesQueryKey, updateNotesCache } from '@/features/note/shared/note.rest'
 import { convexClient } from '@/lib/convex/client'
 import { useSessionStore } from '@/lib/session/session.store'
 import { api } from '../../../../convex/_generated/api'
@@ -187,6 +189,21 @@ export const addAttachment = defineOp<
   // for why this isn't just `invalidates`.
   onServerResponse: (queryClient, args) => {
     const { orgId, projectId } = requireActiveProject()
+    // Into the cache now, so the photo doesn't blink out between the op leaving the outbox and the refresh landing.
+    const { attachment } = args
+    const raw: Record<string, unknown> = {
+      id: attachment.id,
+      name: attachment.name,
+      position: attachment.position,
+      createdAt: attachment.createdAt,
+      uploadStatus: attachment.uploadStatus ?? 'pending',
+      mimeType: attachment.mimeType ?? null,
+      width: attachment.width ?? null,
+      height: attachment.height ?? null,
+    }
+    patchCachedAttachments(queryClient, orgId, projectId, args.applicationId, (attachments, itemId) =>
+      itemId === args.itemId && !attachments.some((a) => a.id === attachment.id) ? [...attachments, raw] : attachments,
+    )
     void refreshApplicationCache(queryClient, orgId, projectId, args.applicationId)
   },
   invalidates: () => {
@@ -251,13 +268,27 @@ export const deleteAttachment = defineOp<
     }
   },
   entityId: (args) => args.applicationId,
+  // Out of the cache now — otherwise the deleted photo pops back for the
+  // moment between the op leaving the outbox and the refresh landing. The
+  // server also unlinks it from every note (and drops notes left empty), so
+  // the feed cache gets the same treatment.
   onServerResponse: (queryClient, args) => {
     const { orgId, projectId } = requireActiveProject()
+    patchCachedAttachments(queryClient, orgId, projectId, args.applicationId, (attachments) =>
+      attachments.filter((a) => a.id !== args.attachmentId),
+    )
+    updateNotesCache(queryClient, orgId, projectId, args.applicationId, (notes) =>
+      notes.flatMap((note) => {
+        if (!note.attachmentIds.includes(args.attachmentId)) return [note]
+        const attachmentIds = note.attachmentIds.filter((id) => id !== args.attachmentId)
+        return note.text.trim() || attachmentIds.length > 0 ? [{ ...note, attachmentIds }] : []
+      }),
+    )
     void refreshApplicationCache(queryClient, orgId, projectId, args.applicationId)
   },
-  invalidates: () => {
+  invalidates: (args) => {
     const { orgId, projectId } = requireActiveProject()
-    return [applicationsListAllQueryKey(orgId, projectId)]
+    return [applicationsListAllQueryKey(orgId, projectId), notesQueryKey(orgId, projectId, args.applicationId)]
   },
 })
 
@@ -317,6 +348,9 @@ export const setAttachmentUploaded = defineOp<
   // `refreshApplicationCache` for why this isn't just `invalidates` either.
   onServerResponse: (queryClient, args) => {
     const { orgId, projectId } = requireActiveProject()
+    patchCachedAttachments(queryClient, orgId, projectId, args.applicationId, (attachments) =>
+      attachments.map((a) => (a.id === args.attachmentId ? { ...a, uploadStatus: 'uploaded' } : a)),
+    )
     void refreshApplicationCache(queryClient, orgId, projectId, args.applicationId)
   },
 })

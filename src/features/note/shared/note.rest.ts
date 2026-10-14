@@ -42,9 +42,13 @@ function notesInfiniteKey(orgId: string, projectId: string, applicationId: strin
   return [...notesQueryKey(orgId, projectId, applicationId), 'infinite'] as const
 }
 
-/** A single-note response: `{ data: note }` or `{ data: [note] }` (create is a batch endpoint). */
+/**
+ * A single-note response. `f` unwraps a single object (PATCH answers the note
+ * itself) but keeps a list as `{ data: [...] }` (create is a batch endpoint).
+ */
 export function noteFromResponse(response: unknown): Note | null {
-  const data = (response as { data?: unknown } | null)?.data
+  if (!response || typeof response !== 'object') return null
+  const data = 'id' in response ? response : (response as { data?: unknown }).data
   const raw = Array.isArray(data) ? data[0] : data
   return raw && typeof raw === 'object' ? fromNoteResponse(raw as Record<string, unknown>) : null
 }

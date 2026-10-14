@@ -1,5 +1,5 @@
 // The visit's photo gallery, as its own tab. Photos inside notes link back here.
-import { MotiView } from 'moti'
+import { AnimatePresence, MotiView } from 'moti'
 import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { Icon } from '@/components/Icon'
 import { colors, radius, space, textStyles } from '@/styles'
@@ -32,17 +32,20 @@ export function VisitaGallery({ photos, reference }: { photos: GalleryPhoto[]; r
           <Text style={[textStyles.body, { textAlign: 'center' }]}>As fotos enviadas nas notas aparecem aqui.</Text>
         </View>
       ) : (
-        photos.map((photo, index) => (
-          <MotiView
-            key={photo.id}
-            style={{ width: tile, height: tile }}
-            from={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: 'timing', duration: 180, delay: Math.min(index, 12) * 20 }}
-          >
-            <GridTile photo={photo} />
-          </MotiView>
-        ))
+        <AnimatePresence initial={false}>
+          {photos.map((photo) => (
+            <MotiView
+              key={photo.id}
+              style={{ width: tile, height: tile }}
+              from={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ type: 'timing', duration: 200 }}
+            >
+              <GridTile photo={photo} />
+            </MotiView>
+          ))}
+        </AnimatePresence>
       )}
     </View>
   )

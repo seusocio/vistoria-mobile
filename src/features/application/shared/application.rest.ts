@@ -383,6 +383,43 @@ export async function refreshApplicationCache(
   queryClient.setQueryData(applicationQueryKey(orgId, projectId, applicationId), response)
 }
 
+type RawApplication = Record<string, unknown> & {
+  attachments?: Record<string, unknown>[]
+  items?: (Record<string, unknown> & { attachments?: Record<string, unknown>[] })[]
+}
+
+/**
+ * Applies an attachment change to the cached application *synchronously*, in
+ * the raw REST shape the cache holds (`f` unwraps a single object, so it's the
+ * application itself). Used by the attachment ops' `onServerResponse`: the
+ * drain drops the op from the outbox right then, and the overlay stops hiding /
+ * showing the attachment — a background `refreshApplicationCache` alone leaves
+ * a gap where the stale cache shows a deleted photo again, or hides a new one.
+ * Only touches `attachments` arrays, by id, so it can't drift from the shape
+ * `fromApplicationResponse` reads. The refresh still runs after, to bring in
+ * server-derived fields (signed `url`, counts).
+ */
+export function patchCachedAttachments(
+  queryClient: QueryClient,
+  orgId: string,
+  projectId: string,
+  applicationId: string,
+  update: (attachments: Record<string, unknown>[], itemId: string | null) => Record<string, unknown>[],
+) {
+  queryClient.setQueryData<RawApplication>(applicationQueryKey(orgId, projectId, applicationId), (current) =>
+    current
+      ? {
+          ...current,
+          attachments: update(current.attachments ?? [], null),
+          items: current.items?.map((item) => ({
+            ...item,
+            attachments: update(item.attachments ?? [], item.id as string),
+          })),
+        }
+      : current,
+  )
+}
+
 export function applicationsListAllQueryKey(orgId: string, projectId: string) {
   return getListApplicationsQueryKey(orgId, projectId, APPLICATIONS_LIST_PARAMS)
 }

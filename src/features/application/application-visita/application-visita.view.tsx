@@ -3,7 +3,7 @@
 // `application-fill` view renders, driven by the same container.
 import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { AnimatePresence, MotiView } from 'moti'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -319,19 +319,13 @@ export function ApplicationVisitaView({ c, onOpenNoteCamera }: ApplicationVisita
     () => app.attachments.filter((a) => isVisibleImage(a, hiddenIds)),
     [app.attachments, hiddenIds],
   )
-  /**
-   * Attachments this screen has already seen. When an attachment's op drains,
-   * the overlay drops it a moment before `refreshApplicationCache` brings the
-   * server's copy back — without this memory a note's photo/audio blinks out
-   * and pops back in that gap.
-   */
-  const seenAttachmentsRef = useRef(new Map<string, Attachment>())
+  // Note attachments resolve against the application's own list. The ops write
+  // their server answer into that cache synchronously (`patchCachedAttachments`),
+  // so there's no gap here to paper over.
   const attachmentsById = useMemo(() => {
     const map = new Map<string, Attachment>()
     for (const a of app.attachments) if (!a.deletedAt && !hiddenIds[a.id]) map.set(a.id, a)
     for (const item of app.items) for (const a of item.attachments) if (!a.deletedAt) map.set(a.id, a)
-    for (const [id, a] of seenAttachmentsRef.current) if (!map.has(id) && !hiddenIds[id]) map.set(id, a)
-    seenAttachmentsRef.current = map
     return map
   }, [app.attachments, app.items, hiddenIds])
 
