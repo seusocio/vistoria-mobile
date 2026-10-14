@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { PhotoGalleryRow } from '@/components'
 import { Icon } from '@/components/Icon'
 import type { Attachment } from '@/features/application/shared/application.types'
+import { acceptTranscriptionCandidate } from '@/features/note/shared/note.actions'
 import type { Note } from '@/features/note/shared/note.types'
 import { useTranscriptions } from '@/features/note/shared/transcription.store'
 import { colors, fontFamily, space, textStyles } from '@/styles'
@@ -42,6 +43,9 @@ export const NoteCard = memo(function NoteCard({
   onOpenMenu,
 }: NoteCardProps) {
   const transcribing = useTranscriptions((state) => Boolean(state.pending[note.id]))
+  const regenerating = useTranscriptions((state) => Boolean(state.regenerating[note.id]))
+  const candidate = useTranscriptions((state) => state.candidates[note.id])
+  const clearCandidate = useTranscriptions((state) => state.clearCandidate)
   const audios = attachments.filter((a) => a.attachment.mimeType?.startsWith('audio/'))
   const images = attachments.filter((a) => !a.attachment.mimeType?.startsWith('audio/'))
 
@@ -92,6 +96,39 @@ export const NoteCard = memo(function NoteCard({
           <Text style={styles.noTranscript}>Sem transcrição</Text>
         ) : null}
 
+        {regenerating ? (
+          <View style={styles.transcribing}>
+            <ActivityIndicator size="small" color={colors.gray[400]} />
+            <Text style={styles.noTranscript}>Gerando nova transcrição…</Text>
+          </View>
+        ) : null}
+
+        {candidate ? (
+          <MotiView
+            style={styles.candidate}
+            from={{ opacity: 0, translateY: -6 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 200 }}
+          >
+            <Text style={styles.candidateLabel}>Nova transcrição</Text>
+            <Text style={styles.transcript}>{candidate}</Text>
+            <View style={styles.candidateActions}>
+              <Pressable
+                style={({ pressed }) => [styles.candidateButton, pressed && { opacity: 0.7 }]}
+                onPress={() => clearCandidate(note.id)}
+              >
+                <Text style={styles.candidateButtonText}>Manter atual</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.candidateButton, styles.candidatePrimary, pressed && { opacity: 0.85 }]}
+                onPress={() => acceptTranscriptionCandidate(note)}
+              >
+                <Text style={[styles.candidateButtonText, { color: colors.white }]}>Usar nova</Text>
+              </Pressable>
+            </View>
+          </MotiView>
+        ) : null}
+
         {images.length > 0 ? (
           <PhotoGalleryRow
             photos={images.map((image) => ({
@@ -133,6 +170,27 @@ const styles = StyleSheet.create({
     color: colors.ink.base,
   },
   transcript: { ...textStyles.body, color: colors.ink.base, lineHeight: 19 },
+  candidate: {
+    gap: 6,
+    padding: space.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.blue.tint,
+    backgroundColor: colors.gray[100],
+  },
+  candidateLabel: { ...textStyles.metaLabel, color: colors.blue.base },
+  candidateActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: space.sm, marginTop: 2 },
+  candidateButton: {
+    height: 30,
+    paddingHorizontal: space.md,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+  },
+  candidatePrimary: { backgroundColor: colors.blue.base, borderColor: colors.blue.base },
+  candidateButtonText: { fontFamily: fontFamily.bold, fontSize: 12, color: colors.ink.base },
   transcribing: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   noTranscript: {
     ...textStyles.body,

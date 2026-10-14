@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system/legacy'
 import { addAttachment } from '@/features/application/shared/application.ops'
 import { createAttachment } from '@/features/application/shared/application.utils'
 import { generateId } from '@/lib/id'
@@ -127,4 +128,61 @@ async function transcribeIntoNote(
     enqueueOp(patchNote, { applicationId, noteId, text, updatedAt: new Date().toISOString() })
   }
   onTranscribed?.(text)
+}
+
+/**
+ * A local file path for an audio attachment: the recording itself while it's
+ * still on this device, otherwise a one-off download of the uploaded file into
+ * the cache (WhisperKit only reads local files).
+ */
+async function localAudioPath(uri: string, attachmentId: string): Promise<string> {
+  if (!/^https?:\/\//.test(uri)) return uri
+  const directory = FileSystem.cacheDirectory
+  if (!directory) throw new Error('Sem acesso ao armazenamento para baixar o áudio.')
+  const destination = `${directory}transcribe-${attachmentId}.m4a`
+  const existing = await FileSystem.getInfoAsync(destination)
+  if (existing.exists) return destination
+  const result = await FileSystem.downloadAsync(uri, destination)
+  if (result.status < 200 || result.status >= 300) throw new Error('Não foi possível baixar o áudio.')
+  return result.uri
+}
+
+export type RegenerateOutcome = 'candidate' | 'same' | 'empty'
+
+/**
+ * Transcribes the note's current audio again and offers the result *next to*
+ * the existing text — never replaces it: the old transcription is sometimes
+ * the better one. Accepting is `acceptTranscriptionCandidate` (a plain text
+ * patch); the candidate itself only lives in `useTranscriptions`.
+ */
+export async function regenerateTranscription(
+  note: Note,
+  audio: { uri: string; attachmentId: string },
+): Promise<RegenerateOutcome> {
+  const store = useTranscriptions.getState()
+  store.startRegenerating(note.id)
+  let text = ''
+  try {
+    const path = await localAudioPath(audio.uri, audio.attachmentId)
+    text = (await transcribeAudio(path)).trim()
+  } catch (error) {
+    store.finishRegenerating(note.id, null)
+    throw error
+  }
+  if (!text) {
+    store.finishRegenerating(note.id, null)
+    return 'empty'
+  }
+  if (text === note.text.trim()) {
+    store.finishRegenerating(note.id, null)
+    return 'same'
+  }
+  store.finishRegenerating(note.id, text)
+  return 'candidate'
+}
+
+export function acceptTranscriptionCandidate(note: Note) {
+  const candidate = useTranscriptions.getState().candidates[note.id]
+  if (candidate) editNoteText(note, candidate)
+  useTranscriptions.getState().clearCandidate(note.id)
 }

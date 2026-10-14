@@ -44,7 +44,7 @@ import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import type { ApplicationDerivedState } from '@/features/application/shared/application.utils'
 import { isVisibleImage } from '@/features/application/shared/application.utils'
-import { deleteNote, editNoteText, postNote } from '@/features/note/shared/note.actions'
+import { deleteNote, editNoteText, postNote, regenerateTranscription } from '@/features/note/shared/note.actions'
 import type { Note } from '@/features/note/shared/note.types'
 import { useNotesFeed } from '@/features/note/shared/use-notes-feed'
 import { pickPhotos } from '@/lib/convex/photo-picker'
@@ -142,24 +142,51 @@ function presentAttachPicker({ onCamera, onLibrary }: { onCamera: () => void; on
   ])
 }
 
-function presentNoteMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+function presentNoteMenu({
+  onEdit,
+  onRegenerate,
+  onDelete,
+}: {
+  onEdit: () => void
+  /** Only for notes with audio. */
+  onRegenerate?: () => void
+  onDelete: () => void
+}) {
+  const options = [
+    { label: 'Editar texto', run: onEdit },
+    ...(onRegenerate ? [{ label: 'Gerar transcrição de novo', run: onRegenerate }] : []),
+    { label: 'Excluir nota', run: onDelete, destructive: true },
+  ]
   if (Platform.OS === 'ios') {
     ActionSheetIOS.showActionSheetWithOptions(
       {
-        options: ['Editar texto', 'Excluir nota', 'Cancelar'],
-        destructiveButtonIndex: 1,
-        cancelButtonIndex: 2,
+        options: [...options.map((o) => o.label), 'Cancelar'],
+        destructiveButtonIndex: options.length - 1,
+        cancelButtonIndex: options.length,
         userInterfaceStyle: 'light',
       },
-      (index) => (index === 0 ? onEdit() : index === 1 ? onDelete() : undefined),
+      (index) => options[index]?.run(),
     )
     return
   }
   Alert.alert('Nota', undefined, [
-    { text: 'Editar texto', onPress: onEdit },
-    { text: 'Excluir nota', style: 'destructive', onPress: onDelete },
-    { text: 'Cancelar', style: 'cancel' },
+    ...options.map((o) => ({
+      text: o.label,
+      style: o.destructive ? ('destructive' as const) : undefined,
+      onPress: o.run,
+    })),
+    { text: 'Cancelar', style: 'cancel' as const },
   ])
+}
+
+async function runRegenerate(note: Note, audio: { uri: string; attachmentId: string }) {
+  try {
+    const outcome = await regenerateTranscription(note, audio)
+    if (outcome === 'same') Alert.alert('Transcrição', 'A nova transcrição saiu igual à atual.')
+    if (outcome === 'empty') Alert.alert('Transcrição', 'Não foi possível reconhecer fala neste áudio.')
+  } catch (error) {
+    Alert.alert('Transcrição', error instanceof Error ? error.message : 'Não foi possível transcrever o áudio.')
+  }
 }
 
 function confirmDeleteNote(note: Note, hasAttachments: boolean) {
@@ -364,16 +391,25 @@ export function ApplicationVisitaView({ c, onOpenNoteCamera }: ApplicationVisita
     return days
   }, [feed.notes])
 
-  const openNoteMenu = useCallback((note: Note) => {
-    presentNoteMenu({
-      onEdit: () => {
-        setTab('atividade')
-        setEditingNote(note)
-        setDraft(note.text)
-      },
-      onDelete: () => confirmDeleteNote(note, note.attachmentIds.length > 0),
-    })
-  }, [])
+  const openNoteMenu = useCallback(
+    (note: Note) => {
+      const audio = resolveNoteAttachments(note).find((a) => a.attachment.mimeType?.startsWith('audio/'))
+      const audioUri = audio?.uri
+      presentNoteMenu({
+        onEdit: () => {
+          setTab('atividade')
+          setEditingNote(note)
+          setDraft(note.text)
+        },
+        onRegenerate:
+          audio && audioUri
+            ? () => void runRegenerate(note, { uri: audioUri, attachmentId: audio.attachment.id })
+            : undefined,
+        onDelete: () => confirmDeleteNote(note, note.attachmentIds.length > 0),
+      })
+    },
+    [resolveNoteAttachments],
+  )
   const openPhoto = useCallback((index: number) => c.onOpenPhoto(null, index), [c.onOpenPhoto])
 
   const cancelEdit = () => {
