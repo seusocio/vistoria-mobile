@@ -88,6 +88,25 @@ export function retargetLegacyConvexItems(items: QueuedOp[]): QueuedOp[] {
   })
 }
 
+/**
+ * Collapses repeated `setAttachmentUploadStatus` ops to the last one per
+ * attachment. A feedback loop in an earlier build enqueued one per failed
+ * upload attempt, thousands of them, each a request the server answers 404.
+ */
+export function compactOutbox(items: QueuedOp[]): QueuedOp[] {
+  const lastIndex = new Map<string, number>()
+  items.forEach((item, index) => {
+    if (item.type === 'applications.setAttachmentUploadStatus') {
+      lastIndex.set((item.args as { attachmentId: string }).attachmentId, index)
+    }
+  })
+  return items.filter((item, index) =>
+    item.type !== 'applications.setAttachmentUploadStatus'
+      ? true
+      : lastIndex.get((item.args as { attachmentId: string }).attachmentId) === index,
+  )
+}
+
 export const createOutboxSlice: StateCreator<OutboxState> = (set) => ({
   items: [],
   enqueue: (op, args) =>
@@ -152,6 +171,11 @@ export const useOutbox = create<OutboxState>()(
     storage: createJSONStorage(() => AsyncStorage),
     partialize: (state) => ({ items: state.items }) as OutboxState,
     version: 1,
+    onRehydrateStorage: () => (state) => {
+      if (!state) return
+      const compacted = compactOutbox(state.items)
+      if (compacted.length !== state.items.length) useOutbox.setState({ items: compacted })
+    },
     migrate: (persisted) => {
       const state = persisted as { items?: QueuedOp[] } | undefined
       return { items: retargetLegacyConvexItems(state?.items ?? []) } as OutboxState

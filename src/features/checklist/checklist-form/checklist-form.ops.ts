@@ -82,6 +82,7 @@ export const checklistSoftDeleteCascade = defineOp<
   { id: string; deletedAt: string },
   Checklist
 >("checklists.softDeleteCascade", {
+  treatNotFoundAsDone: true,
   kind: "checklist",
   send: (args) =>
     convexClient.mutation(api.checklists.softDeleteCascade, args as never),

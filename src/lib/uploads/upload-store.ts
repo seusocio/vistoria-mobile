@@ -4,11 +4,13 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
 import {
+  addAttachment,
   setAttachmentUploaded,
   setAttachmentUploadStatus,
 } from '@/features/application/shared/application.ops'
 import { listApplicationsRest } from '@/features/application/shared/application.rest'
 import type { Application, Attachment } from '@/features/application/shared/application.types'
+import { ApiError } from '@/lib/api/fetcher'
 import { isRestEnabled } from '@/lib/backend-flags'
 import { enqueueOp, useOutbox } from '@/lib/offline-queue'
 import { useSessionStore } from '@/lib/session/session.store'
@@ -41,6 +43,10 @@ const MAX_CONCURRENCY = 3
 const MAX_ATTEMPTS = 3
 let activeWorkers = 0
 let recoveryStarted = false
+/** Attachments whose missing server row was already re-created this session. */
+const healedRows = new Set<string>()
+/** Attachments already marked failed this session — one status op each, not one per attempt. */
+const markedFailed = new Set<string>()
 
 const wait = (milliseconds: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, milliseconds))
@@ -150,6 +156,26 @@ async function processJob(job: UploadJob) {
         break
       } catch (error) {
         lastError = error
+        // `presign` answers 404 for an attachment the server has no row for:
+        // its `addAttachment` was lost (or went to the old Convex backend, or
+        // was dropped by an earlier build). Retrying can't help — re-create
+        // the row through the outbox instead. The job stays queued and
+        // `rearmJobsWithRows` releases it once that op drains.
+        if (
+          error instanceof ApiError &&
+          error.status === 404 &&
+          !healedRows.has(attachmentId) &&
+          !isAwaitingAttachmentRow(attachmentId)
+        ) {
+          healedRows.add(attachmentId)
+          enqueueOp(addAttachment, {
+            applicationId: job.applicationId,
+            itemId: job.itemId,
+            attachment: job.attachment,
+            updatedAt: new Date().toISOString(),
+          })
+          break
+        }
         if (attempt < MAX_ATTEMPTS - 1) await wait(2 ** attempt * 1000)
       }
     }
@@ -192,12 +218,15 @@ async function processJob(job: UploadJob) {
     // The job stays in the persisted queue — the next recovery pass (or the
     // next launch) picks it up. `blocked` only keeps the drain loop from
     // retrying it immediately, in a tight loop, within this session.
-    enqueueOp(setAttachmentUploadStatus, {
-      applicationId: job.applicationId,
-      attachmentId,
-      uploadStatus: 'failed',
-      updatedAt: new Date().toISOString(),
-    })
+    if (!markedFailed.has(attachmentId)) {
+      markedFailed.add(attachmentId)
+      enqueueOp(setAttachmentUploadStatus, {
+        applicationId: job.applicationId,
+        attachmentId,
+        uploadStatus: 'failed',
+        updatedAt: new Date().toISOString(),
+      })
+    }
     useUploadStore.setState((state) => ({
       blocked: { ...state.blocked, [attachmentId]: true },
     }))
@@ -340,7 +369,10 @@ export function subscribeToUploadRecovery() {
   // An upload that failed only because its attachment row wasn't on the
   // server yet has no other event to wake it before the next foreground. The
   // outbox shrinking is exactly that event.
-  const unsubscribeOutbox = useOutbox.subscribe(() => {
+  // Only when it *shrinks*: re-arming on growth let a failing upload's own
+  // "mark failed" op wake it up again, an endless enqueue/fail/enqueue loop.
+  const unsubscribeOutbox = useOutbox.subscribe((state, previous) => {
+    if (state.items.length >= previous.items.length) return
     rearmJobsWithRows()
     drainQueue()
   })

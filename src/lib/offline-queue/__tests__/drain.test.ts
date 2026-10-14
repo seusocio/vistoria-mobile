@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { create } from 'zustand'
+import { ApiError } from '@/lib/api/fetcher'
 import { drainOutboxWith } from '../drain'
 import { defineOp } from '../ops'
 import { createOutboxSlice, type OutboxState } from '../queue.store'
@@ -179,5 +180,46 @@ describe('drainOutboxWith', () => {
 
     expect(calls).toBe(0)
     expect(store.getState().items[0].status).toBe('failed')
+  })
+
+  test('a 404 on a treatNotFoundAsDone op resolves it and keeps draining', async () => {
+    const store = freshStore()
+    const del = defineOp<Record<string, never>, unknown>(uniqueType('del'), {
+      kind: 'application',
+      send: {} as never,
+      applyLocal: (entity) => entity as never,
+      entityId: () => 'e',
+      treatNotFoundAsDone: true,
+    })
+    const next = defineOp<Record<string, never>, unknown>(uniqueType('next'), {
+      kind: 'application',
+      send: {} as never,
+      applyLocal: (entity) => entity as never,
+      entityId: () => 'e',
+    })
+    store.getState().enqueue(del, {})
+    store.getState().enqueue(next, {})
+
+    await drainOutboxWith(store, async (_send, _args) => {
+      if (store.getState().items[0]?.type === del.type) throw new ApiError(404, 'gone', undefined)
+      return undefined
+    })
+
+    expect(store.getState().items).toHaveLength(0)
+  })
+
+  test('a 404 on an ordinary op still fails and blocks the queue', async () => {
+    const store = freshStore()
+    const op = defineOp<Record<string, never>, unknown>(uniqueType('patch'), {
+      kind: 'application',
+      send: {} as never,
+      applyLocal: (entity) => entity as never,
+      entityId: () => 'e',
+    })
+    store.getState().enqueue(op, {})
+    await drainOutboxWith(store, async () => {
+      throw new ApiError(404, 'gone', undefined)
+    })
+    expect(store.getState().items[0]?.status).toBe('failed')
   })
 })

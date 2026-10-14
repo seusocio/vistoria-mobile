@@ -82,7 +82,8 @@ export async function f<T>(url: string, options: RequestInit = {}): Promise<T> {
     response = await client(url, options)
   } catch (error) {
     if (error instanceof HTTPError) {
-      const body = await error.response.json().catch(() => undefined)
+      // ky 2 consumes the body to populate `error.data`; `response.json()` would throw.
+      const body = error.data
       const parsed = (body ?? {}) as ApiErrorBody
       if (error.response.status === 401) useSessionStore.getState().clearSession()
       throw new ApiError(

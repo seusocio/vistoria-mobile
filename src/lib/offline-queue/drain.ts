@@ -89,6 +89,10 @@ export async function drainOutboxWith(
         // with backoff, same as before REST existed.
         const status = error instanceof ApiError ? error.status : undefined
         if (status !== undefined && status < 500) {
+          if (op.bestEffort || (status === 404 && op.treatNotFoundAsDone)) {
+            outbox.getState().resolve(item.id)
+            continue
+          }
           outbox.getState().fail(item.id)
           return
         }

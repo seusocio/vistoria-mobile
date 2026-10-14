@@ -51,6 +51,20 @@ export interface OpDefinition<Args, Entity> {
    * pre-write value for one frame.
    */
   onServerResponse?: (queryClient: QueryClient, args: Args, response: unknown) => void
+  /**
+   * A UI hint rather than user data (e.g. marking a photo "failed"). When the
+   * server permanently rejects it (4xx) the drain drops it instead of failing
+   * it — otherwise a hint about a row the server doesn't have would block
+   * every real write queued behind it.
+   */
+  bestEffort?: boolean
+  /**
+   * For deletes: a 404 means the row is already gone (or never reached the
+   * server, e.g. a photo added and removed while offline), which is the
+   * outcome the op wanted. The drain resolves it instead of failing it —
+   * a failed head blocks every write queued behind it.
+   */
+  treatNotFoundAsDone?: boolean
   /** Query keys to invalidate once the op resolves — e.g. a list's derived counts. */
   invalidates?: (args: Args) => QueryKey[]
 }

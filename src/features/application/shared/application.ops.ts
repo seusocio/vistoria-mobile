@@ -1,3 +1,4 @@
+import { ApiError } from '@/lib/api/fetcher'
 import { defineOp } from '@/lib/offline-queue/ops'
 import type { Application, Attachment } from '@/features/application/shared/application.types'
 import {
@@ -19,6 +20,22 @@ import { applyApplicationItemPatch, type ApplicationItemPatch } from '@/features
 import { convexClient } from '@/lib/convex/client'
 import { useSessionStore } from '@/lib/session/session.store'
 import { api } from '../../../../convex/_generated/api'
+
+/**
+ * The server's upload machine only allows `failed → pending → uploaded`. A
+ * photo that failed once (the `failed` write reached the server) and later
+ * uploaded fine is `failed` there, so a direct `uploaded` is answered 409.
+ * The blob is already in storage at this point, so step through `pending`.
+ */
+async function markUploadedRest(orgId: string, projectId: string, attachmentId: string) {
+  try {
+    return await updateAttachmentUploadStatusRest(orgId, projectId, attachmentId, 'uploaded')
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.status !== 409) throw error
+    await updateAttachmentUploadStatusRest(orgId, projectId, attachmentId, 'pending')
+    return updateAttachmentUploadStatusRest(orgId, projectId, attachmentId, 'uploaded')
+  }
+}
 
 function findItem(application: Application, itemId: string) {
   return application.items.find((item) => item.id === itemId)
@@ -212,6 +229,7 @@ export const deleteAttachment = defineOp<
   { applicationId: string; itemId: string | null; attachmentId: string },
   Application
 >('applications.deleteAttachment', {
+  treatNotFoundAsDone: true,
   kind: 'application',
   send: (args) => convexClient.mutation(api.applications.purgeAttachment, args as never),
   sendRest: (args) => {
@@ -270,7 +288,7 @@ export const setAttachmentUploaded = defineOp<
     } as never),
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()
-    return updateAttachmentUploadStatusRest(orgId, projectId, args.attachmentId, 'uploaded')
+    return markUploadedRest(orgId, projectId, args.attachmentId)
   },
   applyLocal: (entity, args) => {
     if (!entity) return null
@@ -313,6 +331,7 @@ export const setAttachmentUploadStatus = defineOp<
   Application
 >('applications.setAttachmentUploadStatus', {
   kind: 'application',
+  bestEffort: true,
   send: (args) => convexClient.mutation(api.applications.setAttachmentUploadStatus, args as never),
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()
@@ -383,6 +402,7 @@ export const softDelete = defineOp<
   { id: string; deletedAt: string; checklistId: string },
   Application
 >('applications.softDelete', {
+  treatNotFoundAsDone: true,
   kind: 'application',
   send: (args) => convexClient.mutation(api.applications.softDelete, args as never),
   sendRest: (args) => {
