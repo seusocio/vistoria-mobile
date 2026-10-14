@@ -15,7 +15,6 @@ export interface Application {
   tagsIds: string[];
   date: string;
   status: string;
-  transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: ApplicationMetadata;
   attachmentsCount: number;

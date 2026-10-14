@@ -7,7 +7,7 @@ import type { QueryClient, QueryKey } from '@tanstack/react-query'
  * yet", and without a kind the checklist gets injected into the list of
  * applications.
  */
-export type EntityKind = 'application' | 'checklist' | 'tag'
+export type EntityKind = 'application' | 'checklist' | 'tag' | 'note'
 
 /**
  * One declared write. `applyLocal` is the single place that decides what an

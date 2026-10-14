@@ -15,7 +15,6 @@ export type CreateApplicationBodyOne = {
   tagsIds: string[];
   date: string;
   status?: 'draft' | 'completed';
-  transcript?: string | null;
   gallerySourceApplicationId?: string | null;
   metadata?: CreateApplicationBodyOneMetadata;
   items?: CreateApplicationBodyOneItemsItem[];

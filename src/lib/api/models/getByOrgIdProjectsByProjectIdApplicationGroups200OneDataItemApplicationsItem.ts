@@ -15,7 +15,6 @@ export type GetByOrgIdProjectsByProjectIdApplicationGroups200OneDataItemApplicat
   tagsIds: string[];
   date: string;
   status: string;
-  transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: GetByOrgIdProjectsByProjectIdApplicationGroups200OneDataItemApplicationsItemMetadata;
   attachmentsCount: number;

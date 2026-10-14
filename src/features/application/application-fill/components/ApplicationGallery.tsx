@@ -4,6 +4,7 @@ import { resolvePreviewUri } from '@/features/application/shared/attachment-prev
 import { useAttachmentVisibility } from '@/features/application/shared/attachment-visibility'
 import { useLocalUploadUris } from '@/lib/uploads/upload-store'
 import type { Attachment } from '@/features/application/shared/application.types'
+import { isVisibleImage } from '@/features/application/shared/application.utils'
 
 interface ApplicationGalleryProps {
   attachments: Attachment[]
@@ -25,7 +26,7 @@ export const ApplicationGallery = memo(function ApplicationGallery({
   const photos = useMemo(
     () =>
       attachments
-        .filter((attachment) => !attachment.deletedAt && !hiddenIds[attachment.id])
+        .filter((attachment) => isVisibleImage(attachment, hiddenIds))
         .map((attachment, index) => ({
           id: attachment.id,
           uri: resolvePreviewUri(attachment, localUris),

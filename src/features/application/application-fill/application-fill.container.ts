@@ -11,8 +11,9 @@ import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { useChecklistRestResult } from '@/features/checklist/shared/checklist.rest'
 import { applicationItemDraftSchema, applicationMetaSchema, newApplicationItemSchema, type ApplicationItemDraftFormValues, type ApplicationMetaFormValues, type NewApplicationItemFormValues } from '@/features/application/shared/application.schema'
 import { generateId } from '@/lib/id'
-import { applyApplicationItemPatch, getDerivedState, getProgress, groupItemsByTitlePrefix, isItemAnswerComplete, sortItemsByChecklistOrder, type ApplicationItemPatch } from '@/features/application/shared/application.utils'
-import { generateSuggestions, prepareTranscriber, transcribeAudio } from '@/lib/voice/voice-service'
+import { applyApplicationItemPatch, getDerivedState, isVisibleImage, getProgress, groupItemsByTitlePrefix, isItemAnswerComplete, sortItemsByChecklistOrder, type ApplicationItemPatch } from '@/features/application/shared/application.utils'
+import { generateSuggestions, prepareTranscriber } from '@/lib/voice/voice-service'
+import { postVoiceNote } from '@/features/note/shared/note.actions'
 import { normalizeApplication } from '@/lib/convex'
 import { useLocalUploadUris, useUploadStore } from '@/lib/uploads/upload-store'
 import { enqueueOp, useEntity } from '@/lib/offline-queue'
@@ -53,7 +54,6 @@ const EMPTY_APPLICATION: Application = {
   items: [],
   attachments: [],
   gallerySourceApplicationId: null,
-  transcript: null,
   createdAt: '',
   updatedAt: '',
   completedAt: null,
@@ -118,20 +118,18 @@ export function useApplicationFillContainer({
    * patching items on an entity about to be soft-deleted is just a wasted
    * write. `pendingItemPatches` merges cumulatively per item (a second tap
    * on the same item combines with the first, matching what N sequential
-   * ops would have produced). The voice transcript buffers the same way —
-   * see `pendingTranscript`.
+   * ops would have produced). Voice recordings don't buffer: each one is
+   * posted straight away as its own Note (`postVoiceNote`).
    */
   const [pendingItemPatches, setPendingItemPatches] = useState<
     Record<string, { patch: ApplicationItemPatch; updatedAt: string }>
   >({})
   const [pendingNewItems, setPendingNewItems] = useState<ApplicationItem[]>([])
   /**
-   * Transcription runs fully on-device, so the transcript is just a string
-   * by the time recording stops — it rides the same flush points as every
-   * other edit on this screen instead of costing its own request the
-   * moment the user lifts their finger.
+   * The last recording's transcription, this session only — what the legacy
+   * VoiceCard shows. The durable copy is the Note it was posted as.
    */
-  const [pendingTranscript, setPendingTranscript] = useState<string | null>(null)
+  const [lastVoiceTranscript, setLastVoiceTranscript] = useState<string | null>(null)
 
   const application = useMemo(() => {
     const base = normalizedApplication ?? EMPTY_APPLICATION
@@ -142,11 +140,8 @@ export function useApplicationFillContainer({
     if (pendingNewItems.length > 0) {
       next = { ...next, items: [...next.items, ...pendingNewItems] }
     }
-    if (pendingTranscript !== null) {
-      next = { ...next, transcript: pendingTranscript }
-    }
     return next
-  }, [normalizedApplication, pendingItemPatches, pendingNewItems, pendingTranscript])
+  }, [normalizedApplication, pendingItemPatches, pendingNewItems])
 
   const tagsCatalog = useTagsCatalog()
   const { removeAttachment: removeAttachmentPipeline } = useAttachPhotos()
@@ -166,8 +161,8 @@ export function useApplicationFillContainer({
 
   useEffect(() => {
     if (!FEATURE_FLAG.voice) return
-    setVoiceState(application.transcript ? 'ready' : 'idle')
-  }, [application.transcript])
+    setVoiceState(lastVoiceTranscript ? 'ready' : 'idle')
+  }, [lastVoiceTranscript])
   useEffect(() => {
     // Warm up the WhisperKit model (downloads on first run) so stopping a
     // recording doesn't stall while the model loads. Errors surface later on
@@ -452,14 +447,25 @@ export function useApplicationFillContainer({
     try {
       const uri = await stopRecording()
       if (!uri) throw new Error('Gravação vazia')
-      const transcript = await transcribeAudio(uri)
-      setPendingTranscript(transcript)
-      setVoiceState('ready')
+      // Resolves as soon as the note is queued — the composer is free again
+      // while transcription fills the note's text in the background.
+      await postVoiceNote({
+        applicationId: application.id,
+        recordingUri: uri,
+        position: application.attachments.length,
+        onTranscribed: (text) => {
+          if (text) {
+            setLastVoiceTranscript(text)
+            setVoiceState((current) => (current === 'idle' ? 'ready' : current))
+          }
+        },
+      })
+      setVoiceState(lastVoiceTranscript ? 'ready' : 'idle')
     } catch (error) {
       setApplicationError(
-        error instanceof Error ? error.message : 'Não foi possível transcrever a gravação',
+        error instanceof Error ? error.message : 'Não foi possível salvar a gravação',
       )
-      setVoiceState(application.transcript ? 'ready' : 'idle')
+      setVoiceState(lastVoiceTranscript ? 'ready' : 'idle')
     }
   }
 
@@ -501,25 +507,10 @@ export function useApplicationFillContainer({
       for (const item of pendingNewItems) {
         enqueueOp(addItem, { applicationId, checklistId, item, updatedAt: item.updatedAt })
       }
-      if (pendingTranscript !== null) {
-        enqueueOp(updateMeta, {
-          applicationId,
-          checklistId,
-          transcript: pendingTranscript,
-          updatedAt: new Date().toISOString(),
-        })
-      }
     }
     setPendingItemPatches({})
     setPendingNewItems([])
-    setPendingTranscript(null)
-  }, [
-    normalizedApplication?.id,
-    checklistId,
-    pendingItemPatches,
-    pendingNewItems,
-    pendingTranscript,
-  ])
+  }, [normalizedApplication?.id, checklistId, pendingItemPatches, pendingNewItems])
 
   function handleBack() {
     flushPendingChanges()
@@ -578,7 +569,7 @@ export function useApplicationFillContainer({
     ? (viewer.itemId === null
         ? application.attachments
         : (application.items.find((item) => item.id === viewer.itemId)?.attachments ?? [])
-      ).filter((attachment) => !attachment.deletedAt && !hiddenAttachmentIds[attachment.id])
+      ).filter((attachment) => isVisibleImage(attachment, hiddenAttachmentIds))
     : []
   const viewerPhotos = viewerAttachments.map((attachment) => ({
     id: attachment.id,
@@ -599,6 +590,7 @@ export function useApplicationFillContainer({
     tagsCatalog,
     uploadProgress,
     voiceState,
+    lastVoiceTranscript,
     generatingSuggestions,
     viewer,
     viewerPhotos,

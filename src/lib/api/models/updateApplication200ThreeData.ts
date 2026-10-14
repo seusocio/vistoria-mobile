@@ -15,7 +15,6 @@ export type UpdateApplication200ThreeData = {
   tagsIds: string[];
   date: string;
   status: string;
-  transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: UpdateApplication200ThreeDataMetadata;
   attachmentsCount: number;

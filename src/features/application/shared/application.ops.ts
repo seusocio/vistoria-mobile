@@ -363,7 +363,6 @@ export const updateMeta = defineOp<
     checklistId: string
     tagsIds?: string[]
     date?: string
-    transcript?: string | null
     status?: Application['status']
     completedAt?: string | null
     updatedAt: string

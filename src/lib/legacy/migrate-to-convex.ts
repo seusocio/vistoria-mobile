@@ -82,7 +82,8 @@ export async function migrateLocalDataToConvex(): Promise<void> {
   await Promise.all(
     applications.map((application) =>
       convexClient.mutation(api.applications.create, {
-        entity: normalizeApplication(application),
+        // The Convex schema still requires the field the REST API dropped.
+        entity: { ...normalizeApplication(application), transcript: null },
       }),
     ),
   )

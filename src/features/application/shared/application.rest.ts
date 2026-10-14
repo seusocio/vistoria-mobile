@@ -158,7 +158,6 @@ function fromApplicationResponse(raw: Record<string, unknown>): Application {
       fromAttachmentResponse,
     ),
     gallerySourceApplicationId: (raw.gallerySourceApplicationId as string | null | undefined) ?? null,
-    transcript: (raw.transcript as string | null | undefined) ?? null,
     createdAt: raw.createdAt as string,
     updatedAt: raw.updatedAt as string,
     completedAt: (raw.completedAt as string | null | undefined) ?? null,
@@ -178,7 +177,6 @@ function toCreateApplicationBody(entity: Application): CreateApplicationBodyOne 
     tagsIds: entity.tagsIds,
     date: entity.date,
     status: entity.status,
-    transcript: entity.transcript,
     gallerySourceApplicationId: entity.gallerySourceApplicationId,
     items: entity.items.map((item) => ({
       id: item.id,
@@ -212,7 +210,6 @@ export interface UpdateMetaArgs {
   checklistId: string
   tagsIds?: string[]
   date?: string
-  transcript?: string | null
   status?: Application['status']
   updatedAt: string
 }
@@ -230,7 +227,6 @@ function toUpdateApplicationBody(args: UpdateMetaArgs): UpdateApplicationBodyOne
   const body: UpdateApplicationBodyOne = { updatedAt: args.updatedAt }
   if (args.tagsIds !== undefined) body.tagsIds = args.tagsIds
   if (args.date !== undefined) body.date = args.date
-  if (args.transcript !== undefined) body.transcript = args.transcript
   if (args.status !== undefined) body.status = args.status
   return body
 }

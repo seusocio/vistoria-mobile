@@ -10,7 +10,6 @@ import type { UpdateApplicationBodyTwoMetadata } from './updateApplicationBodyTw
 export type UpdateApplicationBodyTwo = {
   tagsIds?: string[];
   date?: string;
-  transcript?: string | null;
   status?: 'draft' | 'completed';
   gallerySourceApplicationId?: string | null;
   metadata?: UpdateApplicationBodyTwoMetadata;

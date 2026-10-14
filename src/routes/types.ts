@@ -19,7 +19,12 @@ export type StackRoutesList = {
 	checklistEdit: { checklistId: string };
 	applicationNew: { checklistId: string };
 	applicationFill: { checklistId: string; applicationId: string };
-	photoCapture: { applicationId: string; itemId: string | null };
+	photoCapture: {
+		applicationId: string;
+		itemId: string | null;
+		/** Post this session's photos as one Note on the visit when the camera closes. */
+		asNote?: boolean;
+	};
 };
 
 export type StackRoutesProps<T extends keyof StackRoutesList> =

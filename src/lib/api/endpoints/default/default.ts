@@ -149,6 +149,33 @@ import type {
   CreateChecklistBodyOne,
   CreateChecklistBodyThree,
   CreateChecklistBodyTwo,
+  CreateNotes200One,
+  CreateNotes200Three,
+  CreateNotes200Two,
+  CreateNotes201One,
+  CreateNotes201Three,
+  CreateNotes201Two,
+  CreateNotes400One,
+  CreateNotes400Three,
+  CreateNotes400Two,
+  CreateNotes404One,
+  CreateNotes404Three,
+  CreateNotes404Two,
+  CreateNotes409One,
+  CreateNotes409Three,
+  CreateNotes409Two,
+  CreateNotes422One,
+  CreateNotes422Three,
+  CreateNotes422Two,
+  CreateNotes500One,
+  CreateNotes500Three,
+  CreateNotes500Two,
+  CreateNotes503One,
+  CreateNotes503Three,
+  CreateNotes503Two,
+  CreateNotesBodyOne,
+  CreateNotesBodyThree,
+  CreateNotesBodyTwo,
   CreateProject200One,
   CreateProject200Three,
   CreateProject200Two,
@@ -245,6 +272,27 @@ import type {
   DeleteAttachment503One,
   DeleteAttachment503Three,
   DeleteAttachment503Two,
+  DeleteByOrgIdProjectsByProjectIdTagsById200One,
+  DeleteByOrgIdProjectsByProjectIdTagsById200Three,
+  DeleteByOrgIdProjectsByProjectIdTagsById200Two,
+  DeleteByOrgIdProjectsByProjectIdTagsById400One,
+  DeleteByOrgIdProjectsByProjectIdTagsById400Three,
+  DeleteByOrgIdProjectsByProjectIdTagsById400Two,
+  DeleteByOrgIdProjectsByProjectIdTagsById404One,
+  DeleteByOrgIdProjectsByProjectIdTagsById404Three,
+  DeleteByOrgIdProjectsByProjectIdTagsById404Two,
+  DeleteByOrgIdProjectsByProjectIdTagsById409One,
+  DeleteByOrgIdProjectsByProjectIdTagsById409Three,
+  DeleteByOrgIdProjectsByProjectIdTagsById409Two,
+  DeleteByOrgIdProjectsByProjectIdTagsById422One,
+  DeleteByOrgIdProjectsByProjectIdTagsById422Three,
+  DeleteByOrgIdProjectsByProjectIdTagsById422Two,
+  DeleteByOrgIdProjectsByProjectIdTagsById500One,
+  DeleteByOrgIdProjectsByProjectIdTagsById500Three,
+  DeleteByOrgIdProjectsByProjectIdTagsById500Two,
+  DeleteByOrgIdProjectsByProjectIdTagsById503One,
+  DeleteByOrgIdProjectsByProjectIdTagsById503Three,
+  DeleteByOrgIdProjectsByProjectIdTagsById503Two,
   DeleteChecklist200One,
   DeleteChecklist200Three,
   DeleteChecklist200Two,
@@ -266,6 +314,27 @@ import type {
   DeleteChecklist503One,
   DeleteChecklist503Three,
   DeleteChecklist503Two,
+  DeleteNote200One,
+  DeleteNote200Three,
+  DeleteNote200Two,
+  DeleteNote400One,
+  DeleteNote400Three,
+  DeleteNote400Two,
+  DeleteNote404One,
+  DeleteNote404Three,
+  DeleteNote404Two,
+  DeleteNote409One,
+  DeleteNote409Three,
+  DeleteNote409Two,
+  DeleteNote422One,
+  DeleteNote422Three,
+  DeleteNote422Two,
+  DeleteNote500One,
+  DeleteNote500Three,
+  DeleteNote500Two,
+  DeleteNote503One,
+  DeleteNote503Three,
+  DeleteNote503Two,
   DeleteProject200One,
   DeleteProject200Three,
   DeleteProject200Two,
@@ -515,6 +584,28 @@ import type {
   ListChecklists503Three,
   ListChecklists503Two,
   ListChecklistsParams,
+  ListNotes200One,
+  ListNotes200Three,
+  ListNotes200Two,
+  ListNotes400One,
+  ListNotes400Three,
+  ListNotes400Two,
+  ListNotes404One,
+  ListNotes404Three,
+  ListNotes404Two,
+  ListNotes409One,
+  ListNotes409Three,
+  ListNotes409Two,
+  ListNotes422One,
+  ListNotes422Three,
+  ListNotes422Two,
+  ListNotes500One,
+  ListNotes500Three,
+  ListNotes500Two,
+  ListNotes503One,
+  ListNotes503Three,
+  ListNotes503Two,
+  ListNotesParams,
   ListProjects200One,
   ListProjects200Three,
   ListProjects200Two,
@@ -811,6 +902,30 @@ import type {
   UpdateChecklistBodyOne,
   UpdateChecklistBodyThree,
   UpdateChecklistBodyTwo,
+  UpdateNote200One,
+  UpdateNote200Three,
+  UpdateNote200Two,
+  UpdateNote400One,
+  UpdateNote400Three,
+  UpdateNote400Two,
+  UpdateNote404One,
+  UpdateNote404Three,
+  UpdateNote404Two,
+  UpdateNote409One,
+  UpdateNote409Three,
+  UpdateNote409Two,
+  UpdateNote422One,
+  UpdateNote422Three,
+  UpdateNote422Two,
+  UpdateNote500One,
+  UpdateNote500Three,
+  UpdateNote500Two,
+  UpdateNote503One,
+  UpdateNote503Three,
+  UpdateNote503Two,
+  UpdateNoteBodyOne,
+  UpdateNoteBodyThree,
+  UpdateNoteBodyTwo,
   UpdateSession200,
   UpdateSession400,
   UpdateSession401,
@@ -2223,6 +2338,191 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateTagMutationOptions(options), queryClient);
+    }
+    export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse200ApplicationJson = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById200One
+  status: 200
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse200MultipartFormData = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById200Two
+  status: 200
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse200TextPlain = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById200Three
+  status: 200
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse400ApplicationJson = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById400One
+  status: 400
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse400MultipartFormData = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById400Two
+  status: 400
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse400TextPlain = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById400Three
+  status: 400
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse404ApplicationJson = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById404One
+  status: 404
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse404MultipartFormData = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById404Two
+  status: 404
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse404TextPlain = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById404Three
+  status: 404
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse409ApplicationJson = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById409One
+  status: 409
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse409MultipartFormData = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById409Two
+  status: 409
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse409TextPlain = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById409Three
+  status: 409
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse422ApplicationJson = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById422One
+  status: 422
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse422MultipartFormData = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById422Two
+  status: 422
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse422TextPlain = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById422Three
+  status: 422
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse500ApplicationJson = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById500One
+  status: 500
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse500MultipartFormData = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById500Two
+  status: 500
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse500TextPlain = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById500Three
+  status: 500
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse503ApplicationJson = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById503One
+  status: 503
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse503MultipartFormData = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById503Two
+  status: 503
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse503TextPlain = {
+  data: DeleteByOrgIdProjectsByProjectIdTagsById503Three
+  status: 503
+}
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponseSuccess = (deleteByOrgIdProjectsByProjectIdTagsByIdResponse200ApplicationJson | deleteByOrgIdProjectsByProjectIdTagsByIdResponse200MultipartFormData | deleteByOrgIdProjectsByProjectIdTagsByIdResponse200TextPlain) & {
+  headers: Headers;
+};
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponseError = (deleteByOrgIdProjectsByProjectIdTagsByIdResponse400ApplicationJson | deleteByOrgIdProjectsByProjectIdTagsByIdResponse400MultipartFormData | deleteByOrgIdProjectsByProjectIdTagsByIdResponse400TextPlain | deleteByOrgIdProjectsByProjectIdTagsByIdResponse404ApplicationJson | deleteByOrgIdProjectsByProjectIdTagsByIdResponse404MultipartFormData | deleteByOrgIdProjectsByProjectIdTagsByIdResponse404TextPlain | deleteByOrgIdProjectsByProjectIdTagsByIdResponse409ApplicationJson | deleteByOrgIdProjectsByProjectIdTagsByIdResponse409MultipartFormData | deleteByOrgIdProjectsByProjectIdTagsByIdResponse409TextPlain | deleteByOrgIdProjectsByProjectIdTagsByIdResponse422ApplicationJson | deleteByOrgIdProjectsByProjectIdTagsByIdResponse422MultipartFormData | deleteByOrgIdProjectsByProjectIdTagsByIdResponse422TextPlain | deleteByOrgIdProjectsByProjectIdTagsByIdResponse500ApplicationJson | deleteByOrgIdProjectsByProjectIdTagsByIdResponse500MultipartFormData | deleteByOrgIdProjectsByProjectIdTagsByIdResponse500TextPlain | deleteByOrgIdProjectsByProjectIdTagsByIdResponse503ApplicationJson | deleteByOrgIdProjectsByProjectIdTagsByIdResponse503MultipartFormData | deleteByOrgIdProjectsByProjectIdTagsByIdResponse503TextPlain) & {
+  headers: Headers;
+};
+
+export type deleteByOrgIdProjectsByProjectIdTagsByIdResponse = (deleteByOrgIdProjectsByProjectIdTagsByIdResponseSuccess | deleteByOrgIdProjectsByProjectIdTagsByIdResponseError)
+
+export const getDeleteByOrgIdProjectsByProjectIdTagsByIdUrl = (orgId: string,
+    projectId: string,
+    id: string,) => {
+
+
+
+
+  return `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:3000'}/${orgId}/projects/${projectId}/tags/${id}`
+}
+
+export const deleteByOrgIdProjectsByProjectIdTagsById = async (orgId: string,
+    projectId: string,
+    id: string, options?: Parameters<typeof f>[1]): Promise<deleteByOrgIdProjectsByProjectIdTagsByIdResponse> => {
+
+  return f<deleteByOrgIdProjectsByProjectIdTagsByIdResponse>(getDeleteByOrgIdProjectsByProjectIdTagsByIdUrl(orgId,projectId,id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteByOrgIdProjectsByProjectIdTagsByIdMutationKey = () => ['deleteByOrgIdProjectsByProjectIdTagsById'] as const;
+
+export const getDeleteByOrgIdProjectsByProjectIdTagsByIdMutationOptions = <TError = DeleteByOrgIdProjectsByProjectIdTagsById400One | DeleteByOrgIdProjectsByProjectIdTagsById400Two | DeleteByOrgIdProjectsByProjectIdTagsById400Three | DeleteByOrgIdProjectsByProjectIdTagsById404One | DeleteByOrgIdProjectsByProjectIdTagsById404Two | DeleteByOrgIdProjectsByProjectIdTagsById404Three | DeleteByOrgIdProjectsByProjectIdTagsById409One | DeleteByOrgIdProjectsByProjectIdTagsById409Two | DeleteByOrgIdProjectsByProjectIdTagsById409Three | DeleteByOrgIdProjectsByProjectIdTagsById422One | DeleteByOrgIdProjectsByProjectIdTagsById422Two | DeleteByOrgIdProjectsByProjectIdTagsById422Three | DeleteByOrgIdProjectsByProjectIdTagsById500One | DeleteByOrgIdProjectsByProjectIdTagsById500Two | DeleteByOrgIdProjectsByProjectIdTagsById500Three | DeleteByOrgIdProjectsByProjectIdTagsById503One | DeleteByOrgIdProjectsByProjectIdTagsById503Two | DeleteByOrgIdProjectsByProjectIdTagsById503Three,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteByOrgIdProjectsByProjectIdTagsById>>, TError,DeleteByOrgIdProjectsByProjectIdTagsByIdMutationVariables, TContext>, request?: SecondParameter<typeof f>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteByOrgIdProjectsByProjectIdTagsById>>, TError,DeleteByOrgIdProjectsByProjectIdTagsByIdMutationVariables, TContext> => {
+
+const mutationKey = getDeleteByOrgIdProjectsByProjectIdTagsByIdMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteByOrgIdProjectsByProjectIdTagsById>>, DeleteByOrgIdProjectsByProjectIdTagsByIdMutationVariables> = (props) => {
+          const {orgId,projectId,id} = props ?? {};
+
+          return  deleteByOrgIdProjectsByProjectIdTagsById(orgId,projectId,id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteByOrgIdProjectsByProjectIdTagsByIdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteByOrgIdProjectsByProjectIdTagsById>>>
+
+    export type DeleteByOrgIdProjectsByProjectIdTagsByIdMutationError = DeleteByOrgIdProjectsByProjectIdTagsById400One | DeleteByOrgIdProjectsByProjectIdTagsById400Two | DeleteByOrgIdProjectsByProjectIdTagsById400Three | DeleteByOrgIdProjectsByProjectIdTagsById404One | DeleteByOrgIdProjectsByProjectIdTagsById404Two | DeleteByOrgIdProjectsByProjectIdTagsById404Three | DeleteByOrgIdProjectsByProjectIdTagsById409One | DeleteByOrgIdProjectsByProjectIdTagsById409Two | DeleteByOrgIdProjectsByProjectIdTagsById409Three | DeleteByOrgIdProjectsByProjectIdTagsById422One | DeleteByOrgIdProjectsByProjectIdTagsById422Two | DeleteByOrgIdProjectsByProjectIdTagsById422Three | DeleteByOrgIdProjectsByProjectIdTagsById500One | DeleteByOrgIdProjectsByProjectIdTagsById500Two | DeleteByOrgIdProjectsByProjectIdTagsById500Three | DeleteByOrgIdProjectsByProjectIdTagsById503One | DeleteByOrgIdProjectsByProjectIdTagsById503Two | DeleteByOrgIdProjectsByProjectIdTagsById503Three
+    export type DeleteByOrgIdProjectsByProjectIdTagsByIdMutationVariables = {orgId: string;projectId: string;id: string}
+
+    export const useDeleteByOrgIdProjectsByProjectIdTagsById = <TError = DeleteByOrgIdProjectsByProjectIdTagsById400One | DeleteByOrgIdProjectsByProjectIdTagsById400Two | DeleteByOrgIdProjectsByProjectIdTagsById400Three | DeleteByOrgIdProjectsByProjectIdTagsById404One | DeleteByOrgIdProjectsByProjectIdTagsById404Two | DeleteByOrgIdProjectsByProjectIdTagsById404Three | DeleteByOrgIdProjectsByProjectIdTagsById409One | DeleteByOrgIdProjectsByProjectIdTagsById409Two | DeleteByOrgIdProjectsByProjectIdTagsById409Three | DeleteByOrgIdProjectsByProjectIdTagsById422One | DeleteByOrgIdProjectsByProjectIdTagsById422Two | DeleteByOrgIdProjectsByProjectIdTagsById422Three | DeleteByOrgIdProjectsByProjectIdTagsById500One | DeleteByOrgIdProjectsByProjectIdTagsById500Two | DeleteByOrgIdProjectsByProjectIdTagsById500Three | DeleteByOrgIdProjectsByProjectIdTagsById503One | DeleteByOrgIdProjectsByProjectIdTagsById503Two | DeleteByOrgIdProjectsByProjectIdTagsById503Three,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteByOrgIdProjectsByProjectIdTagsById>>, TError,DeleteByOrgIdProjectsByProjectIdTagsByIdMutationVariables, TContext>, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteByOrgIdProjectsByProjectIdTagsById>>,
+        TError,
+        DeleteByOrgIdProjectsByProjectIdTagsByIdMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteByOrgIdProjectsByProjectIdTagsByIdMutationOptions(options), queryClient);
     }
     export type listChecklistsResponse200ApplicationJson = {
   data: ListChecklists200One
@@ -5662,6 +5962,821 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteAttachmentMutationOptions(options), queryClient);
+    }
+    export type listNotesResponse200ApplicationJson = {
+  data: ListNotes200One
+  status: 200
+}
+
+export type listNotesResponse200MultipartFormData = {
+  data: ListNotes200Two
+  status: 200
+}
+
+export type listNotesResponse200TextPlain = {
+  data: ListNotes200Three
+  status: 200
+}
+
+export type listNotesResponse400ApplicationJson = {
+  data: ListNotes400One
+  status: 400
+}
+
+export type listNotesResponse400MultipartFormData = {
+  data: ListNotes400Two
+  status: 400
+}
+
+export type listNotesResponse400TextPlain = {
+  data: ListNotes400Three
+  status: 400
+}
+
+export type listNotesResponse404ApplicationJson = {
+  data: ListNotes404One
+  status: 404
+}
+
+export type listNotesResponse404MultipartFormData = {
+  data: ListNotes404Two
+  status: 404
+}
+
+export type listNotesResponse404TextPlain = {
+  data: ListNotes404Three
+  status: 404
+}
+
+export type listNotesResponse409ApplicationJson = {
+  data: ListNotes409One
+  status: 409
+}
+
+export type listNotesResponse409MultipartFormData = {
+  data: ListNotes409Two
+  status: 409
+}
+
+export type listNotesResponse409TextPlain = {
+  data: ListNotes409Three
+  status: 409
+}
+
+export type listNotesResponse422ApplicationJson = {
+  data: ListNotes422One
+  status: 422
+}
+
+export type listNotesResponse422MultipartFormData = {
+  data: ListNotes422Two
+  status: 422
+}
+
+export type listNotesResponse422TextPlain = {
+  data: ListNotes422Three
+  status: 422
+}
+
+export type listNotesResponse500ApplicationJson = {
+  data: ListNotes500One
+  status: 500
+}
+
+export type listNotesResponse500MultipartFormData = {
+  data: ListNotes500Two
+  status: 500
+}
+
+export type listNotesResponse500TextPlain = {
+  data: ListNotes500Three
+  status: 500
+}
+
+export type listNotesResponse503ApplicationJson = {
+  data: ListNotes503One
+  status: 503
+}
+
+export type listNotesResponse503MultipartFormData = {
+  data: ListNotes503Two
+  status: 503
+}
+
+export type listNotesResponse503TextPlain = {
+  data: ListNotes503Three
+  status: 503
+}
+
+export type listNotesResponseSuccess = (listNotesResponse200ApplicationJson | listNotesResponse200MultipartFormData | listNotesResponse200TextPlain) & {
+  headers: Headers;
+};
+export type listNotesResponseError = (listNotesResponse400ApplicationJson | listNotesResponse400MultipartFormData | listNotesResponse400TextPlain | listNotesResponse404ApplicationJson | listNotesResponse404MultipartFormData | listNotesResponse404TextPlain | listNotesResponse409ApplicationJson | listNotesResponse409MultipartFormData | listNotesResponse409TextPlain | listNotesResponse422ApplicationJson | listNotesResponse422MultipartFormData | listNotesResponse422TextPlain | listNotesResponse500ApplicationJson | listNotesResponse500MultipartFormData | listNotesResponse500TextPlain | listNotesResponse503ApplicationJson | listNotesResponse503MultipartFormData | listNotesResponse503TextPlain) & {
+  headers: Headers;
+};
+
+export type listNotesResponse = (listNotesResponseSuccess | listNotesResponseError)
+
+export const getListNotesUrl = (orgId: string,
+    projectId: string,
+    id: string,
+    params?: ListNotesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:3000'}/${orgId}/projects/${projectId}/applications/${id}/notes/?${stringifiedParams}` : `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:3000'}/${orgId}/projects/${projectId}/applications/${id}/notes/`
+}
+
+export const listNotes = async (orgId: string,
+    projectId: string,
+    id: string,
+    params?: ListNotesParams, options?: Parameters<typeof f>[1]): Promise<listNotesResponse> => {
+
+  return f<listNotesResponse>(getListNotesUrl(orgId,projectId,id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListNotesQueryKey = (orgId: string,
+    projectId: string,
+    id: string,
+    params?: ListNotesParams,) => {
+    return [
+    `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:3000'}/${orgId}/projects/${projectId}/applications/${id}/notes/`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListNotesQueryOptions = <TData = Awaited<ReturnType<typeof listNotes>>, TError = ListNotes400One | ListNotes400Two | ListNotes400Three | ListNotes404One | ListNotes404Two | ListNotes404Three | ListNotes409One | ListNotes409Two | ListNotes409Three | ListNotes422One | ListNotes422Two | ListNotes422Three | ListNotes500One | ListNotes500Two | ListNotes500Three | ListNotes503One | ListNotes503Two | ListNotes503Three>(orgId: string,
+    projectId: string,
+    id: string,
+    params?: ListNotesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listNotes>>, TError, TData>>, request?: SecondParameter<typeof f>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListNotesQueryKey(orgId,projectId,id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listNotes>>> = ({ signal }) => listNotes(orgId,projectId,id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: orgId !== null && orgId !== undefined && projectId !== null && projectId !== undefined && id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listNotes>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListNotesQueryResult = NonNullable<Awaited<ReturnType<typeof listNotes>>>
+export type ListNotesQueryError = ListNotes400One | ListNotes400Two | ListNotes400Three | ListNotes404One | ListNotes404Two | ListNotes404Three | ListNotes409One | ListNotes409Two | ListNotes409Three | ListNotes422One | ListNotes422Two | ListNotes422Three | ListNotes500One | ListNotes500Two | ListNotes500Three | ListNotes503One | ListNotes503Two | ListNotes503Three
+
+
+export function useListNotes<TData = Awaited<ReturnType<typeof listNotes>>, TError = ListNotes400One | ListNotes400Two | ListNotes400Three | ListNotes404One | ListNotes404Two | ListNotes404Three | ListNotes409One | ListNotes409Two | ListNotes409Three | ListNotes422One | ListNotes422Two | ListNotes422Three | ListNotes500One | ListNotes500Two | ListNotes500Three | ListNotes503One | ListNotes503Two | ListNotes503Three>(
+ orgId: string,
+    projectId: string,
+    id: string,
+    params: undefined |  ListNotesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listNotes>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listNotes>>,
+          TError,
+          Awaited<ReturnType<typeof listNotes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListNotes<TData = Awaited<ReturnType<typeof listNotes>>, TError = ListNotes400One | ListNotes400Two | ListNotes400Three | ListNotes404One | ListNotes404Two | ListNotes404Three | ListNotes409One | ListNotes409Two | ListNotes409Three | ListNotes422One | ListNotes422Two | ListNotes422Three | ListNotes500One | ListNotes500Two | ListNotes500Three | ListNotes503One | ListNotes503Two | ListNotes503Three>(
+ orgId: string,
+    projectId: string,
+    id: string,
+    params?: ListNotesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listNotes>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listNotes>>,
+          TError,
+          Awaited<ReturnType<typeof listNotes>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListNotes<TData = Awaited<ReturnType<typeof listNotes>>, TError = ListNotes400One | ListNotes400Two | ListNotes400Three | ListNotes404One | ListNotes404Two | ListNotes404Three | ListNotes409One | ListNotes409Two | ListNotes409Three | ListNotes422One | ListNotes422Two | ListNotes422Three | ListNotes500One | ListNotes500Two | ListNotes500Three | ListNotes503One | ListNotes503Two | ListNotes503Three>(
+ orgId: string,
+    projectId: string,
+    id: string,
+    params?: ListNotesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listNotes>>, TError, TData>>, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListNotes<TData = Awaited<ReturnType<typeof listNotes>>, TError = ListNotes400One | ListNotes400Two | ListNotes400Three | ListNotes404One | ListNotes404Two | ListNotes404Three | ListNotes409One | ListNotes409Two | ListNotes409Three | ListNotes422One | ListNotes422Two | ListNotes422Three | ListNotes500One | ListNotes500Two | ListNotes500Three | ListNotes503One | ListNotes503Two | ListNotes503Three>(
+ orgId: string,
+    projectId: string,
+    id: string,
+    params?: ListNotesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listNotes>>, TError, TData>>, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListNotesQueryOptions(orgId,projectId,id,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export type createNotesResponse200ApplicationJson = {
+  data: CreateNotes200One
+  status: 200
+}
+
+export type createNotesResponse200MultipartFormData = {
+  data: CreateNotes200Two
+  status: 200
+}
+
+export type createNotesResponse200TextPlain = {
+  data: CreateNotes200Three
+  status: 200
+}
+
+export type createNotesResponse201ApplicationJson = {
+  data: CreateNotes201One
+  status: 201
+}
+
+export type createNotesResponse201MultipartFormData = {
+  data: CreateNotes201Two
+  status: 201
+}
+
+export type createNotesResponse201TextPlain = {
+  data: CreateNotes201Three
+  status: 201
+}
+
+export type createNotesResponse400ApplicationJson = {
+  data: CreateNotes400One
+  status: 400
+}
+
+export type createNotesResponse400MultipartFormData = {
+  data: CreateNotes400Two
+  status: 400
+}
+
+export type createNotesResponse400TextPlain = {
+  data: CreateNotes400Three
+  status: 400
+}
+
+export type createNotesResponse404ApplicationJson = {
+  data: CreateNotes404One
+  status: 404
+}
+
+export type createNotesResponse404MultipartFormData = {
+  data: CreateNotes404Two
+  status: 404
+}
+
+export type createNotesResponse404TextPlain = {
+  data: CreateNotes404Three
+  status: 404
+}
+
+export type createNotesResponse409ApplicationJson = {
+  data: CreateNotes409One
+  status: 409
+}
+
+export type createNotesResponse409MultipartFormData = {
+  data: CreateNotes409Two
+  status: 409
+}
+
+export type createNotesResponse409TextPlain = {
+  data: CreateNotes409Three
+  status: 409
+}
+
+export type createNotesResponse422ApplicationJson = {
+  data: CreateNotes422One
+  status: 422
+}
+
+export type createNotesResponse422MultipartFormData = {
+  data: CreateNotes422Two
+  status: 422
+}
+
+export type createNotesResponse422TextPlain = {
+  data: CreateNotes422Three
+  status: 422
+}
+
+export type createNotesResponse500ApplicationJson = {
+  data: CreateNotes500One
+  status: 500
+}
+
+export type createNotesResponse500MultipartFormData = {
+  data: CreateNotes500Two
+  status: 500
+}
+
+export type createNotesResponse500TextPlain = {
+  data: CreateNotes500Three
+  status: 500
+}
+
+export type createNotesResponse503ApplicationJson = {
+  data: CreateNotes503One
+  status: 503
+}
+
+export type createNotesResponse503MultipartFormData = {
+  data: CreateNotes503Two
+  status: 503
+}
+
+export type createNotesResponse503TextPlain = {
+  data: CreateNotes503Three
+  status: 503
+}
+
+export type createNotesResponseSuccess = (createNotesResponse200ApplicationJson | createNotesResponse200MultipartFormData | createNotesResponse200TextPlain | createNotesResponse201ApplicationJson | createNotesResponse201MultipartFormData | createNotesResponse201TextPlain) & {
+  headers: Headers;
+};
+export type createNotesResponseError = (createNotesResponse400ApplicationJson | createNotesResponse400MultipartFormData | createNotesResponse400TextPlain | createNotesResponse404ApplicationJson | createNotesResponse404MultipartFormData | createNotesResponse404TextPlain | createNotesResponse409ApplicationJson | createNotesResponse409MultipartFormData | createNotesResponse409TextPlain | createNotesResponse422ApplicationJson | createNotesResponse422MultipartFormData | createNotesResponse422TextPlain | createNotesResponse500ApplicationJson | createNotesResponse500MultipartFormData | createNotesResponse500TextPlain | createNotesResponse503ApplicationJson | createNotesResponse503MultipartFormData | createNotesResponse503TextPlain) & {
+  headers: Headers;
+};
+
+export type createNotesResponse = (createNotesResponseSuccess | createNotesResponseError)
+
+export const getCreateNotesUrl = (orgId: string,
+    projectId: string,
+    id: string,) => {
+
+
+
+
+  return `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:3000'}/${orgId}/projects/${projectId}/applications/${id}/notes/`
+}
+
+export const createNotes = async (orgId: string,
+    projectId: string,
+    id: string,
+    createNotesBody: CreateNotesBodyOne | CreateNotesBodyTwo | CreateNotesBodyThree, options?: Parameters<typeof f>[1]): Promise<createNotesResponse> => {
+
+  return f<createNotesResponse>(getCreateNotesUrl(orgId,projectId,id),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: JSON.stringify(createNotesBody)
+  }
+);}
+
+
+
+
+
+export const getCreateNotesMutationKey = () => ['createNotes'] as const;
+
+export const getCreateNotesMutationOptions = <TError = CreateNotes400One | CreateNotes400Two | CreateNotes400Three | CreateNotes404One | CreateNotes404Two | CreateNotes404Three | CreateNotes409One | CreateNotes409Two | CreateNotes409Three | CreateNotes422One | CreateNotes422Two | CreateNotes422Three | CreateNotes500One | CreateNotes500Two | CreateNotes500Three | CreateNotes503One | CreateNotes503Two | CreateNotes503Three,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createNotes>>, TError,CreateNotesMutationVariables, TContext>, request?: SecondParameter<typeof f>}
+): UseMutationOptions<Awaited<ReturnType<typeof createNotes>>, TError,CreateNotesMutationVariables, TContext> => {
+
+const mutationKey = getCreateNotesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createNotes>>, CreateNotesMutationVariables> = (props) => {
+          const {orgId,projectId,id,data} = props ?? {};
+
+          return  createNotes(orgId,projectId,id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateNotesMutationResult = NonNullable<Awaited<ReturnType<typeof createNotes>>>
+    export type CreateNotesMutationBody = CreateNotesBodyOne | CreateNotesBodyTwo | CreateNotesBodyThree
+    export type CreateNotesMutationError = CreateNotes400One | CreateNotes400Two | CreateNotes400Three | CreateNotes404One | CreateNotes404Two | CreateNotes404Three | CreateNotes409One | CreateNotes409Two | CreateNotes409Three | CreateNotes422One | CreateNotes422Two | CreateNotes422Three | CreateNotes500One | CreateNotes500Two | CreateNotes500Three | CreateNotes503One | CreateNotes503Two | CreateNotes503Three
+    export type CreateNotesMutationVariables = {orgId: string;projectId: string;id: string;data: CreateNotesBodyOne | CreateNotesBodyTwo | CreateNotesBodyThree}
+
+    export const useCreateNotes = <TError = CreateNotes400One | CreateNotes400Two | CreateNotes400Three | CreateNotes404One | CreateNotes404Two | CreateNotes404Three | CreateNotes409One | CreateNotes409Two | CreateNotes409Three | CreateNotes422One | CreateNotes422Two | CreateNotes422Three | CreateNotes500One | CreateNotes500Two | CreateNotes500Three | CreateNotes503One | CreateNotes503Two | CreateNotes503Three,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createNotes>>, TError,CreateNotesMutationVariables, TContext>, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createNotes>>,
+        TError,
+        CreateNotesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateNotesMutationOptions(options), queryClient);
+    }
+    export type updateNoteResponse200ApplicationJson = {
+  data: UpdateNote200One
+  status: 200
+}
+
+export type updateNoteResponse200MultipartFormData = {
+  data: UpdateNote200Two
+  status: 200
+}
+
+export type updateNoteResponse200TextPlain = {
+  data: UpdateNote200Three
+  status: 200
+}
+
+export type updateNoteResponse400ApplicationJson = {
+  data: UpdateNote400One
+  status: 400
+}
+
+export type updateNoteResponse400MultipartFormData = {
+  data: UpdateNote400Two
+  status: 400
+}
+
+export type updateNoteResponse400TextPlain = {
+  data: UpdateNote400Three
+  status: 400
+}
+
+export type updateNoteResponse404ApplicationJson = {
+  data: UpdateNote404One
+  status: 404
+}
+
+export type updateNoteResponse404MultipartFormData = {
+  data: UpdateNote404Two
+  status: 404
+}
+
+export type updateNoteResponse404TextPlain = {
+  data: UpdateNote404Three
+  status: 404
+}
+
+export type updateNoteResponse409ApplicationJson = {
+  data: UpdateNote409One
+  status: 409
+}
+
+export type updateNoteResponse409MultipartFormData = {
+  data: UpdateNote409Two
+  status: 409
+}
+
+export type updateNoteResponse409TextPlain = {
+  data: UpdateNote409Three
+  status: 409
+}
+
+export type updateNoteResponse422ApplicationJson = {
+  data: UpdateNote422One
+  status: 422
+}
+
+export type updateNoteResponse422MultipartFormData = {
+  data: UpdateNote422Two
+  status: 422
+}
+
+export type updateNoteResponse422TextPlain = {
+  data: UpdateNote422Three
+  status: 422
+}
+
+export type updateNoteResponse500ApplicationJson = {
+  data: UpdateNote500One
+  status: 500
+}
+
+export type updateNoteResponse500MultipartFormData = {
+  data: UpdateNote500Two
+  status: 500
+}
+
+export type updateNoteResponse500TextPlain = {
+  data: UpdateNote500Three
+  status: 500
+}
+
+export type updateNoteResponse503ApplicationJson = {
+  data: UpdateNote503One
+  status: 503
+}
+
+export type updateNoteResponse503MultipartFormData = {
+  data: UpdateNote503Two
+  status: 503
+}
+
+export type updateNoteResponse503TextPlain = {
+  data: UpdateNote503Three
+  status: 503
+}
+
+export type updateNoteResponseSuccess = (updateNoteResponse200ApplicationJson | updateNoteResponse200MultipartFormData | updateNoteResponse200TextPlain) & {
+  headers: Headers;
+};
+export type updateNoteResponseError = (updateNoteResponse400ApplicationJson | updateNoteResponse400MultipartFormData | updateNoteResponse400TextPlain | updateNoteResponse404ApplicationJson | updateNoteResponse404MultipartFormData | updateNoteResponse404TextPlain | updateNoteResponse409ApplicationJson | updateNoteResponse409MultipartFormData | updateNoteResponse409TextPlain | updateNoteResponse422ApplicationJson | updateNoteResponse422MultipartFormData | updateNoteResponse422TextPlain | updateNoteResponse500ApplicationJson | updateNoteResponse500MultipartFormData | updateNoteResponse500TextPlain | updateNoteResponse503ApplicationJson | updateNoteResponse503MultipartFormData | updateNoteResponse503TextPlain) & {
+  headers: Headers;
+};
+
+export type updateNoteResponse = (updateNoteResponseSuccess | updateNoteResponseError)
+
+export const getUpdateNoteUrl = (orgId: string,
+    projectId: string,
+    id: string,
+    noteId: string,) => {
+
+
+
+
+  return `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:3000'}/${orgId}/projects/${projectId}/applications/${id}/notes/${noteId}`
+}
+
+export const updateNote = async (orgId: string,
+    projectId: string,
+    id: string,
+    noteId: string,
+    updateNoteBody: UpdateNoteBodyOne | UpdateNoteBodyTwo | UpdateNoteBodyThree, options?: Parameters<typeof f>[1]): Promise<updateNoteResponse> => {
+
+  return f<updateNoteResponse>(getUpdateNoteUrl(orgId,projectId,id,noteId),
+  {
+    ...options,
+    method: 'PATCH'
+    ,
+    body: JSON.stringify(updateNoteBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateNoteMutationKey = () => ['updateNote'] as const;
+
+export const getUpdateNoteMutationOptions = <TError = UpdateNote400One | UpdateNote400Two | UpdateNote400Three | UpdateNote404One | UpdateNote404Two | UpdateNote404Three | UpdateNote409One | UpdateNote409Two | UpdateNote409Three | UpdateNote422One | UpdateNote422Two | UpdateNote422Three | UpdateNote500One | UpdateNote500Two | UpdateNote500Three | UpdateNote503One | UpdateNote503Two | UpdateNote503Three,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNote>>, TError,UpdateNoteMutationVariables, TContext>, request?: SecondParameter<typeof f>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateNote>>, TError,UpdateNoteMutationVariables, TContext> => {
+
+const mutationKey = getUpdateNoteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateNote>>, UpdateNoteMutationVariables> = (props) => {
+          const {orgId,projectId,id,noteId,data} = props ?? {};
+
+          return  updateNote(orgId,projectId,id,noteId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateNoteMutationResult = NonNullable<Awaited<ReturnType<typeof updateNote>>>
+    export type UpdateNoteMutationBody = UpdateNoteBodyOne | UpdateNoteBodyTwo | UpdateNoteBodyThree
+    export type UpdateNoteMutationError = UpdateNote400One | UpdateNote400Two | UpdateNote400Three | UpdateNote404One | UpdateNote404Two | UpdateNote404Three | UpdateNote409One | UpdateNote409Two | UpdateNote409Three | UpdateNote422One | UpdateNote422Two | UpdateNote422Three | UpdateNote500One | UpdateNote500Two | UpdateNote500Three | UpdateNote503One | UpdateNote503Two | UpdateNote503Three
+    export type UpdateNoteMutationVariables = {orgId: string;projectId: string;id: string;noteId: string;data: UpdateNoteBodyOne | UpdateNoteBodyTwo | UpdateNoteBodyThree}
+
+    export const useUpdateNote = <TError = UpdateNote400One | UpdateNote400Two | UpdateNote400Three | UpdateNote404One | UpdateNote404Two | UpdateNote404Three | UpdateNote409One | UpdateNote409Two | UpdateNote409Three | UpdateNote422One | UpdateNote422Two | UpdateNote422Three | UpdateNote500One | UpdateNote500Two | UpdateNote500Three | UpdateNote503One | UpdateNote503Two | UpdateNote503Three,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateNote>>, TError,UpdateNoteMutationVariables, TContext>, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateNote>>,
+        TError,
+        UpdateNoteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateNoteMutationOptions(options), queryClient);
+    }
+    export type deleteNoteResponse200ApplicationJson = {
+  data: DeleteNote200One
+  status: 200
+}
+
+export type deleteNoteResponse200MultipartFormData = {
+  data: DeleteNote200Two
+  status: 200
+}
+
+export type deleteNoteResponse200TextPlain = {
+  data: DeleteNote200Three
+  status: 200
+}
+
+export type deleteNoteResponse400ApplicationJson = {
+  data: DeleteNote400One
+  status: 400
+}
+
+export type deleteNoteResponse400MultipartFormData = {
+  data: DeleteNote400Two
+  status: 400
+}
+
+export type deleteNoteResponse400TextPlain = {
+  data: DeleteNote400Three
+  status: 400
+}
+
+export type deleteNoteResponse404ApplicationJson = {
+  data: DeleteNote404One
+  status: 404
+}
+
+export type deleteNoteResponse404MultipartFormData = {
+  data: DeleteNote404Two
+  status: 404
+}
+
+export type deleteNoteResponse404TextPlain = {
+  data: DeleteNote404Three
+  status: 404
+}
+
+export type deleteNoteResponse409ApplicationJson = {
+  data: DeleteNote409One
+  status: 409
+}
+
+export type deleteNoteResponse409MultipartFormData = {
+  data: DeleteNote409Two
+  status: 409
+}
+
+export type deleteNoteResponse409TextPlain = {
+  data: DeleteNote409Three
+  status: 409
+}
+
+export type deleteNoteResponse422ApplicationJson = {
+  data: DeleteNote422One
+  status: 422
+}
+
+export type deleteNoteResponse422MultipartFormData = {
+  data: DeleteNote422Two
+  status: 422
+}
+
+export type deleteNoteResponse422TextPlain = {
+  data: DeleteNote422Three
+  status: 422
+}
+
+export type deleteNoteResponse500ApplicationJson = {
+  data: DeleteNote500One
+  status: 500
+}
+
+export type deleteNoteResponse500MultipartFormData = {
+  data: DeleteNote500Two
+  status: 500
+}
+
+export type deleteNoteResponse500TextPlain = {
+  data: DeleteNote500Three
+  status: 500
+}
+
+export type deleteNoteResponse503ApplicationJson = {
+  data: DeleteNote503One
+  status: 503
+}
+
+export type deleteNoteResponse503MultipartFormData = {
+  data: DeleteNote503Two
+  status: 503
+}
+
+export type deleteNoteResponse503TextPlain = {
+  data: DeleteNote503Three
+  status: 503
+}
+
+export type deleteNoteResponseSuccess = (deleteNoteResponse200ApplicationJson | deleteNoteResponse200MultipartFormData | deleteNoteResponse200TextPlain) & {
+  headers: Headers;
+};
+export type deleteNoteResponseError = (deleteNoteResponse400ApplicationJson | deleteNoteResponse400MultipartFormData | deleteNoteResponse400TextPlain | deleteNoteResponse404ApplicationJson | deleteNoteResponse404MultipartFormData | deleteNoteResponse404TextPlain | deleteNoteResponse409ApplicationJson | deleteNoteResponse409MultipartFormData | deleteNoteResponse409TextPlain | deleteNoteResponse422ApplicationJson | deleteNoteResponse422MultipartFormData | deleteNoteResponse422TextPlain | deleteNoteResponse500ApplicationJson | deleteNoteResponse500MultipartFormData | deleteNoteResponse500TextPlain | deleteNoteResponse503ApplicationJson | deleteNoteResponse503MultipartFormData | deleteNoteResponse503TextPlain) & {
+  headers: Headers;
+};
+
+export type deleteNoteResponse = (deleteNoteResponseSuccess | deleteNoteResponseError)
+
+export const getDeleteNoteUrl = (orgId: string,
+    projectId: string,
+    id: string,
+    noteId: string,) => {
+
+
+
+
+  return `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL ?? 'http://localhost:3000'}/${orgId}/projects/${projectId}/applications/${id}/notes/${noteId}`
+}
+
+export const deleteNote = async (orgId: string,
+    projectId: string,
+    id: string,
+    noteId: string, options?: Parameters<typeof f>[1]): Promise<deleteNoteResponse> => {
+
+  return f<deleteNoteResponse>(getDeleteNoteUrl(orgId,projectId,id,noteId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteNoteMutationKey = () => ['deleteNote'] as const;
+
+export const getDeleteNoteMutationOptions = <TError = DeleteNote400One | DeleteNote400Two | DeleteNote400Three | DeleteNote404One | DeleteNote404Two | DeleteNote404Three | DeleteNote409One | DeleteNote409Two | DeleteNote409Three | DeleteNote422One | DeleteNote422Two | DeleteNote422Three | DeleteNote500One | DeleteNote500Two | DeleteNote500Three | DeleteNote503One | DeleteNote503Two | DeleteNote503Three,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteNote>>, TError,DeleteNoteMutationVariables, TContext>, request?: SecondParameter<typeof f>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteNote>>, TError,DeleteNoteMutationVariables, TContext> => {
+
+const mutationKey = getDeleteNoteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteNote>>, DeleteNoteMutationVariables> = (props) => {
+          const {orgId,projectId,id,noteId} = props ?? {};
+
+          return  deleteNote(orgId,projectId,id,noteId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteNoteMutationResult = NonNullable<Awaited<ReturnType<typeof deleteNote>>>
+
+    export type DeleteNoteMutationError = DeleteNote400One | DeleteNote400Two | DeleteNote400Three | DeleteNote404One | DeleteNote404Two | DeleteNote404Three | DeleteNote409One | DeleteNote409Two | DeleteNote409Three | DeleteNote422One | DeleteNote422Two | DeleteNote422Three | DeleteNote500One | DeleteNote500Two | DeleteNote500Three | DeleteNote503One | DeleteNote503Two | DeleteNote503Three
+    export type DeleteNoteMutationVariables = {orgId: string;projectId: string;id: string;noteId: string}
+
+    export const useDeleteNote = <TError = DeleteNote400One | DeleteNote400Two | DeleteNote400Three | DeleteNote404One | DeleteNote404Two | DeleteNote404Three | DeleteNote409One | DeleteNote409Two | DeleteNote409Three | DeleteNote422One | DeleteNote422Two | DeleteNote422Three | DeleteNote500One | DeleteNote500Two | DeleteNote500Three | DeleteNote503One | DeleteNote503Two | DeleteNote503Three,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteNote>>, TError,DeleteNoteMutationVariables, TContext>, request?: SecondParameter<typeof f>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteNote>>,
+        TError,
+        DeleteNoteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteNoteMutationOptions(options), queryClient);
     }
     export type getReportTagsResponse200ApplicationJson = {
   data: GetReportTags200One

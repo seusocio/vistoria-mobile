@@ -15,7 +15,6 @@ export type GetApplication200TwoData = {
   tagsIds: string[];
   date: string;
   status: string;
-  transcript: string | null;
   gallerySourceApplicationId: string | null;
   metadata: GetApplication200TwoDataMetadata;
   attachmentsCount: number;

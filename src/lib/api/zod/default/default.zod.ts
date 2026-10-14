@@ -149,6 +149,21 @@ export const PostByOrgIdProjectsByProjectIdTagsResponse = zod.strictObject({
 })
 })
 
+export const DeleteByOrgIdProjectsByProjectIdTagsByIdParams = zod.strictObject({
+  "orgId": zod.string(),
+  "projectId": zod.string(),
+  "id": zod.string()
+})
+
+export const DeleteByOrgIdProjectsByProjectIdTagsByIdResponse = zod.strictObject({
+  "data": zod.strictObject({
+  "id": zod.string()
+}),
+  "meta": zod.looseObject({
+
+})
+})
+
 export const GetByOrgIdProjectsByProjectIdChecklistsParams = zod.strictObject({
   "orgId": zod.string(),
   "projectId": zod.string()
@@ -375,7 +390,6 @@ export const GetByOrgIdProjectsByProjectIdApplicationsResponse = zod.strictObjec
   "tagsIds": zod.array(zod.string()),
   "date": zod.string(),
   "status": zod.string(),
-  "transcript": zod.union([zod.string(),zod.null()]),
   "gallerySourceApplicationId": zod.union([zod.string(),zod.null()]),
   "metadata": zod.looseObject({
 
@@ -467,7 +481,6 @@ export const PostByOrgIdProjectsByProjectIdApplicationsBody = zod.strictObject({
   "tagsIds": zod.array(zod.string()),
   "date": zod.string(),
   "status": zod.union([zod.literal("draft"),zod.literal("completed")]).optional(),
-  "transcript": zod.union([zod.string(),zod.null()]).optional(),
   "gallerySourceApplicationId": zod.union([zod.string(),zod.null()]).optional(),
   "metadata": zod.looseObject({
 
@@ -512,7 +525,6 @@ export const PostByOrgIdProjectsByProjectIdApplicationsResponse = zod.strictObje
   "tagsIds": zod.array(zod.string()),
   "date": zod.string(),
   "status": zod.string(),
-  "transcript": zod.union([zod.string(),zod.null()]),
   "gallerySourceApplicationId": zod.union([zod.string(),zod.null()]),
   "metadata": zod.looseObject({
 
@@ -613,7 +625,6 @@ export const GetByOrgIdProjectsByProjectIdApplicationGroupsResponse = zod.strict
   "tagsIds": zod.array(zod.string()),
   "date": zod.string(),
   "status": zod.string(),
-  "transcript": zod.union([zod.string(),zod.null()]),
   "gallerySourceApplicationId": zod.union([zod.string(),zod.null()]),
   "metadata": zod.looseObject({
 
@@ -712,7 +723,6 @@ export const GetByOrgIdProjectsByProjectIdApplicationsByIdResponse = zod.strictO
   "tagsIds": zod.array(zod.string()),
   "date": zod.string(),
   "status": zod.string(),
-  "transcript": zod.union([zod.string(),zod.null()]),
   "gallerySourceApplicationId": zod.union([zod.string(),zod.null()]),
   "metadata": zod.looseObject({
 
@@ -797,7 +807,6 @@ export const PatchByOrgIdProjectsByProjectIdApplicationsByIdParams = zod.strictO
 export const PatchByOrgIdProjectsByProjectIdApplicationsByIdBody = zod.strictObject({
   "tagsIds": zod.array(zod.string()).optional(),
   "date": zod.string().optional(),
-  "transcript": zod.union([zod.string(),zod.null()]).optional(),
   "status": zod.union([zod.literal("draft"),zod.literal("completed")]).optional(),
   "gallerySourceApplicationId": zod.union([zod.string(),zod.null()]).optional(),
   "metadata": zod.looseObject({
@@ -813,7 +822,6 @@ export const PatchByOrgIdProjectsByProjectIdApplicationsByIdResponse = zod.stric
   "tagsIds": zod.array(zod.string()),
   "date": zod.string(),
   "status": zod.string(),
-  "transcript": zod.union([zod.string(),zod.null()]),
   "gallerySourceApplicationId": zod.union([zod.string(),zod.null()]),
   "metadata": zod.looseObject({
 
@@ -1210,6 +1218,127 @@ export const DeleteByOrgIdProjectsByProjectIdAttachmentsByIdParams = zod.strictO
 })
 
 export const DeleteByOrgIdProjectsByProjectIdAttachmentsByIdResponse = zod.strictObject({
+  "data": zod.strictObject({
+  "id": zod.string()
+}),
+  "meta": zod.looseObject({
+
+})
+})
+
+export const GetByOrgIdProjectsByProjectIdApplicationsByIdNotesParams = zod.strictObject({
+  "orgId": zod.string(),
+  "projectId": zod.string(),
+  "id": zod.string()
+})
+
+export const GetByOrgIdProjectsByProjectIdApplicationsByIdNotesQueryParams = zod.strictObject({
+  "page": zod.string().optional(),
+  "pageSize": zod.string().optional(),
+  "sort": zod.string().optional()
+})
+
+export const GetByOrgIdProjectsByProjectIdApplicationsByIdNotesResponse = zod.strictObject({
+  "data": zod.array(zod.strictObject({
+  "id": zod.string(),
+  "applicationId": zod.string(),
+  "text": zod.string(),
+  "attachmentIds": zod.array(zod.string()),
+  "metadata": zod.looseObject({
+
+}),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "meta": zod.strictObject({
+  "pagination": zod.strictObject({
+  "page": zod.number(),
+  "pageSize": zod.number(),
+  "pageCount": zod.number(),
+  "total": zod.number()
+})
+})
+})
+
+export const PostByOrgIdProjectsByProjectIdApplicationsByIdNotesParams = zod.strictObject({
+  "orgId": zod.string(),
+  "projectId": zod.string(),
+  "id": zod.string()
+})
+
+export const postByOrgIdProjectsByProjectIdApplicationsByIdNotesBodyNotesMax = 100;
+
+
+
+export const PostByOrgIdProjectsByProjectIdApplicationsByIdNotesBody = zod.strictObject({
+  "notes": zod.array(zod.strictObject({
+  "id": zod.string().optional(),
+  "text": zod.string().optional(),
+  "attachmentIds": zod.array(zod.string()).optional(),
+  "metadata": zod.looseObject({
+
+}).optional(),
+  "createdAt": zod.string().optional()
+})).min(1).max(postByOrgIdProjectsByProjectIdApplicationsByIdNotesBodyNotesMax)
+})
+
+export const PostByOrgIdProjectsByProjectIdApplicationsByIdNotesResponse = zod.strictObject({
+  "data": zod.array(zod.strictObject({
+  "id": zod.string(),
+  "applicationId": zod.string(),
+  "text": zod.string(),
+  "attachmentIds": zod.array(zod.string()),
+  "metadata": zod.looseObject({
+
+}),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})),
+  "meta": zod.looseObject({
+
+})
+})
+
+export const PatchByOrgIdProjectsByProjectIdApplicationsByIdNotesByNoteIdParams = zod.strictObject({
+  "orgId": zod.string(),
+  "projectId": zod.string(),
+  "id": zod.string(),
+  "noteId": zod.string()
+})
+
+export const PatchByOrgIdProjectsByProjectIdApplicationsByIdNotesByNoteIdBody = zod.strictObject({
+  "text": zod.string().optional(),
+  "attachmentIds": zod.array(zod.string()).optional(),
+  "metadata": zod.looseObject({
+
+}).optional()
+})
+
+export const PatchByOrgIdProjectsByProjectIdApplicationsByIdNotesByNoteIdResponse = zod.strictObject({
+  "data": zod.strictObject({
+  "id": zod.string(),
+  "applicationId": zod.string(),
+  "text": zod.string(),
+  "attachmentIds": zod.array(zod.string()),
+  "metadata": zod.looseObject({
+
+}),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+}),
+  "meta": zod.looseObject({
+
+})
+})
+
+export const DeleteByOrgIdProjectsByProjectIdApplicationsByIdNotesByNoteIdParams = zod.strictObject({
+  "orgId": zod.string(),
+  "projectId": zod.string(),
+  "id": zod.string(),
+  "noteId": zod.string()
+})
+
+export const DeleteByOrgIdProjectsByProjectIdApplicationsByIdNotesByNoteIdResponse = zod.strictObject({
   "data": zod.strictObject({
   "id": zod.string()
 }),

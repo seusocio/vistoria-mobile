@@ -10,6 +10,8 @@ const REST_ENABLED: Record<EntityKind, boolean> = {
   application: true,
   checklist: true,
   tag: true,
+  // REST-only from day one: notes never existed in Convex.
+  note: true,
 }
 
 export function isRestEnabled(kind: EntityKind): boolean {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import type { Application } from '../application.types'
-import { findLatestApplicationByTagSet } from '../application.utils'
+import type { Application, Attachment } from '../application.types'
+import { findLatestApplicationByTagSet, isVisibleImage } from '../application.utils'
 
 function application(
   id: string,
@@ -35,5 +35,20 @@ describe('findLatestApplicationByTagSet', () => {
 
   test('returns null for an empty tag set', () => {
     expect(findLatestApplicationByTagSet(applications, [])).toBeNull()
+  })
+})
+
+describe('isVisibleImage', () => {
+  const base: Attachment = { id: 'a1', name: 'Foto', position: 0, createdAt: '', deletedAt: null }
+
+  test('keeps photos, including ones with no mimeType from older rows', () => {
+    expect(isVisibleImage({ ...base, mimeType: 'image/jpeg' }, {})).toBe(true)
+    expect(isVisibleImage(base, {})).toBe(true)
+  })
+
+  test('skips voice-note audio, deleted rows and rows hidden by the undo window', () => {
+    expect(isVisibleImage({ ...base, mimeType: 'audio/mp4' }, {})).toBe(false)
+    expect(isVisibleImage({ ...base, deletedAt: '2026-10-14T00:00:00.000Z' }, {})).toBe(false)
+    expect(isVisibleImage(base, { a1: true })).toBe(false)
   })
 })

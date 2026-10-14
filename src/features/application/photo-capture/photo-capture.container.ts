@@ -9,6 +9,7 @@ import { normalizeApplication, pickPhotos } from '@/lib/convex'
 import { useEntity } from '@/lib/offline-queue'
 import { useUploadStore } from '@/lib/uploads/upload-store'
 import type { StackRoutesList } from '@/routes/types'
+import { postNote } from '@/features/note/shared/note.actions'
 import { haptics } from '@/utils/haptics'
 import { api } from '../../../../convex/_generated/api'
 
@@ -48,12 +49,15 @@ type Navigation = NativeStackNavigationProp<StackRoutesList, keyof StackRoutesLi
 export interface UsePhotoCaptureContainerProps {
   applicationId: string
   itemId: string | null
+  /** See the `photoCapture` route param. */
+  asNote?: boolean
   navigation: Navigation
 }
 
 export function usePhotoCaptureContainer({
   applicationId,
   itemId,
+  asNote = false,
   navigation,
 }: UsePhotoCaptureContainerProps) {
   const [permission, requestPermission] = useCameraPermissions()
@@ -77,6 +81,8 @@ export function usePhotoCaptureContainer({
   const cancelledRef = useRef<Set<string>>(new Set())
   const captureChainRef = useRef<Promise<void>>(Promise.resolve())
   const sessionOffsetRef = useRef(0)
+  /** Each photo's `commitAsset` — the point its `addAttachment` op is enqueued. A note may only reference ids past that point. */
+  const commitsRef = useRef<Map<string, Promise<void>>>(new Map())
   const [ready, setReady] = useState(false)
   const [facing, setFacing] = useState<CameraType>('back')
   const [flash, setFlash] = useState<FlashMode>('off')
@@ -141,7 +147,7 @@ export function usePhotoCaptureContainer({
         if (!photo) return
 
         setStrip((current) => [...current, { id: attachmentId, uri: photo.uri, failed: false }])
-        void commitAsset({
+        trackCommit(attachmentId, commitAsset({
           attachmentId,
           applicationId,
           itemId,
@@ -150,7 +156,7 @@ export function usePhotoCaptureContainer({
           height: photo.height,
           position,
           isCancelled: () => cancelledRef.current.has(attachmentId),
-        }).catch(() => markFailed(attachmentId))
+        }))
       } catch {
         // Nothing was added to the strip yet, so there's nothing to mark failed.
       }
@@ -164,7 +170,7 @@ export function usePhotoCaptureContainer({
       const attachmentId = beginAttachment()
       const position = nextPosition()
       setStrip((current) => [...current, { id: attachmentId, uri: asset.uri, failed: false }])
-      void commitAsset({
+      trackCommit(attachmentId, commitAsset({
         attachmentId,
         applicationId,
         itemId,
@@ -173,8 +179,32 @@ export function usePhotoCaptureContainer({
         height: asset.height,
         position,
         isCancelled: () => cancelledRef.current.has(attachmentId),
-      }).catch(() => markFailed(attachmentId))
+      }))
     })
+  }
+
+  function trackCommit(attachmentId: string, commit: Promise<void>) {
+    const tracked = commit.catch(() => {
+      markFailed(attachmentId)
+      throw new Error('commit failed')
+    })
+    tracked.catch(() => undefined)
+    commitsRef.current.set(attachmentId, tracked)
+  }
+
+  /**
+   * Runs after the screen is gone: waits for shots still being captured and
+   * for every commit to enqueue its `addAttachment`, then posts one Note over
+   * the photos that made it (not removed from the strip, not failed).
+   */
+  async function postSessionAsNote() {
+    await captureChainRef.current
+    const entries = [...commitsRef.current.entries()]
+    const settled = await Promise.allSettled(entries.map(([, commit]) => commit))
+    const attachmentIds = entries
+      .filter(([id], index) => settled[index].status === 'fulfilled' && !cancelledRef.current.has(id))
+      .map(([id]) => id)
+    postNote(applicationId, '', attachmentIds)
   }
 
   function onRemoveFromStrip(id: string) {
@@ -241,6 +271,9 @@ export function usePhotoCaptureContainer({
     // No "descartar" confirmation: every photo taken here is already queued
     // and durable the moment the shutter fires, so leaving the camera can't
     // lose anything — there is nothing to confirm.
-    onClose: () => navigation.goBack(),
+    onClose: () => {
+      if (asNote) void postSessionAsNote()
+      navigation.goBack()
+    },
   }
 }

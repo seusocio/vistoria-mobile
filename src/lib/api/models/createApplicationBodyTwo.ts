@@ -15,7 +15,6 @@ export type CreateApplicationBodyTwo = {
   tagsIds: string[];
   date: string;
   status?: 'draft' | 'completed';
-  transcript?: string | null;
   gallerySourceApplicationId?: string | null;
   metadata?: CreateApplicationBodyTwoMetadata;
   items?: CreateApplicationBodyTwoItemsItem[];

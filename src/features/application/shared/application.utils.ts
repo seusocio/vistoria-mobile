@@ -54,7 +54,6 @@ export function buildApplication(
     items: buildApplicationItems(checklist),
     attachments: [],
     gallerySourceApplicationId: null,
-    transcript: null,
     createdAt: now,
     updatedAt: now,
     completedAt: null,
@@ -209,6 +208,16 @@ export function createAttachment(
 }
 
 // ---- Derived / read helpers ----
+
+/**
+ * Visit-level attachments are no longer only photos: a voice Note's audio is
+ * an attachment too. Galleries and the photo viewer must skip it, and every
+ * one of them has to use this same filter — the viewer is opened by index
+ * into the list the gallery rendered.
+ */
+export function isVisibleImage(attachment: Attachment, hiddenIds: Record<string, boolean>): boolean {
+  return !attachment.deletedAt && !hiddenIds[attachment.id] && !attachment.mimeType?.startsWith('audio/')
+}
 
 export function sortItemsByChecklistOrder(
   items: ApplicationItem[],

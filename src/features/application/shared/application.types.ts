@@ -61,8 +61,6 @@ export interface Application {
   attachments: Attachment[]
   /** points to the previous visit gallery when a new visit was repeated */
   gallerySourceApplicationId: string | null
-  /** latest voice transcript for this visit, when any */
-  transcript: string | null
   createdAt: string
   updatedAt: string
   completedAt: string | null

@@ -41,6 +41,10 @@ export default defineConfig({
 						patchByOrgIdProjectsByProjectIdAttachmentsById: "updateAttachment",
 						deleteByOrgIdProjectsByProjectIdAttachmentsById: "deleteAttachment",
 						getByOrgIdProjectsByProjectIdReportsTags: "getReportTags",
+						getByOrgIdProjectsByProjectIdApplicationsByIdNotes: "listNotes",
+						postByOrgIdProjectsByProjectIdApplicationsByIdNotes: "createNotes",
+						patchByOrgIdProjectsByProjectIdApplicationsByIdNotesByNoteId: "updateNote",
+						deleteByOrgIdProjectsByProjectIdApplicationsByIdNotesByNoteId: "deleteNote",
 					}).map(([operationId, name]) => [
 						operationId,
 						{ operationName: () => name },

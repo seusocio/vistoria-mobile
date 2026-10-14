@@ -11,3 +11,4 @@
 import '@/features/application/shared/application.ops'
 import '@/features/checklist/checklist-form/checklist-form.ops'
 import '@/features/tag/shared/tag.ops'
+import '@/features/note/shared/note.ops'

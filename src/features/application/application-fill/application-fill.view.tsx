@@ -153,7 +153,7 @@ export function ApplicationFillView(props: UseApplicationFillContainerProps) {
       {FEATURE_FLAG.voice && (
         <VoiceCard
           state={c.voiceState}
-          transcript={c.application.transcript}
+          transcript={c.lastVoiceTranscript}
           onStart={c.onStartRecording}
           onStop={c.onStopRecording}
           onGenerateSuggestions={c.onGenerateSuggestions}

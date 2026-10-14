@@ -1,1 +1,0 @@
-export { PrototypeSwitcher } from './PrototypeSwitcher'
