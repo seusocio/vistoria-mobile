@@ -69,9 +69,15 @@ function PhotoPage({
       if (scale.value <= 1) resetPan()
     })
 
+  // Only claims the touch while zoomed in: an active pan cancels the FlatList's
+  // native scroll, so at 1x it must fail and leave the swipe to the pager.
   const pan = Gesture.Pan()
+    .manualActivation(true)
+    .onTouchesMove((_event, state) => {
+      if (scale.value > 1) state.activate()
+      else state.fail()
+    })
     .onUpdate((event) => {
-      if (scale.value <= 1) return
       translateX.value = savedTranslateX.value + event.translationX
       translateY.value = savedTranslateY.value + event.translationY
     })

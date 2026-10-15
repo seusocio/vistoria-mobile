@@ -9,7 +9,7 @@ import { normalizeApplication, pickPhotos } from '@/lib/convex'
 import { useEntity } from '@/lib/offline-queue'
 import { useUploadStore } from '@/lib/uploads/upload-store'
 import type { StackRoutesList } from '@/routes/types'
-import { postNote } from '@/features/note/shared/note.actions'
+import { draftNote, postNote } from '@/features/note/shared/note.actions'
 import { haptics } from '@/utils/haptics'
 import { api } from '../../../../convex/_generated/api'
 
@@ -193,18 +193,24 @@ export function usePhotoCaptureContainer({
   }
 
   /**
-   * Runs after the screen is gone: waits for shots still being captured and
-   * for every commit to enqueue its `addAttachment`, then posts one Note over
-   * the photos that made it (not removed from the strip, not failed).
+   * Runs after the screen is gone: the note shows in the feed at once as a
+   * draft, then — once shots still being captured are in and every commit has
+   * enqueued its `addAttachment` — is posted over the photos that made it (not
+   * removed from the strip, not failed).
    */
   async function postSessionAsNote() {
+    const noteId = draftNote(
+      applicationId,
+      '',
+      strip.filter((photo) => !photo.failed).map((photo) => ({ id: photo.id, uri: photo.uri })),
+    )
     await captureChainRef.current
     const entries = [...commitsRef.current.entries()]
     const settled = await Promise.allSettled(entries.map(([, commit]) => commit))
     const attachmentIds = entries
       .filter(([id], index) => settled[index].status === 'fulfilled' && !cancelledRef.current.has(id))
       .map(([id]) => id)
-    postNote(applicationId, '', attachmentIds)
+    postNote(applicationId, '', attachmentIds, noteId)
   }
 
   function onRemoveFromStrip(id: string) {

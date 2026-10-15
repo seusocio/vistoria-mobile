@@ -7,6 +7,7 @@ import { enqueueOp } from '@/lib/offline-queue'
 import { prepareAudioFile } from '@/lib/uploads/prepare-audio'
 import { useUploadStore } from '@/lib/uploads/upload-store'
 import { transcribeAudio } from '@/lib/voice/voice-service'
+import { useNoteDrafts } from './note-drafts.store'
 import { createNote, deleteNoteOp, patchNote } from './note.ops'
 import type { Note } from './note.types'
 import { useTranscriptions } from './transcription.store'
@@ -23,24 +24,59 @@ export function isPostable(text: string, attachmentIds: string[]): boolean {
 }
 
 /**
+ * Shows a photo note in the feed right away, while its photos are still being
+ * prepared — see `useNoteDrafts`. Post it later with `postNote(..., noteId)`,
+ * which replaces the draft (or drops it, when nothing made it).
+ */
+export function draftNote(applicationId: string, text: string, photos: { id: string; uri: string }[]): string {
+  const now = new Date().toISOString()
+  const id = generateId('note_')
+  useNoteDrafts.getState().put({
+    note: {
+      id,
+      applicationId,
+      text: text.trim(),
+      attachmentIds: photos.map((photo) => photo.id),
+      metadata: {},
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    },
+    photoUris: Object.fromEntries(photos.map((photo) => [photo.id, photo.uri])),
+  })
+  return id
+}
+
+/**
  * Enqueue *after* every attachment's `addAttachment` op — see `createNote`'s
  * ordering contract. Returns the note id, or null when there was nothing to post.
+ * Pass a `draftNote` id to post that draft (it keeps its place in the feed).
  */
-export function postNote(applicationId: string, text: string, attachmentIds: string[] = []): string | null {
+export function postNote(
+  applicationId: string,
+  text: string,
+  attachmentIds: string[] = [],
+  draftId?: string,
+): string | null {
+  const draft = draftId ? useNoteDrafts.getState().drafts[draftId] : undefined
   const trimmed = text.trim()
-  if (!isPostable(trimmed, attachmentIds)) return null
+  if (!isPostable(trimmed, attachmentIds)) {
+    if (draftId) useNoteDrafts.getState().discard(draftId)
+    return null
+  }
   const now = new Date().toISOString()
   const note: Note = {
-    id: generateId('note_'),
+    id: draftId ?? generateId('note_'),
     applicationId,
     text: trimmed,
     attachmentIds,
     metadata: {},
-    createdAt: now,
+    createdAt: draft?.note.createdAt ?? now,
     updatedAt: now,
     deletedAt: null,
   }
   enqueueOp(createNote, { note })
+  if (draftId) useNoteDrafts.getState().discard(draftId)
   return note.id
 }
 

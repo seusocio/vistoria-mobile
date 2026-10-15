@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useIsOnline, useOutbox } from '@/lib/offline-queue'
 import { mergePendingIntoList } from '@/lib/offline-queue/overlay'
+import { useNoteDrafts } from './note-drafts.store'
 import { useNotesRestResult } from './note.rest'
 import type { Note } from './note.types'
 
@@ -23,6 +24,7 @@ export interface NotesFeed {
 export function useNotesFeed(applicationId: string): NotesFeed {
   const rest = useNotesRestResult(applicationId)
   const pending = useOutbox(useShallow((state) => state.items.filter((item) => item.kind === 'note')))
+  const drafts = useNoteDrafts((state) => state.drafts)
   const isOnline = useIsOnline()
   const serverNotes = rest?.data
   // Offline with nothing cached, the paged fetch is *paused*, not failed —
@@ -39,15 +41,21 @@ export function useNotesFeed(applicationId: string): NotesFeed {
       seen.add(note.id)
       server.push(note)
     }
-    if (serverNotes === undefined && pending.length === 0 && !settledEmpty) return undefined
-    return mergePendingIntoList(server, pending, {
+    const drafted = Object.values(drafts)
+      .map((draft) => draft.note)
+      .filter((note) => note.applicationId === applicationId && !seen.has(note.id))
+    if (serverNotes === undefined && pending.length === 0 && drafted.length === 0 && !settledEmpty) return undefined
+    const merged = mergePendingIntoList(server, pending, {
       kind: 'note',
       getId,
       belongs: (note) => note.applicationId === applicationId,
     })
+    // Not yet in the outbox (see `useNoteDrafts`); once posted, the queued copy wins.
+    const queued = new Set(merged.map(getId))
+    return [...merged, ...drafted.filter((note) => !queued.has(note.id))]
       .filter((note) => note.applicationId === applicationId && !note.deletedAt)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id))
-  }, [serverNotes, pending, applicationId, settledEmpty])
+  }, [serverNotes, pending, drafts, applicationId, settledEmpty])
 
   return {
     notes,

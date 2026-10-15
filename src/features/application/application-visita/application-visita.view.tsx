@@ -45,7 +45,14 @@ import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
 import type { ApplicationDerivedState } from '@/features/application/shared/application.utils'
 import { isVisibleImage } from '@/features/application/shared/application.utils'
-import { deleteNote, editNoteText, postNote, regenerateTranscription } from '@/features/note/shared/note.actions'
+import {
+  deleteNote,
+  draftNote,
+  editNoteText,
+  postNote,
+  regenerateTranscription,
+} from '@/features/note/shared/note.actions'
+import { useNoteDrafts } from '@/features/note/shared/note-drafts.store'
 import type { Note } from '@/features/note/shared/note.types'
 import { useNotesFeed } from '@/features/note/shared/use-notes-feed'
 import { usePullToRefresh } from '@/lib/api/use-pull-to-refresh'
@@ -359,10 +366,30 @@ export function ApplicationVisitaView({ c, onOpenNoteCamera }: ApplicationVisita
     [c.onRemoveApplicationAttachment],
   )
 
+  const noteDrafts = useNoteDrafts((state) => state.drafts)
+  /** A draft note's photos that aren't in the application yet — still being prepared, `addAttachment` not queued. */
+  const draftPhotos = useMemo(() => {
+    const map = new Map<string, Attachment>()
+    for (const { note, photoUris } of Object.values(noteDrafts)) {
+      for (const [id, uri] of Object.entries(photoUris)) {
+        map.set(id, {
+          id,
+          name: '',
+          position: 0,
+          createdAt: note.createdAt,
+          deletedAt: null,
+          localUri: uri,
+          uploadStatus: 'pending',
+        })
+      }
+    }
+    return map
+  }, [noteDrafts])
+
   const resolveNoteAttachments = useCallback(
     (note: Note): NoteAttachmentView[] =>
       note.attachmentIds.flatMap((id) => {
-        const attachment = attachmentsById.get(id)
+        const attachment = attachmentsById.get(id) ?? draftPhotos.get(id)
         if (!attachment) return []
         const index = visiblePhotos.indexOf(attachment)
         return [
@@ -374,7 +401,7 @@ export function ApplicationVisitaView({ c, onOpenNoteCamera }: ApplicationVisita
           },
         ]
       }),
-    [attachmentsById, visiblePhotos, localUris, c.uploadProgress],
+    [attachmentsById, draftPhotos, visiblePhotos, localUris, c.uploadProgress],
   )
 
   const feedDays = useMemo(() => {
@@ -390,6 +417,8 @@ export function ApplicationVisitaView({ c, onOpenNoteCamera }: ApplicationVisita
 
   const openNoteMenu = useCallback(
     (note: Note) => {
+      // Not created yet — an edit or delete would be queued ahead of its create.
+      if (useNoteDrafts.getState().drafts[note.id]) return
       const audio = resolveNoteAttachments(note).find((a) => a.attachment.mimeType?.startsWith('audio/'))
       const audioUri = audio?.uri
       presentNoteMenu({
@@ -441,9 +470,14 @@ export function ApplicationVisitaView({ c, onOpenNoteCamera }: ApplicationVisita
     if (picked.length === 0) return
     const caption = draft
     setDraft('')
-    const commits = picked.map((asset, i) => {
-      const attachmentId = beginAttachment()
-      return commitAsset({
+    const photos = picked.map((asset) => ({ asset, id: beginAttachment() }))
+    const noteId = draftNote(
+      app.id,
+      caption,
+      photos.map(({ asset, id }) => ({ id, uri: asset.uri })),
+    )
+    const commits = photos.map(({ asset, id: attachmentId }, i) =>
+      commitAsset({
         uri: asset.uri,
         width: asset.width,
         height: asset.height,
@@ -451,12 +485,12 @@ export function ApplicationVisitaView({ c, onOpenNoteCamera }: ApplicationVisita
         applicationId: app.id,
         itemId: null,
         position: app.attachments.length + i,
-      }).then(() => attachmentId)
-    })
+      }).then(() => attachmentId),
+    )
     // Every `addAttachment` must be queued before the note that references it.
     const settled = await Promise.allSettled(commits)
     const ids = settled.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
-    postNote(app.id, caption, ids)
+    postNote(app.id, caption, ids, noteId)
   }
 
   /** Atividade and (prototype) Fotos post notes; Pendências adds checklist items. */
