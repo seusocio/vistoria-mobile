@@ -1,17 +1,18 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { CameraView, useCameraPermissions, type CameraType, type FlashMode } from 'expo-camera'
 import { useMemo, useRef, useState } from 'react'
+import { Alert } from 'react-native'
 import type { PhotoGalleryItem } from '@/components/PhotoGalleryRow'
 import { useApplicationRestResult } from '@/features/application/shared/application.rest'
 import type { Application } from '@/features/application/shared/application.types'
 import { useAttachPhotos } from '@/features/application/shared/use-attach-photos'
-import { normalizeApplication, pickPhotos } from '@/lib/convex'
+import { normalizeApplication } from '@/features/application/shared/normalize-application'
+import { PICK_PHOTOS_ERROR_MESSAGE, pickPhotos, type PickedPhoto } from '@/lib/photos/photo-picker'
 import { useEntity } from '@/lib/offline-queue'
 import { useUploadStore } from '@/lib/uploads/upload-store'
 import type { StackRoutesList } from '@/routes/types'
 import { draftNote, postNote } from '@/features/note/shared/note.actions'
 import { haptics } from '@/utils/haptics'
-import { api } from '../../../../convex/_generated/api'
 
 interface StripPhoto {
   id: string
@@ -66,11 +67,9 @@ export function usePhotoCaptureContainer({
 
   const applicationRest = useApplicationRestResult(applicationId)
   const rawApplication = useEntity<Application>(
-    api.applications.findById,
-    { id: applicationId },
+    applicationRest,
     applicationId,
     'application',
-    applicationRest,
   )
   const application = useMemo(
     () => (rawApplication ? normalizeApplication(rawApplication) : null),
@@ -164,7 +163,13 @@ export function usePhotoCaptureContainer({
   }
 
   async function onPickLibrary() {
-    const assets = await pickPhotos('library')
+    let assets: PickedPhoto[]
+    try {
+      assets = await pickPhotos('library')
+    } catch {
+      Alert.alert('Não foi possível carregar as fotos', PICK_PHOTOS_ERROR_MESSAGE)
+      return
+    }
     if (assets.length === 0) return
     assets.forEach((asset) => {
       const attachmentId = beginAttachment()

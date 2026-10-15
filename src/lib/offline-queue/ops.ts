@@ -14,14 +14,13 @@ export type EntityKind = 'application' | 'checklist' | 'tag' | 'note'
  * op does to an entity — it doubles as the optimistic overlay (`overlay.ts`)
  * and, for ops that build a brand-new entity, the local stand-in for a
  * `create` the server hasn't seen yet (`entity` is `null` in that case).
- * It must mirror the Convex handler's merge rules exactly, or the screen
- * shows something different from what the server ends up computing.
+ * It must mirror the server's merge rules exactly, or the screen shows
+ * something different from what the server ends up computing.
  *
- * That includes the not-found case: every Convex mutation handler in this
- * app guards `if (!entity) return null` before touching its fields, because
- * the entity a patch targets can genuinely not exist yet on the server (a
- * `create` still in flight, a slow reconnect) — this is not a corrupt state,
- * it's an ordinary moment in an offline-first app. A patch-style
+ * That includes the not-found case: the entity a patch targets can
+ * genuinely not exist yet on the server (a `create` still in flight, a slow
+ * reconnect) — this is not a corrupt state, it's an ordinary moment in an
+ * offline-first app. A patch-style
  * `applyLocal` must return the same `null` right back for that case instead
  * of casting `entity as Entity` and touching its fields — that cast doesn't
  * change what's in memory, it just turns a normal condition into a crash a
@@ -30,16 +29,8 @@ export type EntityKind = 'application' | 'checklist' | 'tag' | 'note'
 export interface OpDefinition<Args, Entity> {
   type: string
   kind: EntityKind
-  /** Sends the op to Convex. Every op still defines this — it's what runs while the entity's REST flag is off, and what a REST-cut op falls back to if `sendRest` is missing. */
+  /** Sends the op to the Vistoria REST API. */
   send: (args: Args) => Promise<unknown>
-  /**
-   * Sends the op to the Vistoria REST API instead. Present once this op's
-   * entity has cut Seam A. The drain picks between this and `send` per queued
-   * item, using the backend that item captured at enqueue time — never the
-   * flag's current value — so a flip landing mid-flight can't strand a queued
-   * op with the wrong request shape.
-   */
-  sendRest?: (args: Args) => Promise<unknown>
   applyLocal: (entity: Entity | null, args: Args) => Entity | null
   /** Which entity this op's pending state is grouped under, for the overlay. */
   entityId: (args: Args) => string

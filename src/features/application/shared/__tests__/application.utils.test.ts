@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { Application, Attachment } from '../application.types'
-import { findLatestApplicationByTagSet, isVisibleImage } from '../application.utils'
+import { findLatestApplicationByTagSet } from '../application-history.utils'
+import { isVisibleImage } from '../application.utils'
 
 function application(
   id: string,

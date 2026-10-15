@@ -8,7 +8,7 @@ let registrationStarted = false
 
 TaskManager.defineTask(BACKGROUND_UPLOAD_TASK, async () => {
   try {
-    await useUploadStore.getState().resumePending()
+    useUploadStore.getState().resumePending()
     return BackgroundTask.BackgroundTaskResult.Success
   } catch {
     return BackgroundTask.BackgroundTaskResult.Failed

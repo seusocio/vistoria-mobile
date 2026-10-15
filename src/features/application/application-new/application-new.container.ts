@@ -7,20 +7,16 @@ import {
 import { create as createApplication } from '@/features/application/shared/application.ops'
 import { useApplicationsListRestResult } from '@/features/application/shared/application.rest'
 import type { Application } from '@/features/application/shared/application.types'
-import {
-  buildApplication,
-  buildRepeatedApplication,
-  findLatestApplicationByTagSet,
-} from '@/features/application/shared/application.utils'
+import { buildApplication, buildRepeatedApplication } from '@/features/application/shared/application.builders'
+import { findLatestApplicationByTagSet } from '@/features/application/shared/application-history.utils'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { useChecklistRestResult } from '@/features/checklist/shared/checklist.rest'
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
-import { normalizeApplication } from '@/lib/convex'
+import { normalizeApplication } from '@/features/application/shared/normalize-application'
 import { useDraft } from '@/lib/forms'
 import { enqueueOp, useEntity, useEntityList } from '@/lib/offline-queue'
 import type { StackRoutesList } from '@/routes/types'
 import { todayIso } from '@/utils/date'
-import { api } from '../../../../convex/_generated/api'
 
 type Navigation = NativeStackNavigationProp<StackRoutesList, keyof StackRoutesList>
 
@@ -40,11 +36,9 @@ export function useApplicationNewContainer({
   // vistoria on it has to work in the meantime.
   const checklistRest = useChecklistRestResult(checklistId)
   const checklistData = useEntity<Checklist>(
-    api.checklists.findById,
-    { id: checklistId },
+    checklistRest,
     checklistId,
     'checklist',
-    checklistRest,
   )
   const checklist = checklistData ?? null
   const loading = checklistData === undefined
@@ -60,10 +54,8 @@ export function useApplicationNewContainer({
   )
   const applicationsRest = useApplicationsListRestResult(checklistId)
   const applicationsData = useEntityList<Application>(
-    api.applications.listByChecklistId,
-    { checklistId },
-    { kind: 'application', getId: getApplicationId, belongs: belongsToChecklist },
     applicationsRest,
+    { kind: 'application', getId: getApplicationId, belongs: belongsToChecklist },
   )
   const applications = useMemo(
     () =>

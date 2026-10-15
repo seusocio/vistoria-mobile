@@ -18,10 +18,19 @@ export interface PreparedAsset {
   mimeType: string
 }
 
+/** Shown when the library pick fails — almost always the system Photos export, not the app. */
+export const PICK_PHOTOS_ERROR_MESSAGE =
+  'O iOS não conseguiu entregar as fotos selecionadas. Verifique se há espaço livre no aparelho e tente novamente.'
+
 export async function pickPhotos(source: PhotoSource): Promise<PickedPhoto[]> {
   void source
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
+    // With `Current` (the default), a failed Photos export — e.g. the device
+    // is low on storage (CloudPhotoLibraryErrorDomain 1005) — left the pick
+    // hanging forever with no error. `Compatible` makes the same failure
+    // reject, so the caller can tell the user instead of showing nothing.
+    preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
     quality: 0.85,
     exif: false,
     allowsEditing: false,

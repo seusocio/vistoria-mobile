@@ -1,15 +1,10 @@
-import { Application } from '@/features/application/shared/application.types'
+import type { Application } from '@/features/application/shared/application.types'
 
 /**
- * Backfills fields that legacy locally-stored applications predate, so they
- * satisfy the strict Convex schema on save (and read consistently).
- *
- * Records created before a field was introduced reach the persistence boundary
- * missing it:
+ * Backfills fields that older records predate, so every screen reads an
+ * application the same way whatever build wrote it:
  * - `answeredAt` (added later) — absent on old application items.
  * - attachment `name` — absent on old soft-deleted attachment tombstones.
- *
- * Pure and dependency-free (no Convex client) so it stays testable.
  */
 export function normalizeApplication(application: Application): Application {
   return {

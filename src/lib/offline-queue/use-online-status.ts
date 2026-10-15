@@ -1,15 +1,16 @@
 import { useNetworkState } from 'expo-network'
 import { useEffect } from 'react'
 import { AppState } from 'react-native'
+import { useLinkState } from './link-state'
 import { drainOutbox, retryFailedOps } from './process-queue'
 import { useOutbox } from './queue.store'
 
 /**
- * True once the device radio has a link. This is a weaker signal than the
- * old Convex socket state — "the backend is answering" — but the two
- * consumers (the overlay, the drain's reconnect trigger) both tolerate the
- * difference: a site wifi with a captive portal reads online and isn't, and
- * the overlay just waits one beat longer while a retry fails into backoff.
+ * True once the device radio has a link. This is a weaker signal than "the
+ * backend is answering", but the two consumers (the overlay, the drain's
+ * reconnect trigger) both tolerate the difference: a site wifi with a
+ * captive portal reads online and isn't, and the overlay just waits one beat
+ * longer while a retry fails into backoff.
  * No health-check is built for this on purpose.
  */
 export function useIsOnline(): boolean {
@@ -40,6 +41,7 @@ export function useOutboxLifecycle(): void {
   }, [])
 
   useEffect(() => {
+    useLinkState.setState({ isOnline })
     if (isOnline) void retryFailedOps()
   }, [isOnline])
 

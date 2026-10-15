@@ -9,6 +9,7 @@
  * `App.tsx` imports this module instead.
  */
 import '@/features/application/shared/application.ops'
+import '@/features/application/shared/attachment.ops'
 import '@/features/checklist/checklist-form/checklist-form.ops'
 import '@/features/tag/shared/tag.ops'
 import '@/features/note/shared/note.ops'

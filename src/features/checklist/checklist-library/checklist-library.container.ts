@@ -7,16 +7,14 @@ import {
 import type { Application } from '@/features/application/shared/application.types'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import {
-  checklistsListQueryKey,
   useChecklistsListRestResult,
 } from '@/features/checklist/shared/checklist.rest'
 import { isItemAnswerComplete } from '@/features/application/shared/application.utils'
 import { useRefreshOnEndReached } from '@/lib/api/use-refresh-on-end-reached'
-import { normalizeApplication } from '@/lib/convex'
+import { normalizeApplication } from '@/features/application/shared/normalize-application'
 import { useEntityList } from '@/lib/offline-queue'
 import { useSessionStore } from '@/lib/session/session.store'
 import type { TabRoutesProps } from '@/routes/types'
-import { api } from '../../../../convex/_generated/api'
 
 export interface ChecklistStats {
   applications: number
@@ -41,17 +39,13 @@ export function useChecklistLibraryContainer({
 }: UseChecklistLibraryContainerProps) {
   const checklistsRest = useChecklistsListRestResult()
   const checklistsData = useEntityList<Checklist>(
-    api.checklists.list,
-    {},
-    { kind: 'checklist', getId: getChecklistId },
     checklistsRest,
+    { kind: 'checklist', getId: getChecklistId },
   )
   const applicationsRest = useApplicationsListRestResult()
   const applicationsData = useEntityList<Application>(
-    api.applications.listAll,
-    {},
-    { kind: 'application', getId: getApplicationId },
     applicationsRest,
+    { kind: 'application', getId: getApplicationId },
   )
 
   // `api.checklists.list` already filters deleted rows server-side, but a

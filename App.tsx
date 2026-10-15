@@ -5,7 +5,6 @@ import {
 	useFonts,
 } from "@expo-google-fonts/lato";
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { ConvexProvider } from 'convex/react';
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
@@ -14,12 +13,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { OutboxDebugger, SyncStatusBar, UndoToastProvider } from "@/components";
 // Registers every offline-queue op before anything can drain the outbox.
 import "@/features/ops";
-import { convexClient } from '@/lib/convex'
 import { queryClient } from '@/lib/query-client'
 import { queryPersister } from '@/lib/query-persister'
 import { registerBackgroundUploadTask } from '@/lib/uploads/background-task';
 import { subscribeToUploadRecovery } from '@/lib/uploads/upload-store';
-import { migrateLocalDataToConvex } from '@/lib/legacy/migrate-to-convex';
 import { useOutboxLifecycle } from '@/lib/offline-queue';
 import { Routes } from "@/routes";
 
@@ -40,13 +37,6 @@ export default function App() {
 		Lato_700Bold,
 	});
 
-	// Legacy AsyncStorage import. Deliberately not awaited before render and
-	// deliberately silent on failure: gating the first paint on a network call
-	// is what used to leave a first launch with no connection stuck on an
-	// error screen instead of an empty (and perfectly usable) Library.
-	useEffect(() => {
-		void migrateLocalDataToConvex().catch(() => undefined);
-	}, []);
 	useEffect(() => subscribeToUploadRecovery(), []);
 	useEffect(() => registerBackgroundUploadTask(), []);
 
@@ -67,12 +57,10 @@ export default function App() {
               client={queryClient}
               persistOptions={{ persister: queryPersister }}
             >
-              <ConvexProvider client={convexClient}>
-                <OutboxLifecycle />
-                <SyncStatusBar />
-                <OutboxDebugger />
-                <Routes />
-              </ConvexProvider>
+              <OutboxLifecycle />
+              <SyncStatusBar />
+              <OutboxDebugger />
+              <Routes />
             </PersistQueryClientProvider>
           </BottomSheetModalProvider>
         </UndoToastProvider>

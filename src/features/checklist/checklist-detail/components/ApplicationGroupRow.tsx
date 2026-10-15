@@ -1,6 +1,6 @@
 import { memo, useCallback } from 'react'
 import { ApplicationRow } from '@/components'
-import type { ApplicationGroup } from '@/features/application/shared/application.utils'
+import type { ApplicationGroup } from '@/features/application/shared/application-history.utils'
 import type { ApplicationRowEntry } from '@/components/ApplicationRow'
 import type { HistoryLayout } from '@/lib/preferences'
 

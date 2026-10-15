@@ -6,7 +6,6 @@ import { tagLabelSchema } from '@/features/tag/shared/tag.schema'
 import { generateId } from '@/lib/id'
 import { resolveTagLabels } from '@/features/tag/shared/tag.utils'
 import { enqueueOp, useEntityList } from '@/lib/offline-queue'
-import { api } from '../../../../convex/_generated/api'
 
 const EMPTY_TAGS: Tag[] = []
 const getTagId = (tag: Tag) => tag.id
@@ -15,16 +14,12 @@ export function useTagsCatalog() {
   // Both reads share one REST result — see `useTagsListRestResult`'s doc.
   const tagsRest = useTagsListRestResult()
   const activeTagsData = useEntityList<Tag>(
-    api.tags.list,
-    {},
-    { kind: 'tag', getId: getTagId },
     tagsRest,
+    { kind: 'tag', getId: getTagId },
   )
   const allTagsData = useEntityList<Tag>(
-    api.tags.listAll,
-    {},
-    { kind: 'tag', getId: getTagId },
     tagsRest,
+    { kind: 'tag', getId: getTagId },
   )
 
   const activeTags = useMemo(

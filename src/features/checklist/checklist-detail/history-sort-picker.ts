@@ -1,5 +1,5 @@
 import { ActionSheetIOS, Alert, Platform } from 'react-native'
-import type { HistorySortMode } from '@/features/application/shared/application.utils'
+import type { HistorySortMode } from '@/features/application/shared/application-history.utils'
 
 const SORT_OPTIONS: { mode: HistorySortMode; label: string }[] = [
   { mode: 'recent', label: 'Mais recentes' },

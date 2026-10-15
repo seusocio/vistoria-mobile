@@ -1,6 +1,7 @@
-import { isApplicationGone, refreshApplicationCache } from '@/features/application/shared/application.rest'
+import { refreshApplicationCache } from '@/features/application/shared/application.cache'
+import { isApplicationGone } from '@/features/application/shared/application.rest'
 import { defineOp } from '@/lib/offline-queue/ops'
-import { useSessionStore } from '@/lib/session/session.store'
+import { requireActiveProject } from '@/lib/session/require-active-project'
 import {
   createNoteRest,
   deleteNoteRest,
@@ -12,21 +13,8 @@ import {
 } from './note.rest'
 import type { Note } from './note.types'
 
-function requireActiveProject(): { orgId: string; projectId: string } {
-  const { activeOrgId, activeProjectId } = useSessionStore.getState()
-  if (!activeOrgId || !activeProjectId) {
-    throw new Error('notes: no active organization/project session')
-  }
-  return { orgId: activeOrgId, projectId: activeProjectId }
-}
-
-/** Notes never existed in Convex, so there is no legacy backend to fall back to. */
-function restOnly(): Promise<never> {
-  return Promise.reject(new Error('notes: REST-only, the Convex backend has no notes'))
-}
-
 function invalidateFeed(args: { applicationId: string }) {
-  const { orgId, projectId } = requireActiveProject()
+  const { orgId, projectId } = requireActiveProject('notes')
   return [notesQueryKey(orgId, projectId, args.applicationId)]
 }
 
@@ -44,15 +32,14 @@ export const createNote = defineOp<{ note: Note }, Note>('notes.create', {
   kind: 'note',
   scope: (args) => args.note.applicationId,
   isScopeGone: isApplicationGone,
-  send: restOnly,
-  sendRest: (args) => {
-    const { orgId, projectId } = requireActiveProject()
+  send: (args) => {
+    const { orgId, projectId } = requireActiveProject('notes')
     return createNoteRest(orgId, projectId, args.note)
   },
   applyLocal: (entity, args) => entity ?? args.note,
   entityId: (args) => args.note.id,
   onServerResponse: (queryClient, args, response) => {
-    const { orgId, projectId } = requireActiveProject()
+    const { orgId, projectId } = requireActiveProject('notes')
     // Every attachment was deleted before this landed — see `createNoteRest`.
     if (response === null) return
     const created = noteFromResponse(response) ?? args.note
@@ -71,9 +58,8 @@ export const patchNote = defineOp<PatchNoteArgs, Note>('notes.patch', {
   // after the user removed its voice note), or dropped server-side when its
   // last attachment was deleted. There is nothing left to patch.
   treatNotFoundAsDone: true,
-  send: restOnly,
-  sendRest: (args) => {
-    const { orgId, projectId } = requireActiveProject()
+  send: (args) => {
+    const { orgId, projectId } = requireActiveProject('notes')
     return updateNoteRest(orgId, projectId, args)
   },
   applyLocal: (entity, args) => {
@@ -87,7 +73,7 @@ export const patchNote = defineOp<PatchNoteArgs, Note>('notes.patch', {
   },
   entityId: (args) => args.noteId,
   onServerResponse: (queryClient, args, response) => {
-    const { orgId, projectId } = requireActiveProject()
+    const { orgId, projectId } = requireActiveProject('notes')
     const updated = noteFromResponse(response)
     updateNotesCache(queryClient, orgId, projectId, args.applicationId, (notes) =>
       notes.map((note) =>
@@ -117,15 +103,14 @@ export const deleteNoteOp = defineOp<{ applicationId: string; noteId: string; de
     scope: (args) => args.applicationId,
     isScopeGone: isApplicationGone,
     treatNotFoundAsDone: true,
-    send: restOnly,
-    sendRest: (args) => {
-      const { orgId, projectId } = requireActiveProject()
+    send: (args) => {
+      const { orgId, projectId } = requireActiveProject('notes')
       return deleteNoteRest(orgId, projectId, args.applicationId, args.noteId)
     },
     applyLocal: (entity, args) => (entity ? { ...entity, deletedAt: args.deletedAt } : null),
     entityId: (args) => args.noteId,
     onServerResponse: (queryClient, args) => {
-      const { orgId, projectId } = requireActiveProject()
+      const { orgId, projectId } = requireActiveProject('notes')
       updateNotesCache(queryClient, orgId, projectId, args.applicationId, (notes) =>
         notes.filter((note) => note.id !== args.noteId),
       )

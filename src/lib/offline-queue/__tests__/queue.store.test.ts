@@ -5,7 +5,8 @@ import {
   createOutboxSlice,
   type OutboxState,
   type QueuedOp,
-  retargetLegacyConvexItems,
+  migrateLegacyConvexItems,
+  type PersistedOp,
 } from '../queue.store'
 
 /** A throwaway, purely in-memory store — no `persist`, no AsyncStorage. */
@@ -82,9 +83,9 @@ describe('outbox slice', () => {
   })
 })
 
-describe('retargetLegacyConvexItems', () => {
-  /** A checklist read from a Convex query and queued before `castConvex` existed. */
-  function legacyItem(overrides: Partial<QueuedOp> = {}): QueuedOp {
+describe('migrateLegacyConvexItems', () => {
+  /** A checklist read from a Convex query and queued while the app still had a Convex backend. */
+  function legacyItem(overrides: Partial<PersistedOp> = {}): PersistedOp {
     return {
       id: 'op_legacy',
       type: 'checklists.save',
@@ -102,14 +103,15 @@ describe('retargetLegacyConvexItems', () => {
       attempts: 3,
       enqueuedAt: '2026-09-19T21:08:11.621Z',
       status: 'failed',
+      backend: 'convex',
       ...overrides,
     }
   }
 
-  test('re-targets a Convex-era item at REST, strips system fields and resets its budget', () => {
-    const [item] = retargetLegacyConvexItems([legacyItem()])
+  test('strips Convex system fields, drops the backend tag and resets the budget', () => {
+    const [item] = migrateLegacyConvexItems([legacyItem()])
 
-    expect(item.backend).toBe('rest')
+    expect('backend' in item).toBe(false)
     expect(item.args).toEqual({
       id: 'checklist_mu5gcevf9r5ln5pg3h',
       entity: { id: 'checklist_mu5gcevf9r5ln5pg3h', title: 'VISTORIA PRD' },
@@ -118,16 +120,26 @@ describe('retargetLegacyConvexItems', () => {
     expect(item.status).toBe('pending')
   })
 
-  test('leaves an item already targeting REST untouched', () => {
-    const rest = legacyItem({ backend: 'rest', attempts: 2, status: 'failed' })
-    expect(retargetLegacyConvexItems([rest])[0]).toBe(rest)
+  test('treats an item with no backend tag as Convex-era', () => {
+    const [item] = migrateLegacyConvexItems([legacyItem({ backend: undefined })])
+    expect(item.args).toEqual({
+      id: 'checklist_mu5gcevf9r5ln5pg3h',
+      entity: { id: 'checklist_mu5gcevf9r5ln5pg3h', title: 'VISTORIA PRD' },
+    })
+  })
+
+  test('only drops the tag from an item that already targeted REST', () => {
+    const [item] = migrateLegacyConvexItems([legacyItem({ backend: 'rest', attempts: 2, status: 'failed' })])
+    expect('backend' in item).toBe(false)
+    expect(item.attempts).toBe(2)
+    expect(item.status).toBe('failed')
+    expect((item.args as { entity: Record<string, unknown> }).entity._id).toBe('kn72qzbsfd9pzj5q9e8d3zrsgn8ekjh5')
   })
 
   test('keeps args without an `entity` as they are', () => {
-    const [item] = retargetLegacyConvexItems([
+    const [item] = migrateLegacyConvexItems([
       legacyItem({ type: 'checklists.softDeleteCascade', args: { id: 'c1', deletedAt: 'now' } }),
     ])
     expect(item.args).toEqual({ id: 'c1', deletedAt: 'now' })
-    expect(item.backend).toBe('rest')
   })
 })

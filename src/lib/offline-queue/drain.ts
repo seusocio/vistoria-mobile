@@ -51,7 +51,7 @@ const defaultScheduler: Scheduler = (run, delayMs) => {
 
 /**
  * The drain algorithm, decoupled from the real outbox singleton, the real
- * Convex client, and real timers so it can run in tests against a
+ * network, and real timers so it can run in tests against a
  * throwaway store, a fake mutation runner, and a no-op scheduler.
  * `process-queue.ts` wires this to the real ones.
  *
@@ -87,15 +87,9 @@ export async function drainOutboxWith(
         return
       }
 
-      // `item.backend` is fixed at enqueue time (see `queue.store.ts`), not
-      // read from the live flag — so a flag flip while this op sat offline
-      // can't strand it with a request shape the wrong backend expects.
-      const isRest = item.backend === 'rest' && Boolean(op.sendRest)
-      const send = isRest && op.sendRest ? op.sendRest : op.send
-
       let response: unknown
       try {
-        response = await runMutation(send, item.args as Record<string, unknown>)
+        response = await runMutation(op.send, item.args as Record<string, unknown>)
       } catch (caught) {
         const error = toOpError(caught)
         // A REST 4xx is never worth retrying: a 404 means this op's target
@@ -147,15 +141,10 @@ export async function drainOutboxWith(
 
       outbox.getState().resolve(item.id)
       logDrain({ opId: item.id, type: item.type, outcome: 'resolved' })
-      // Only a REST response is shaped for the REST query cache — a
-      // Convex mutation's return value has no relation to it, and writing
-      // it in would leave a wrong-shaped entry waiting under the key this
-      // entity's REST reads use once its flag flips.
-      //
       // Outside the send's `try`: the op has landed, so a throw while patching
       // the cache must not be mistaken for a failed send — that stalled the
       // whole drain behind a backoff timer for an op already gone.
-      if (queryClient && isRest) {
+      if (queryClient) {
         try {
           op.onServerResponse?.(queryClient, item.args, response)
           for (const queryKey of op.invalidates?.(item.args) ?? []) {

@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy'
 import { Platform } from 'react-native'
 import { presignUpload } from '@/lib/api/endpoints/default/default'
-import { assertLocalFileExists } from '@/lib/convex/photo-picker'
+import { assertLocalFileExists } from '@/lib/photos/photo-picker'
 
 export interface PresignedUpload {
   key: string

@@ -1,17 +1,7 @@
 import { defineOp } from '@/lib/offline-queue/ops'
 import type { Tag } from '@/features/tag/shared/tag.types'
 import { createTagRest, tagsListQueryKey } from '@/features/tag/shared/tag.rest'
-import { convexClient } from '@/lib/convex/client'
-import { useSessionStore } from '@/lib/session/session.store'
-import { api } from '../../../../convex/_generated/api'
-
-function requireActiveProject(): { orgId: string; projectId: string } {
-  const { activeOrgId, activeProjectId } = useSessionStore.getState()
-  if (!activeOrgId || !activeProjectId) {
-    throw new Error('tags: no active organization/project session')
-  }
-  return { orgId: activeOrgId, projectId: activeProjectId }
-}
+import { requireActiveProject } from '@/lib/session/require-active-project'
 
 /**
  * Mirrors `tags.create`, which dedupes on both the external id and the
@@ -24,9 +14,8 @@ function requireActiveProject(): { orgId: string; projectId: string } {
  */
 export const tagCreate = defineOp<{ entity: Tag }, Tag>('tags.create', {
   kind: 'tag',
-  send: (args) => convexClient.mutation(api.tags.create, args as never),
-  sendRest: (args) => {
-    const { orgId, projectId } = requireActiveProject()
+  send: (args) => {
+    const { orgId, projectId } = requireActiveProject('tags')
     return createTagRest(orgId, projectId, args.entity)
   },
   applyLocal: (entity, args) => entity ?? args.entity,
@@ -37,7 +26,7 @@ export const tagCreate = defineOp<{ entity: Tag }, Tag>('tags.create', {
   // the created tag instantly via `applyLocal`; this just brings the list
   // query's own cache in line once the server has it.
   invalidates: () => {
-    const { orgId, projectId } = requireActiveProject()
+    const { orgId, projectId } = requireActiveProject('tags')
     return [tagsListQueryKey(orgId, projectId)]
   },
 })

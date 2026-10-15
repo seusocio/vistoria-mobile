@@ -10,7 +10,6 @@ import { useChecklistRestResult } from '@/features/checklist/shared/checklist.re
 import { useDraft } from '@/lib/forms'
 import { enqueueOp, useEntity } from '@/lib/offline-queue'
 import type { StackRoutesList } from '@/routes/types'
-import { api } from '../../../../convex/_generated/api'
 import {
   checklistFormSchema,
   checklistItemFormSchema,
@@ -21,7 +20,6 @@ import {
 } from './checklist-form.schema'
 import { checklistSave } from './checklist-form.ops'
 import { buildChecklistEntity } from './checklist-form.utils'
-import { useCreateChecklist } from '@/lib/api/endpoints'
 
 export type ItemSheetState = { mode: 'new' } | { mode: 'edit'; index: number } | null
 export type PendingDeleteState = { type: 'item' | 'option'; index: number } | null
@@ -43,11 +41,9 @@ export function useChecklistFormContainer({ checklistId, navigation }: UseCheckl
   const isEditing = Boolean(checklistId)
   const existingRest = useChecklistRestResult(checklistId)
   const existing = useEntity<Checklist>(
-    api.checklists.findById,
-    { id: checklistId ?? '' },
+    existingRest,
     checklistId ?? '',
     'checklist',
-    existingRest,
   )
   const loading = isEditing && (existing === undefined || existing === null)
 

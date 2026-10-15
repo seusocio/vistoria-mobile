@@ -1,12 +1,7 @@
-import { BottomSheetView } from '@gorhom/bottom-sheet'
 import { Pressable, Text, View } from 'react-native'
 import { ScrollViewContainer } from 'react-native-reorderable-list'
 import {
-  AppBottomSheet,
   Badge,
-  ConfirmBottomSheet,
-  Form,
-  ItemDrawer,
   PhotoViewer,
   FloatingAction,
   ProgressBar,
@@ -15,9 +10,7 @@ import {
   VoiceCard,
 } from '@/components'
 import { Icon } from '@/components/Icon'
-import { useSheetFooterActions } from '@/components/SheetFooterActions'
 import { FEATURE_FLAG } from '@/FEATURE_FLAG'
-import type { ApplicationDerivedState } from '@/features/application/shared/application.utils'
 import { colors } from '@/styles'
 import { presentApplicationCompletionPicker } from './application-completion-picker'
 import { styles } from './application-fill.styles'
@@ -25,14 +18,13 @@ import {
   useApplicationFillContainer,
   type UseApplicationFillContainerProps,
 } from './application-fill.container'
+import { AddItemSheet } from './components/AddItemSheet'
 import { ApplicationGallery } from './components/ApplicationGallery'
-import { ApplicationItemGroupSection } from './components/ApplicationItemGroupSection'
-
-const DERIVED_STATE_LABEL: Record<ApplicationDerivedState, string> = {
-  not_started: 'Não iniciada',
-  in_progress: 'Executando',
-  completed: 'Completa',
-}
+import { ApplicationItemDrawer } from './components/ApplicationItemDrawer'
+import { ApplicationItemGroups } from './components/ApplicationItemGroups'
+import { DeleteApplicationConfirm } from './components/DeleteApplicationConfirm'
+import { EditApplicationSheet } from './components/EditApplicationSheet'
+import { DERIVED_STATE_LABEL } from './derived-state-label'
 
 /**
  * The only component in this feature — it calls useApplicationFillContainer
@@ -42,26 +34,11 @@ const DERIVED_STATE_LABEL: Record<ApplicationDerivedState, string> = {
 export function ApplicationFillView(props: UseApplicationFillContainerProps) {
   const c = useApplicationFillContainer(props)
 
-  const renderEditApplicationFooter = useSheetFooterActions({
-    confirmLabel: 'Salvar',
-    onConfirm: c.onSaveApplication,
-  })
-  const renderAddItemFooter = useSheetFooterActions({
-    confirmLabel: 'Adicionar',
-    onConfirm: c.onSaveNewItem,
-  })
-
   if (c.loading) {
     return (
       <Screen loading variant="nested" onBack={c.onBack} title="Preenchimento" />
     )
   }
-
-  // Pulled into local consts so TS narrows them through the inline callbacks
-  // below (`c.editingItem`, a property access, doesn't narrow across a
-  // closure boundary the way a const binding does).
-  const editingItem = c.editingItem
-  const itemDraftValues = c.itemDraftValues
 
   return (
     <Screen
@@ -173,55 +150,9 @@ export function ApplicationFillView(props: UseApplicationFillContainerProps) {
         </Pressable>
       </View>
 
-      <View style={styles.groupsList}>
-        {c.groups.map((group) => (
-          <ApplicationItemGroupSection
-            key={group.key}
-            title={group.title}
-            groupItems={group.children}
-            total={group.total}
-            answered={group.answered}
-            checklist={c.checklist}
-            suggestionEnabled={FEATURE_FLAG.suggestion}
-            resolveTagLabel={c.resolveTagLabel}
-            onToggleComplete={c.onToggleComplete}
-            onToggleGroupComplete={c.onToggleGroupComplete}
-            onOpenDrawer={c.onOpenDrawer}
-            onAcceptSuggestion={c.onAcceptSuggestion}
-            onRejectSuggestion={c.onRejectSuggestion}
-          />
-        ))}
-      </View>
+      <ApplicationItemGroups c={c} style={styles.groupsList} />
 
-      {editingItem && itemDraftValues && (
-        <ItemDrawer
-          visible
-          onClose={c.onCloseItemDrawer}
-          itemIndex={c.editingItemIndex + 1}
-          itemsTotal={c.editingItemsTotal}
-          title={editingItem.title}
-          completionVariant={c.editingItemCompletionVariant}
-          onSelectStatus={(status) => c.onSelectStatus(editingItem.id, status)}
-          note={itemDraftValues.note}
-          onNoteChange={(note) => c.itemForm.setValue('note', note, { shouldDirty: true })}
-          tagsIds={itemDraftValues.tagsIds}
-          availableTags={c.tagsCatalog.activeTags}
-          allTagsById={c.tagsCatalog.tagsById}
-          onChangeTags={(tagsIds) => c.itemForm.setValue('tagsIds', tagsIds, { shouldDirty: true })}
-          onCreateTag={c.tagsCatalog.createTag}
-          quantity={itemDraftValues.quantity}
-          onQuantityChange={(quantity) =>
-            c.itemForm.setValue('quantity', quantity, { shouldDirty: true })
-          }
-          attachments={editingItem.attachments}
-          uploadProgress={c.uploadProgress}
-          onAddPhoto={() => c.onAddPhoto(editingItem.id)}
-          onRemoveAttachment={(attachmentId) => c.onRemoveItemAttachment(editingItem.id, attachmentId)}
-          onRetryAttachment={(attachmentId) => c.onRetryItemAttachment(editingItem.id, attachmentId)}
-          onOpenPhoto={(index) => c.onOpenPhoto(editingItem.id, index)}
-          onSave={c.onSaveItemDrawer}
-        />
-      )}
+      <ApplicationItemDrawer c={c} />
 
       <PhotoViewer
         visible={c.viewer !== null}
@@ -231,74 +162,11 @@ export function ApplicationFillView(props: UseApplicationFillContainerProps) {
         onDelete={c.onDeletePhotoFromViewer}
       />
 
-      <AppBottomSheet
-        visible={c.editingApplication}
-        onClose={c.onCloseEditApplication}
-        snapPoints={['95%']}
-        footerComponent={renderEditApplicationFooter}
-      >
-        <BottomSheetView style={styles.sheetContent}>
-          <View style={styles.modalField}>
-            <Text style={styles.modalFieldLabel}>Tags da aplicação</Text>
-            <Form.TagSelect
-              control={c.metaForm.control}
-              name="tagsIds"
-              availableTags={c.tagsCatalog.activeTags}
-              allTagsById={c.tagsCatalog.tagsById}
-              onCreateTag={c.tagsCatalog.createTag}
-            />
-            <Form.ErrorText message={c.metaForm.formState.errors.tagsIds?.message} />
-          </View>
+      <EditApplicationSheet c={c} />
 
-          <View style={styles.modalField}>
-            <Text style={styles.modalFieldLabel}>Data da visita</Text>
-            <Form.DateField control={c.metaForm.control} name="date" />
-          </View>
+      <AddItemSheet c={c} />
 
-          {c.applicationError ? <Text style={styles.modalError}>{c.applicationError}</Text> : null}
-        </BottomSheetView>
-      </AppBottomSheet>
-
-      <AppBottomSheet
-        visible={c.addingItem}
-        onClose={c.onCloseAddItem}
-        snapPoints={['95%']}
-        footerComponent={renderAddItemFooter}
-      >
-        <BottomSheetView style={styles.sheetContent}>
-          <View style={styles.modalField}>
-            <Text style={styles.modalFieldLabel}>Título do item</Text>
-            <Form.TextField
-              control={c.newItemForm.control}
-              name="title"
-              placeholder="Ex.: Base de shaft 5"
-            />
-          </View>
-
-          <View style={styles.modalField}>
-            <Text style={styles.modalFieldLabel}>Tags do item</Text>
-            <Form.TagSelect
-              control={c.newItemForm.control}
-              name="tagsIds"
-              availableTags={c.tagsCatalog.activeTags}
-              allTagsById={c.tagsCatalog.tagsById}
-              onCreateTag={c.tagsCatalog.createTag}
-            />
-          </View>
-
-          <Form.ErrorText message={c.newItemForm.formState.errors.root?.message} />
-        </BottomSheetView>
-      </AppBottomSheet>
-
-      <ConfirmBottomSheet
-        snapPoints={['30%']}
-        visible={c.deleteConfirmationVisible}
-        title={`Excluir esta aplicação de "${c.checklist.title}"?`}
-        message={`${c.progress.answered} de ${c.progress.total} itens respondidos e todas as fotos anexadas serão excluídos.`}
-        confirmLabel="Excluir aplicação"
-        onCancel={c.onCancelDelete}
-        onConfirm={c.onConfirmDelete}
-      />
+      <DeleteApplicationConfirm c={c} />
     </Screen>
   )
 }

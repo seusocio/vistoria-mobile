@@ -1,18 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create, type StateCreator } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
-import { isRestEnabled } from '@/lib/backend-flags'
-import { castConvex } from '@/lib/convex/cast'
 import { generateId } from '@/lib/id'
 import type { EntityKind, OpDefinition } from './ops'
 
 export type QueuedOpStatus = 'pending' | 'failed'
-export type OpBackend = 'convex' | 'rest'
 
 /** Why the last send of an op didn't land — kept on the op so a blocked head can be diagnosed on-device. */
 export interface OpError {
   message: string
-  /** HTTP status for a REST failure; absent for a network/Convex error. */
+  /** HTTP status for a server failure; absent for a network error. */
   status?: number
   /** The server's error body, as parsed. */
   body?: unknown
@@ -28,18 +25,6 @@ export interface QueuedOp {
   attempts: number
   enqueuedAt: string
   status: QueuedOpStatus
-  /**
-   * Which backend this op targets, decided once at enqueue time from the
-   * entity's flag and carried with the op for its whole life in the queue.
-   * A flag flip while a device is offline must not change what an
-   * already-queued op sends — it targets whichever backend was live when the
-   * user made the write.
-   *
-   * Optional for compat with ops persisted before this field existed, and
-   * with tests that build a `QueuedOp` by hand — absent means `'convex'`,
-   * the only backend that existed before it.
-   */
-  backend?: OpBackend
   lastError?: OpError
 }
 
@@ -63,38 +48,38 @@ export interface OutboxState {
   retryFailed: () => void
 }
 
+/** A queued op as persisted by a build from before the Convex backend was removed. */
+export type PersistedOp = QueuedOp & { backend?: 'convex' | 'rest' }
+
+function stripConvexSystemFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripConvexSystemFields)
+  if (value === null || typeof value !== 'object') return value
+  const { _id, _creationTime, ...rest } = value as Record<string, unknown>
+  return rest
+}
+
 /**
- * Re-targets ops persisted before this entity's REST cutover at the REST
- * backend, and strips the Convex system fields (`_id`/`_creationTime`) their
- * `entity` argument may still carry.
+ * Brings ops persisted while the app still had a Convex backend in line with
+ * the REST-only drain: drops the `backend` tag they carried, and strips the
+ * Convex system fields (`_id`/`_creationTime`) an `entity` read from a Convex
+ * query may still hold — whole-entity upserts (`checklists.save`) would
+ * otherwise send them along.
  *
- * `item.backend` is deliberately fixed at enqueue time so a flag flip can't
- * change what an in-flight op sends — but that rule has an end date. Once a
- * kind reads and writes REST only, an op still pointing at Convex can never
- * land: the whole-entity upserts (`checklists.save`) are rejected outright —
- * "ArgumentValidationError: Object contains extra field _creationTime" —
- * because those entities were read out of a Convex query before `castConvex`
- * existed, so they carry system fields the mutation validator doesn't declare. That error is not an `ApiError`, so the drain treats it as
- * retryable, burns `MAX_ATTEMPTS`, and the failed head then blocks *every*
- * REST write behind it — while `retryFailedOps` (reconnect, foreground,
- * boot) revives it and logs the same Convex failure again, forever.
- *
- * So: send it to REST instead, where the row exists under the same external
- * id (the data was moved by `scripts/migrate-convex-to-rest.ts`). Dropping
- * these items would be the one option that really loses a user's write.
+ * Dropping these ops instead would be the one option that really loses a
+ * user's write: their rows exist on the REST side under the same external id
+ * (the data was moved by `scripts/migrate-convex-to-rest.ts`). An op that was
+ * stuck on Convex gets a fresh budget, since the attempts it burned were spent
+ * on a backend it will never be sent to again.
  */
-export function retargetLegacyConvexItems(items: QueuedOp[]): QueuedOp[] {
-  return items.map((item) => {
-    if (item.backend === 'rest' || !isRestEnabled(item.kind)) return item
+export function migrateLegacyConvexItems(items: PersistedOp[]): QueuedOp[] {
+  return items.map(({ backend, ...item }) => {
+    if (backend === 'rest') return item
     const args = item.args as { entity?: unknown } | null
     const entity =
-      args && typeof args === 'object' && 'entity' in args ? castConvex(args.entity) : undefined
+      args && typeof args === 'object' && 'entity' in args ? stripConvexSystemFields(args.entity) : undefined
     return {
       ...item,
-      backend: 'rest' as const,
       args: entity === undefined ? item.args : { ...args, entity },
-      // A fresh budget: the attempts it burned were spent on a backend it
-      // should never have been sent to.
       attempts: 0,
       status: 'pending' as const,
     }
@@ -135,7 +120,6 @@ export const createOutboxSlice: StateCreator<OutboxState> = (set) => ({
           attempts: 0,
           enqueuedAt: new Date().toISOString(),
           status: 'pending',
-          backend: isRestEnabled(op.kind) ? 'rest' : 'convex',
         },
       ],
     })),
@@ -189,15 +173,16 @@ export const useOutbox = create<OutboxState>()(
     name: '@vistoria/outbox',
     storage: createJSONStorage(() => AsyncStorage),
     partialize: (state) => ({ items: state.items }) as OutboxState,
-    version: 1,
+    // 2: the `backend` tag is gone — see `migrateLegacyConvexItems`.
+    version: 2,
     onRehydrateStorage: () => (state) => {
       if (!state) return
       const compacted = compactOutbox(state.items)
       if (compacted.length !== state.items.length) useOutbox.setState({ items: compacted })
     },
     migrate: (persisted) => {
-      const state = persisted as { items?: QueuedOp[] } | undefined
-      return { items: retargetLegacyConvexItems(state?.items ?? []) } as OutboxState
+      const state = persisted as { items?: PersistedOp[] } | undefined
+      return { items: migrateLegacyConvexItems(state?.items ?? []) } as OutboxState
     },
   }),
 )

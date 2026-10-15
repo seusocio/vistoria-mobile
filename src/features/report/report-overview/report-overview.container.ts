@@ -16,7 +16,7 @@ import {
 import { useTagsCatalog } from '@/features/tag/shared/use-tags-catalog'
 import { tagsListQueryKey } from '@/features/tag/shared/tag.rest'
 import { useRefreshOnEndReached } from '@/lib/api/use-refresh-on-end-reached'
-import { normalizeApplication } from '@/lib/convex'
+import { normalizeApplication } from '@/features/application/shared/normalize-application'
 import { useEntityList } from '@/lib/offline-queue'
 import { useSessionStore } from '@/lib/session/session.store'
 import {
@@ -27,7 +27,6 @@ import {
   startOfMonthIso,
   todayIso,
 } from '@/utils/date'
-import { api } from '../../../../convex/_generated/api'
 import type { PeriodPreset } from './components/PeriodPresetRow'
 
 export interface PendingListData {
@@ -68,10 +67,8 @@ export function useReportOverviewContainer() {
 
   const applicationsRest = useApplicationsListRestResult()
   const applicationsData = useEntityList<Application>(
-    api.applications.listAll,
-    {},
-    { kind: 'application', getId: getApplicationId },
     applicationsRest,
+    { kind: 'application', getId: getApplicationId },
   )
   const applications = useMemo(
     () =>
@@ -82,10 +79,8 @@ export function useReportOverviewContainer() {
   )
   const checklistsRest = useChecklistsListRestResult()
   const checklistsData = useEntityList<Checklist>(
-    api.checklists.list,
-    {},
-    { kind: 'checklist', getId: getChecklistId },
     checklistsRest,
+    { kind: 'checklist', getId: getChecklistId },
   )
   const checklistsById = useMemo(
     () => new Map((checklistsData ?? []).map((checklist) => [checklist.id, checklist])),
