@@ -4,6 +4,7 @@ import { View } from 'react-native'
 import { ListLoadingFooter, Screen, useFloatingTabBarClearance } from '@/components'
 import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { space } from '@/styles'
+import { usePullToRefresh } from '@/lib/api/use-pull-to-refresh'
 import {
   useChecklistLibraryContainer,
   type UseChecklistLibraryContainerProps,
@@ -16,6 +17,7 @@ import { LibraryTagFilterSheet } from './components/LibraryTagFilterSheet'
 
 export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
   const c = useChecklistLibraryContainer(props)
+  const { refreshing, onRefresh } = usePullToRefresh()
   const tabBarClearance = useFloatingTabBarClearance()
 
   const renderChecklist = useCallback(
@@ -46,6 +48,8 @@ export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
       content={
         <>
           <LegendList
+            refreshing={refreshing}
+            onRefresh={onRefresh}
             data={c.filteredChecklists}
             renderItem={renderChecklist}
             keyExtractor={(item) => item.id}

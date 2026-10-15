@@ -2,6 +2,7 @@ import { MotiView } from 'moti'
 import { ReactNode, ComponentType } from 'react'
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   ScrollViewProps,
   StyleProp,
@@ -10,6 +11,7 @@ import {
   ViewStyle,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { usePullToRefresh } from '@/lib/api/use-pull-to-refresh'
 import { useIsOnline } from '@/lib/offline-queue'
 import { colors } from '@/styles'
 import { FLOATING_ACTION_CLEARANCE } from '../FloatingAction'
@@ -92,6 +94,7 @@ export function Screen({
   const { bottom } = useSafeAreaInsets()
   const tabBarClearance = useFloatingTabBarClearance()
   const isOnline = useIsOnline()
+  const { refreshing, onRefresh } = usePullToRefresh()
   const connectionLabel = !isOnline
     ? 'Sem conexão · alterações serão reenviadas'
     : null
@@ -169,6 +172,9 @@ export function Screen({
             keyboardShouldPersistTaps="handled"
             contentInsetAdjustmentBehavior="automatic"
             automaticallyAdjustKeyboardInsets
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
           >
             {children}
           </ScrollComponent>

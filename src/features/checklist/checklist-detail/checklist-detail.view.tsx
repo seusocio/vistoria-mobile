@@ -11,6 +11,7 @@ import {
   Screen,
 } from '@/components'
 import { useSheetFooterActions } from '@/components/SheetFooterActions'
+import { usePullToRefresh } from '@/lib/api/use-pull-to-refresh'
 import {
   useChecklistDetailContainer,
   type UseChecklistDetailContainerProps,
@@ -22,6 +23,7 @@ import { ChecklistHeaderMenu } from './components/ChecklistHeaderMenu'
 
 export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
   const c = useChecklistDetailContainer(props)
+  const { refreshing, onRefresh } = usePullToRefresh()
 
   const renderGroup = useCallback(
     ({ item, index }: LegendListRenderItemProps<(typeof c.groups)[number]>) => (
@@ -41,6 +43,8 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
 
   const historyList = (
     <LegendList
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       data={c.groups}
       renderItem={renderGroup}
       keyExtractor={(item) => item.key}

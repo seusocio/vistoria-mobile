@@ -6,6 +6,7 @@ import {
   useReportOverviewContainer,
   type PendingListData,
 } from './report-overview.container'
+import { usePullToRefresh } from '@/lib/api/use-pull-to-refresh'
 import { styles } from './report-overview.styles'
 import { OverviewHeader } from './components/OverviewHeader'
 import { PendingGroupListItem } from './components/PendingGroupListItem'
@@ -26,6 +27,7 @@ const OverviewEmpty = memo(function OverviewEmpty({ hasTags }: { hasTags: boolea
 
 export function ReportOverviewView() {
   const c = useReportOverviewContainer()
+  const { refreshing, onRefresh } = usePullToRefresh()
   const tabBarClearance = useFloatingTabBarClearance()
 
   const renderPending = useCallback(
@@ -48,6 +50,8 @@ export function ReportOverviewView() {
       subtitle="Selecione tags para cruzar aplicações e itens"
       content={
         <LegendList
+          refreshing={refreshing}
+          onRefresh={onRefresh}
           data={c.pendingListData}
           renderItem={renderPending}
           keyExtractor={(item) => item.group.application.id}

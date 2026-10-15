@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -47,6 +48,7 @@ import { isVisibleImage } from '@/features/application/shared/application.utils'
 import { deleteNote, editNoteText, postNote, regenerateTranscription } from '@/features/note/shared/note.actions'
 import type { Note } from '@/features/note/shared/note.types'
 import { useNotesFeed } from '@/features/note/shared/use-notes-feed'
+import { usePullToRefresh } from '@/lib/api/use-pull-to-refresh'
 import { pickPhotos } from '@/lib/convex/photo-picker'
 import { useLocalUploadUris } from '@/lib/uploads/upload-store'
 import { colors, fontFamily, radius, space, textStyles } from '@/styles'
@@ -230,6 +232,7 @@ function confirmRemovePhoto(onConfirm: () => void) {
 }
 
 export function ApplicationVisitaView({ c, onOpenNoteCamera }: ApplicationVisitaViewProps) {
+  const { refreshing, onRefresh } = usePullToRefresh()
   const insets = useSafeAreaInsets()
   const localUris = useLocalUploadUris()
   const hiddenIds = useAttachmentVisibility((state) => state.hiddenIds)
@@ -485,6 +488,7 @@ export function ApplicationVisitaView({ c, onOpenNoteCamera }: ApplicationVisita
         onScrollEndDrag={onScrollEnd}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Animated.View style={[s.banner, bannerStyle]} />
 
