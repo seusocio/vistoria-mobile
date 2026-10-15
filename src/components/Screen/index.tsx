@@ -15,6 +15,7 @@ import { colors } from '@/styles'
 import { FLOATING_ACTION_CLEARANCE } from '../FloatingAction'
 import { useFloatingTabBarClearance } from '../FloatingTabBar'
 import { Icon } from '../Icon'
+import type { IconName } from '../Icon/types'
 import { CONTENT_PADDING_BOTTOM, styles } from './styles'
 
 function SkeletonBlock({ style }: { style?: StyleProp<ViewStyle> }) {
@@ -64,6 +65,8 @@ export interface ScreenProps {
   title?: string
   subtitle?: string
   navTitleTone?: 'muted' | 'strong'
+  /** Nested variant only: a glyph before the nav title hinting what the screen is. */
+  titleIcon?: IconName
   onBack?: () => void
   headerRight?: ReactNode
   headerExtra?: ReactNode
@@ -80,6 +83,7 @@ export function Screen({
   title,
   subtitle,
   navTitleTone = 'muted',
+  titleIcon,
   onBack,
   headerRight,
   headerExtra,
@@ -124,6 +128,9 @@ export function Screen({
                   <Icon name="chevron-left" size={18} color={colors.ink.base} />
                 </Pressable>
               )}
+              {titleIcon ? (
+                <Icon name={titleIcon} size={18} color={colors.gray[600]} />
+              ) : null}
               {title ? (
                 <Text
                   style={

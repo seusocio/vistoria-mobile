@@ -14,16 +14,15 @@ import { LibraryEmpty } from './components/LibraryEmpty'
 import { LibraryHeader } from './components/LibraryHeader'
 import { LibraryTagFilterSheet } from './components/LibraryTagFilterSheet'
 
-const ChecklistSeparator = () => <View style={styles.itemSeparator} />
-
 export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
   const c = useChecklistLibraryContainer(props)
   const tabBarClearance = useFloatingTabBarClearance()
 
   const renderChecklist = useCallback(
-    ({ item }: LegendListRenderItemProps<Checklist>) => (
+    ({ item, index }: LegendListRenderItemProps<Checklist>) => (
       <ChecklistListItem
         checklist={item}
+        first={index === 0}
         stats={
           c.applicationStatsByChecklist.get(item.id) ?? {
             applications: 0,
@@ -56,16 +55,11 @@ export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
             ]}
             ListHeaderComponent={
               <LibraryHeader
-                checklistCount={c.checklistCount}
-                applicationsCount={c.applicationsCount}
-                itemsDone={c.itemsDone}
-                itemsTotal={c.itemsTotal}
                 search={c.search}
                 onSearchChange={c.onSearchChange}
                 activeTagId={c.activeTagId}
                 filterVisible={c.filterVisible}
                 onOpenFilter={c.onOpenFilter}
-                onCreateChecklist={c.onCreateChecklist}
               />
             }
             ListEmptyComponent={
@@ -75,11 +69,17 @@ export function ChecklistLibraryView(props: UseChecklistLibraryContainerProps) {
                 onClearFilters={c.onClearFilters}
               />
             }
-            ItemSeparatorComponent={ChecklistSeparator}
-            ListFooterComponent={<ListLoadingFooter loading={c.isLoadingMore} />}
+            ListFooterComponent={
+              <>
+                {c.filteredChecklists.length > 0 ? (
+                  <View style={styles.listEndRule} />
+                ) : null}
+                <ListLoadingFooter loading={c.isLoadingMore} />
+              </>
+            }
             onEndReached={c.onEndReached}
             onEndReachedThreshold={0.2}
-            estimatedItemSize={140}
+            estimatedItemSize={64}
             recycleItems
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"

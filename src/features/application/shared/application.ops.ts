@@ -11,6 +11,7 @@ import {
   createApplicationRest,
   deleteApplicationRest,
   deleteAttachmentRest,
+  isApplicationGone,
   patchCachedAttachments,
   refreshApplicationCache,
   updateApplicationItemRest,
@@ -63,6 +64,7 @@ function requireActiveProject(): { orgId: string; projectId: string } {
  */
 export const create = defineOp<{ entity: Application }, Application>('applications.create', {
   kind: 'application',
+  isScopeGone: isApplicationGone,
   send: (args) => convexClient.mutation(api.applications.create, args as never),
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()
@@ -103,6 +105,7 @@ export const patchItem = defineOp<
   Application
 >('applications.patchItem', {
   kind: 'application',
+  isScopeGone: isApplicationGone,
   send: (args) => convexClient.mutation(api.applications.patchItem, args as never),
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()
@@ -148,6 +151,7 @@ export const addItem = defineOp<
   Application
 >('applications.addItem', {
   kind: 'application',
+  isScopeGone: isApplicationGone,
   send: (args) => convexClient.mutation(api.applications.addItem, args as never),
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()
@@ -177,6 +181,7 @@ export const addAttachment = defineOp<
   Application
 >('applications.addAttachment', {
   kind: 'application',
+  isScopeGone: isApplicationGone,
   send: (args) => convexClient.mutation(api.applications.addAttachment, args as never),
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()
@@ -248,6 +253,7 @@ export const deleteAttachment = defineOp<
 >('applications.deleteAttachment', {
   treatNotFoundAsDone: true,
   kind: 'application',
+  isScopeGone: isApplicationGone,
   send: (args) => convexClient.mutation(api.applications.purgeAttachment, args as never),
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()
@@ -310,6 +316,11 @@ export const setAttachmentUploaded = defineOp<
   Application
 >('applications.setAttachmentUploaded', {
   kind: 'application',
+  isScopeGone: isApplicationGone,
+  // A 404 means the row was deleted while its bytes were still uploading — a
+  // note deleted before it synced takes its photos with it. Nothing is left to
+  // mark; failing would park this at the head and block every write behind it.
+  treatNotFoundAsDone: true,
   send: (args) =>
     convexClient.mutation(api.applications.setAttachmentUploaded, {
       applicationId: args.applicationId,
@@ -365,6 +376,7 @@ export const setAttachmentUploadStatus = defineOp<
   Application
 >('applications.setAttachmentUploadStatus', {
   kind: 'application',
+  isScopeGone: isApplicationGone,
   bestEffort: true,
   send: (args) => convexClient.mutation(api.applications.setAttachmentUploadStatus, args as never),
   sendRest: (args) => {
@@ -404,6 +416,7 @@ export const updateMeta = defineOp<
   Application
 >('applications.updateMeta', {
   kind: 'application',
+  isScopeGone: isApplicationGone,
   send: (args) => convexClient.mutation(api.applications.updateMeta, args as never),
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()
@@ -437,6 +450,7 @@ export const softDelete = defineOp<
 >('applications.softDelete', {
   treatNotFoundAsDone: true,
   kind: 'application',
+  isScopeGone: isApplicationGone,
   send: (args) => convexClient.mutation(api.applications.softDelete, args as never),
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()

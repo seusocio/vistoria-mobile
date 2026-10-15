@@ -1,6 +1,6 @@
 # 0001 — Resiliência da sincronização offline (outbox + fila de uploads)
 
-- Status: aceita
+- Status: aceita — complementada por [0002](0002-offline-sync-cascatas-do-servidor.md)
 - Data: 2026-10-12
 
 ## Contexto

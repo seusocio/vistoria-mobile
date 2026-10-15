@@ -177,9 +177,6 @@ export function useChecklistLibraryContainer({
   return {
     loading,
     checklistCount: checklists.length,
-    applicationsCount: applications.length,
-    itemsDone: Array.from(applicationStatsByChecklist.values()).reduce((sum, s) => sum + s.done, 0),
-    itemsTotal: Array.from(applicationStatsByChecklist.values()).reduce((sum, s) => sum + s.total, 0),
     filteredChecklists,
     applicationStatsByChecklist,
     filterTags,

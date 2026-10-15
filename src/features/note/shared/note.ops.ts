@@ -1,4 +1,4 @@
-import { refreshApplicationCache } from '@/features/application/shared/application.rest'
+import { isApplicationGone, refreshApplicationCache } from '@/features/application/shared/application.rest'
 import { defineOp } from '@/lib/offline-queue/ops'
 import { useSessionStore } from '@/lib/session/session.store'
 import {
@@ -42,6 +42,8 @@ function invalidateFeed(args: { applicationId: string }) {
  */
 export const createNote = defineOp<{ note: Note }, Note>('notes.create', {
   kind: 'note',
+  scope: (args) => args.note.applicationId,
+  isScopeGone: isApplicationGone,
   send: restOnly,
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()
@@ -51,6 +53,8 @@ export const createNote = defineOp<{ note: Note }, Note>('notes.create', {
   entityId: (args) => args.note.id,
   onServerResponse: (queryClient, args, response) => {
     const { orgId, projectId } = requireActiveProject()
+    // Every attachment was deleted before this landed — see `createNoteRest`.
+    if (response === null) return
     const created = noteFromResponse(response) ?? args.note
     updateNotesCache(queryClient, orgId, projectId, args.note.applicationId, (notes, pageIndex) =>
       pageIndex === 0 && !notes.some((note) => note.id === created.id) ? [created, ...notes] : notes,
@@ -61,6 +65,12 @@ export const createNote = defineOp<{ note: Note }, Note>('notes.create', {
 
 export const patchNote = defineOp<PatchNoteArgs, Note>('notes.patch', {
   kind: 'note',
+  scope: (args) => args.applicationId,
+  isScopeGone: isApplicationGone,
+  // The note is gone: deleted before this landed (a transcription finishing
+  // after the user removed its voice note), or dropped server-side when its
+  // last attachment was deleted. There is nothing left to patch.
+  treatNotFoundAsDone: true,
   send: restOnly,
   sendRest: (args) => {
     const { orgId, projectId } = requireActiveProject()
@@ -104,6 +114,8 @@ export const deleteNoteOp = defineOp<{ applicationId: string; noteId: string; de
   'notes.delete',
   {
     kind: 'note',
+    scope: (args) => args.applicationId,
+    isScopeGone: isApplicationGone,
     treatNotFoundAsDone: true,
     send: restOnly,
     sendRest: (args) => {

@@ -9,6 +9,16 @@ import type { EntityKind, OpDefinition } from './ops'
 export type QueuedOpStatus = 'pending' | 'failed'
 export type OpBackend = 'convex' | 'rest'
 
+/** Why the last send of an op didn't land — kept on the op so a blocked head can be diagnosed on-device. */
+export interface OpError {
+  message: string
+  /** HTTP status for a REST failure; absent for a network/Convex error. */
+  status?: number
+  /** The server's error body, as parsed. */
+  body?: unknown
+  at: string
+}
+
 export interface QueuedOp {
   id: string
   type: string
@@ -30,6 +40,7 @@ export interface QueuedOp {
    * the only backend that existed before it.
    */
   backend?: OpBackend
+  lastError?: OpError
 }
 
 export interface OutboxState {
@@ -37,10 +48,12 @@ export interface OutboxState {
   enqueue: <Args, Entity>(op: OpDefinition<Args, Entity>, args: Args) => void
   /** The op landed on the server — drop it. */
   resolve: (id: string) => void
+  /** Drops several ops at once — every op under a scope the server says is gone. */
+  drop: (ids: string[]) => void
   /** The op failed but hasn't exhausted its attempts — keep it, bump the count. */
-  retry: (id: string) => void
+  retry: (id: string, error?: OpError) => void
   /** The op exhausted its attempts. Kept, not discarded, so no write is silently lost. */
-  fail: (id: string) => void
+  fail: (id: string, error?: OpError) => void
   /**
    * Gives every exhausted op a fresh budget. Called on the events that make a
    * previously hopeless op worth trying again — reconnect, foreground, boot —
@@ -128,16 +141,22 @@ export const createOutboxSlice: StateCreator<OutboxState> = (set) => ({
     })),
   resolve: (id) =>
     set((state) => ({ items: state.items.filter((item) => item.id !== id) })),
-  retry: (id) =>
+  drop: (ids) => {
+    const dropped = new Set(ids)
+    set((state) => ({ items: state.items.filter((item) => !dropped.has(item.id)) }))
+  },
+  retry: (id, error) =>
     set((state) => ({
       items: state.items.map((item) =>
-        item.id === id ? { ...item, attempts: item.attempts + 1 } : item,
+        item.id === id
+          ? { ...item, attempts: item.attempts + 1, ...(error ? { lastError: error } : {}) }
+          : item,
       ),
     })),
-  fail: (id) =>
+  fail: (id, error) =>
     set((state) => ({
       items: state.items.map((item) =>
-        item.id === id ? { ...item, status: 'failed' } : item,
+        item.id === id ? { ...item, status: 'failed', ...(error ? { lastError: error } : {}) } : item,
       ),
     })),
   retryFailed: () =>

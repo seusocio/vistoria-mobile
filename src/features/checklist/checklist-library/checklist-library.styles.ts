@@ -2,33 +2,22 @@ import { StyleSheet } from 'react-native'
 import { colors, radius, space, textStyles, touch } from '@/styles'
 
 export const styles = StyleSheet.create({
+  // Rows run to the screen edge (see ChecklistListItem), so the gutter lives
+  // on the header and the empty state rather than on the list.
   listContent: {
-    paddingHorizontal: space.lg,
     paddingTop: space.lg,
     paddingBottom: space.xxl,
   },
-  itemSeparator: {
-    height: space.sm,
-  },
   listHeader: {
     gap: space.lg,
+    paddingHorizontal: space.lg,
+    paddingBottom: space.sm,
   },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: space.sm,
-  },
-  ctaButton: {
-    minHeight: touch.min,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.blue.base,
-    borderRadius: radius.lg,
-    borderCurve: 'continuous',
-    paddingHorizontal: space.xl,
-  },
-  ctaButtonText: {
-    ...textStyles.buttonLabel,
-    color: colors.white,
+  // Rows carry their rule on the top edge, so the list needs one more to
+  // close the last one - same as the checklist history.
+  listEndRule: {
+    height: 1,
+    backgroundColor: colors.gray[200],
   },
   searchRow: {
     flexDirection: 'row',
@@ -98,12 +87,8 @@ export const styles = StyleSheet.create({
     ...textStyles.bodyStrong,
     color: colors.ink.base,
   },
-  sectionTitle: {
-    ...textStyles.bodyStrong,
-    color: colors.gray[600],
-    letterSpacing: 0.3,
-  },
   emptyState: {
+    marginHorizontal: space.lg,
     backgroundColor: colors.white,
     borderRadius: radius.lg,
     borderCurve: 'continuous',

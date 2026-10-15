@@ -95,6 +95,25 @@ export function rebaseLocalUri(uri: string | undefined): string | undefined {
   return `${directory}uploads/${uri.slice(index + marker.length)}`
 }
 
+/** The photo an upload job points at is gone from disk — retrying can't bring it back. */
+export class MissingLocalFileError extends Error {
+  constructor(uri: string) {
+    super(`Arquivo local não encontrado: ${uri}`)
+    this.name = 'MissingLocalFileError'
+  }
+}
+
+/**
+ * Must run before every native `createUploadTask`: on iOS the upload goes
+ * through a background `NSURLSession`, which throws an Objective-C exception
+ * for a missing source file. JS can't catch that — it aborts the app, and since
+ * the job stays in the persisted queue, it aborts every launch after it too.
+ */
+export async function assertLocalFileExists(uri: string): Promise<void> {
+  const info = uri ? await FileSystem.getInfoAsync(uri) : null
+  if (!info?.exists || info.isDirectory) throw new MissingLocalFileError(uri)
+}
+
 export async function deleteLocalUpload(uri?: string): Promise<void> {
   if (!uri || !uri.includes('/uploads/')) return
   await FileSystem.deleteAsync(rebaseLocalUri(uri), { idempotent: true })

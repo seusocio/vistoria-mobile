@@ -65,6 +65,21 @@ export interface OpDefinition<Args, Entity> {
    * a failed head blocks every write queued behind it.
    */
   treatNotFoundAsDone?: boolean
+  /**
+   * The aggregate this op lives under — for every op in this app, the
+   * application (Visita) it writes to. Defaults to `entityId`, which already
+   * is the application id for every `kind: 'application'` op; ops of another
+   * kind that belong to an application (notes) must say so.
+   */
+  scope?: (args: Args) => string
+  /**
+   * Recognizes a failure meaning the op's scope itself is gone on the server
+   * (the Visita was deleted — the server deletes it for real). No op under a
+   * missing scope can ever land, so the drain drops all of them instead of
+   * parking this one at the head, where it would block every other Visita's
+   * writes forever.
+   */
+  isScopeGone?: (error: unknown) => boolean
   /** Query keys to invalidate once the op resolves — e.g. a list's derived counts. */
   invalidates?: (args: Args) => QueryKey[]
 }

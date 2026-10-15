@@ -7,6 +7,7 @@ import {
   listNotes,
   updateNote,
 } from '@/lib/api/endpoints/default/default'
+import { ApiError } from '@/lib/api/fetcher'
 import type { UpdateNoteBodyOne } from '@/lib/api/models/updateNoteBodyOne'
 import { type ListPage, type RestListResult, useInfiniteList } from '@/lib/api/use-infinite-list'
 import { isRestEnabled } from '@/lib/backend-flags'
@@ -82,22 +83,48 @@ export function updateNotesCache(
   )
 }
 
+const MISSING_ATTACHMENTS = /anexo não encontrado nesta visita: (.+)$/
+
+/** The attachment ids a create was refused over (422), or null for any other failure. */
+function missingAttachmentIds(error: unknown): string[] | null {
+  if (!(error instanceof ApiError) || error.status !== 422) return null
+  const message = (error.body as { error?: unknown } | null | undefined)?.error
+  const match = typeof message === 'string' ? MISSING_ATTACHMENTS.exec(message) : null
+  return match ? match[1].split(', ') : null
+}
+
 /**
  * The server answers 201 for a new note and 200 for a replay of an id it
  * already has (returned unchanged, not re-validated) — both resolve here, so a
  * replayed op never jams the outbox.
+ *
+ * A *first* send is validated, though: a photo deleted while this create sat in
+ * the outbox (removed from the gallery before the library picker posted its
+ * note) is answered 422, and a 4xx fails the head and blocks every write behind
+ * it. Deleting an attachment server-side unlinks it from its notes and drops a
+ * note left empty, so this does the same: retry without the missing ids, and
+ * resolve to `null` — nothing created — when nothing is left to post.
  */
-export function createNoteRest(orgId: string, projectId: string, note: Note) {
-  return createNotes(orgId, projectId, note.applicationId, {
-    notes: [
-      {
-        id: note.id,
-        text: note.text,
-        attachmentIds: note.attachmentIds,
-        createdAt: note.createdAt,
-      },
-    ],
-  })
+export async function createNoteRest(orgId: string, projectId: string, note: Note): Promise<unknown> {
+  try {
+    return await createNotes(orgId, projectId, note.applicationId, {
+      notes: [
+        {
+          id: note.id,
+          text: note.text,
+          attachmentIds: note.attachmentIds,
+          createdAt: note.createdAt,
+        },
+      ],
+    })
+  } catch (error) {
+    const missing = missingAttachmentIds(error)
+    if (!missing) throw error
+    const attachmentIds = note.attachmentIds.filter((id) => !missing.includes(id))
+    if (attachmentIds.length === note.attachmentIds.length) throw error
+    if (!note.text.trim() && attachmentIds.length === 0) return null
+    return createNoteRest(orgId, projectId, { ...note, attachmentIds })
+  }
 }
 
 export interface PatchNoteArgs {

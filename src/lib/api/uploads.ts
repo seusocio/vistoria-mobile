@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy'
 import { Platform } from 'react-native'
 import { presignUpload } from '@/lib/api/endpoints/default/default'
+import { assertLocalFileExists } from '@/lib/convex/photo-picker'
 
 export interface PresignedUpload {
   key: string
@@ -79,6 +80,7 @@ export async function uploadAttachmentFile(
     return
   }
 
+  await assertLocalFileExists(uri)
   const task = FileSystem.createUploadTask(
     presigned.uploadUrl,
     uri,

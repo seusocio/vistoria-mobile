@@ -78,8 +78,6 @@ export const styles = StyleSheet.create({
     gap: 2,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray[200],
     backgroundColor: colors.white,
   },
   title: {
@@ -142,5 +140,7 @@ export const styles = StyleSheet.create({
   },
   navTitleStrong: {
     ...textStyles.navTitleStrong,
+    // Lets a long checklist name truncate instead of pushing headerRight off.
+    flexShrink: 1,
   },
 })

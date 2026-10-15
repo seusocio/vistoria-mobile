@@ -1,3 +1,4 @@
+import type { IconWeight } from 'phosphor-react-native'
 import { SvgProps } from 'react-native-svg'
 
 export type IconName =
@@ -39,4 +40,6 @@ export interface IconProps extends SvgProps {
   height?: number
   color?: string
   size?: number
+  /** Phosphor weight. Defaults to `regular`; a registry entry can pin its own. */
+  weight?: IconWeight
 }

@@ -47,9 +47,7 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
       ListHeaderComponent={
         c.checklist ? (
           <ChecklistDetailHeader
-            checklist={c.checklist}
             tagLabels={c.resolveLabels(c.checklist.tagsIds)}
-            applicationsCount={c.applicationsCount}
             historySearch={c.historySearch}
             onHistorySearchChange={c.onHistorySearchChange}
             historyHasFilter={c.historyHasFilter}
@@ -94,7 +92,9 @@ export function ChecklistDetailView(props: UseChecklistDetailContainerProps) {
       loading={c.loading}
       variant="nested"
       onBack={c.onBack}
-      title="Checklist"
+      title={c.checklist?.title ?? 'Checklist'}
+      titleIcon="clipboard-check"
+      navTitleTone="strong"
       footer={
         c.checklist ? (
           <FloatingAction

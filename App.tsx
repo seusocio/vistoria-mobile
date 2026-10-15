@@ -11,7 +11,7 @@ import { useEffect } from "react";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { SyncStatusBar, UndoToastProvider } from "@/components";
+import { OutboxDebugger, SyncStatusBar, UndoToastProvider } from "@/components";
 // Registers every offline-queue op before anything can drain the outbox.
 import "@/features/ops";
 import { convexClient } from '@/lib/convex'
@@ -70,6 +70,7 @@ export default function App() {
               <ConvexProvider client={convexClient}>
                 <OutboxLifecycle />
                 <SyncStatusBar />
+                <OutboxDebugger />
                 <Routes />
               </ConvexProvider>
             </PersistQueryClientProvider>

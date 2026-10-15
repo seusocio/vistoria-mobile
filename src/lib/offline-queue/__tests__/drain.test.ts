@@ -222,4 +222,55 @@ describe('drainOutboxWith', () => {
     })
     expect(store.getState().items[0]?.status).toBe('failed')
   })
+
+  describe('when the server says the scope is gone', () => {
+    const gone = (error: unknown) => error instanceof ApiError && error.status === 404 && error.message === 'scope gone'
+    const scoped = (prefix: string) =>
+      defineOp<{ app: string; n: number }, unknown>(uniqueType(prefix), {
+        kind: 'application',
+        isScopeGone: gone,
+        send: {} as never,
+        applyLocal: (entity) => entity as never,
+        entityId: (args) => args.app,
+      })
+
+    test('drops every op under that scope and keeps draining the others', async () => {
+      const store = freshStore()
+      const write = scoped('scoped')
+      store.getState().enqueue(write, { app: 'dead', n: 1 })
+      store.getState().enqueue(write, { app: 'alive', n: 2 })
+      store.getState().enqueue(write, { app: 'dead', n: 3 })
+      store.getState().enqueue(write, { app: 'alive', n: 4 })
+
+      const sent: number[] = []
+      await drainOutboxWith(store, async (_send, args) => {
+        const { app, n } = args as { app: string; n: number }
+        sent.push(n)
+        if (app === 'dead') throw new ApiError(404, 'scope gone', undefined)
+      })
+
+      expect(sent).toEqual([1, 2, 4])
+      expect(store.getState().items).toHaveLength(0)
+    })
+
+    test("keeps blocking when the scope's own create is still queued", async () => {
+      const store = freshStore()
+      const write = scoped('scoped-with-create')
+      const createType = `${uniqueType('scope')}.create`
+      const create = defineOp<{ app: string; n: number }, unknown>(createType, {
+        kind: 'application',
+        send: {} as never,
+        applyLocal: (entity) => entity as never,
+        entityId: (args) => args.app,
+      })
+      store.getState().enqueue(write, { app: 'late', n: 1 })
+      store.getState().enqueue(create, { app: 'late', n: 2 })
+
+      await drainOutboxWith(store, async () => {
+        throw new ApiError(404, 'scope gone', undefined)
+      })
+
+      expect(store.getState().items.map((item) => item.status)).toEqual(['failed', 'pending'])
+    })
+  })
 })

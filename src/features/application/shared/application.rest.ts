@@ -36,6 +36,7 @@ import type { CreateApplicationBodyOne } from '@/lib/api/models/createApplicatio
 import type { UpdateApplicationBodyOne } from '@/lib/api/models/updateApplicationBodyOne'
 import type { UpdateApplicationItemBodyOne } from '@/lib/api/models/updateApplicationItemBodyOne'
 import type { UpdateAttachmentBodyOne } from '@/lib/api/models/updateAttachmentBodyOne'
+import { ApiError } from '@/lib/api/fetcher'
 import { isRestEnabled } from '@/lib/backend-flags'
 import type { RestQueryResult } from '@/lib/offline-queue'
 import { useSessionStore } from '@/lib/session/session.store'
@@ -195,6 +196,17 @@ function toCreateApplicationBody(entity: Application): CreateApplicationBodyOne 
       workflowStatus: item.workflowStatus,
     })),
   }
+}
+
+/**
+ * True when the server answered that the Visita itself doesn't exist — it was
+ * deleted (the server deletes for real, attachments and notes with it). The
+ * error text is the only signal: a missing attachment or note on the same
+ * routes answers 404 too, with its own message.
+ */
+export function isApplicationGone(error: unknown): boolean {
+  if (!(error instanceof ApiError) || error.status !== 404) return false
+  return (error.body as { error?: unknown } | null | undefined)?.error === 'aplicação não encontrada'
 }
 
 export function createApplicationRest(orgId: string, projectId: string, entity: Application) {

@@ -7,25 +7,24 @@ export const Icon: FC<IconProps> = ({
   width = 24,
   height = 24,
   color = '#000',
-  size = 24,
+  size,
+  weight = 'regular',
   ...props
 }) => {
-  const IconComponent = iconRegistry[name]
+  const definition = iconRegistry[name]
 
-  if (!IconComponent) {
+  if (!definition) {
     console.warn(`Icon "${name}" not found in registry`)
     return null
   }
 
-  const finalWidth = size || width
-  const finalHeight = size || height
+  const Glyph = definition.component
 
   return (
-    <IconComponent
-      name={name}
-      width={finalWidth}
-      height={finalHeight}
+    <Glyph
+      size={size ?? Math.max(width, height)}
       color={color}
+      weight={definition.weight ?? weight}
       {...props}
     />
   )

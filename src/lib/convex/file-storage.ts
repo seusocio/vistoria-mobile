@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy'
 import { Platform } from 'react-native'
 import { api } from '../../../convex/_generated/api'
 import { convexClient } from './client'
+import { assertLocalFileExists } from './photo-picker'
 
 interface UploadResponse {
   storageId: string
@@ -57,6 +58,7 @@ export async function uploadImage(
       xhr.send(blob)
     })
   } else {
+    await assertLocalFileExists(uri)
     const task = FileSystem.createUploadTask(
       resolvedUploadUrl,
       uri,

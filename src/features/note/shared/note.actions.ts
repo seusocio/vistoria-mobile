@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy'
 import { addAttachment } from '@/features/application/shared/application.ops'
 import { createAttachment } from '@/features/application/shared/application.utils'
+import { deleteLocalUpload } from '@/lib/convex/photo-picker'
 import { generateId } from '@/lib/id'
 import { enqueueOp } from '@/lib/offline-queue'
 import { prepareAudioFile } from '@/lib/uploads/prepare-audio'
@@ -56,6 +57,17 @@ export function editNoteText(note: Note, text: string): boolean {
 }
 
 export function deleteNote(note: Note) {
+  // The server deletes the attachments only this note used, and nothing here
+  // ever links one file to two notes — so their uploads are owed to nobody.
+  // Left running, an upload that lands after the delete answers 404 and the
+  // worker would re-create the row, bringing the photo back as an orphan.
+  const { queue, cancel } = useUploadStore.getState()
+  for (const attachmentId of note.attachmentIds) {
+    const job = queue.find((queued) => queued.attachment.id === attachmentId)
+    if (!job) continue
+    cancel(attachmentId)
+    void deleteLocalUpload(job.attachment.localUri)
+  }
   enqueueOp(deleteNoteOp, {
     applicationId: note.applicationId,
     noteId: note.id,

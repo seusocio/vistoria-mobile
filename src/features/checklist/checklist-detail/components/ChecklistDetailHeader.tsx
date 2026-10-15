@@ -1,15 +1,12 @@
 import { memo } from 'react'
-import { Pressable, Text, View } from 'react-native'
-import { Metric, SearchBar, TagChipList } from '@/components'
+import { Pressable, View } from 'react-native'
+import { SearchBar, TagChipList } from '@/components'
 import { Icon } from '@/components/Icon'
-import type { Checklist } from '@/features/checklist/shared/checklist.types'
 import { colors } from '@/styles'
 import { styles } from '../checklist-detail.styles'
 
 interface ChecklistDetailHeaderProps {
-  checklist: Checklist
   tagLabels: string[]
-  applicationsCount: number
   historySearch: string
   onHistorySearchChange: (value: string) => void
   historyHasFilter: boolean
@@ -17,9 +14,7 @@ interface ChecklistDetailHeaderProps {
 }
 
 export const ChecklistDetailHeader = memo(function ChecklistDetailHeader({
-  checklist,
   tagLabels,
-  applicationsCount,
   historySearch,
   onHistorySearchChange,
   historyHasFilter,
@@ -27,17 +22,9 @@ export const ChecklistDetailHeader = memo(function ChecklistDetailHeader({
 }: ChecklistDetailHeaderProps) {
   return (
     <View style={styles.listHeader}>
-      <View style={styles.titleCol}>
-        <Text style={styles.title}>{checklist.title}</Text>
+      {tagLabels.length > 0 ? (
         <TagChipList labels={tagLabels} tone="neutral" />
-      </View>
-      {/* <View style={styles.metricsRow}>
-        <Metric label="Aplicações" value={String(applicationsCount)} />
-        <Metric label="Itens/visita" value={String(checklist.items.length)} />
-      </View> */}
-      <View style={styles.historyRow}>
-        <Text style={styles.sectionTitle}>Histórico</Text>
-      </View>
+      ) : null}
       <View style={styles.historySearchRow}>
         <SearchBar
           value={historySearch}

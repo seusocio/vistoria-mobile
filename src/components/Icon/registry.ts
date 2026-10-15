@@ -1,66 +1,65 @@
-import { AlertTriangle } from '@/assets/icon-components/alert-triangle'
-import { BarChart } from '@/assets/icon-components/bar-chart'
-import { Calendar } from '@/assets/icon-components/calendar'
-import { Camera } from '@/assets/icon-components/camera'
-import { Check } from '@/assets/icon-components/check'
-import { ChevronDown } from '@/assets/icon-components/chevron-down'
-import { ChevronLeft } from '@/assets/icon-components/chevron-left'
-import { ChevronRight } from '@/assets/icon-components/chevron-right'
-import { ChevronUp } from '@/assets/icon-components/chevron-up'
-import { ClipboardCheck } from '@/assets/icon-components/clipboard-check'
-import { Copy } from '@/assets/icon-components/copy'
-import { CreditCard } from '@/assets/icon-components/credit-card'
-import { DirectionUpRight } from '@/assets/icon-components/direction-up-right'
-import { Droplet } from '@/assets/icon-components/droplet'
-import { EditPen } from '@/assets/icon-components/edit-pen'
-import { Filter } from '@/assets/icon-components/filter'
-import { GripVertical } from '@/assets/icon-components/grip-vertical'
-import { Mic } from '@/assets/icon-components/mic'
-import { Minus } from '@/assets/icon-components/minus'
-import { MoreVertical } from '@/assets/icon-components/more-vertical'
-import { Multiply } from '@/assets/icon-components/multiply'
-import { NoteWithText } from '@/assets/icon-components/note-with-text'
-import { Play } from '@/assets/icon-components/play'
-import { Plus } from '@/assets/icon-components/plus'
-import { Repeat } from '@/assets/icon-components/repeat'
-import { Search } from '@/assets/icon-components/search'
-import { Shop } from '@/assets/icon-components/shop'
-import { Square } from '@/assets/icon-components/square'
-import { Tag } from '@/assets/icon-components/tag'
-import { Trash2 } from '@/assets/icon-components/trash-2'
-import { User } from '@/assets/icon-components/user'
-import { IconName, IconProps } from './types'
+import type { Icon as PhosphorIcon, IconWeight } from 'phosphor-react-native'
+import type { IconName } from './types'
 
-export const iconRegistry: Record<IconName, React.ComponentType<IconProps>> = {
-  'alert-triangle': AlertTriangle,
-  'bar-chart': BarChart,
-  calendar: Calendar,
-  camera: Camera,
-  check: Check,
-  'chevron-down': ChevronDown,
-  'chevron-left': ChevronLeft,
-  'chevron-right': ChevronRight,
-  'chevron-up': ChevronUp,
-  'clipboard-check': ClipboardCheck,
-  copy: Copy,
-  'credit-card': CreditCard,
-  'direction-up-right': DirectionUpRight,
-  droplet: Droplet,
-  'edit-pen': EditPen,
-  filter: Filter,
-  'grip-vertical': GripVertical,
-  mic: Mic,
-  minus: Minus,
-  'more-vertical': MoreVertical,
-  multiply: Multiply,
-  'note-with-text': NoteWithText,
-  play: Play,
-  plus: Plus,
-  repeat: Repeat,
-  search: Search,
-  shop: Shop,
-  square: Square,
-  tag: Tag,
-  'trash-2': Trash2,
-  user: User,
-} as const
+/**
+ * Per-icon deep `require`s, on purpose:
+ *
+ * - Not the package root: Metro doesn't tree-shake, and the root re-exports
+ *   every Phosphor icon (well over a thousand) - it would ship them all.
+ * - Not `import`: the deep path points at the package's .tsx source, which
+ *   doesn't typecheck under our strict settings. A `require` isn't followed by
+ *   tsc, and `glyph` puts the type back.
+ *
+ * Don't fix the types with a `paths` entry in tsconfig.json instead: Expo's
+ * dev server reads those paths too.
+ */
+const glyph = (component: unknown) => component as PhosphorIcon
+
+export interface IconDefinition {
+  component: PhosphorIcon
+  /**
+   * Overrides the app-wide weight for this glyph. Media controls read as
+   * buttons only when solid, so they use `fill`.
+   */
+  weight?: IconWeight
+}
+
+/**
+ * The app's names, mapped onto Phosphor glyphs. Call sites keep using the
+ * app's names (`<Icon name="trash-2" />`), so swapping a glyph is a one-line
+ * change here. To add one, pick it on phosphoricons.com, add its name to
+ * `IconName` and an entry below.
+ */
+export const iconRegistry: Record<IconName, IconDefinition> = {
+  'alert-triangle': { component: glyph(require('phosphor-react-native/src/icons/Warning').WarningIcon) },
+  'bar-chart': { component: glyph(require('phosphor-react-native/src/icons/ChartBar').ChartBarIcon) },
+  calendar: { component: glyph(require('phosphor-react-native/src/icons/CalendarBlank').CalendarBlankIcon) },
+  camera: { component: glyph(require('phosphor-react-native/src/icons/Camera').CameraIcon) },
+  check: { component: glyph(require('phosphor-react-native/src/icons/Check').CheckIcon) },
+  'chevron-down': { component: glyph(require('phosphor-react-native/src/icons/CaretDown').CaretDownIcon) },
+  'chevron-left': { component: glyph(require('phosphor-react-native/src/icons/CaretLeft').CaretLeftIcon) },
+  'chevron-right': { component: glyph(require('phosphor-react-native/src/icons/CaretRight').CaretRightIcon) },
+  'chevron-up': { component: glyph(require('phosphor-react-native/src/icons/CaretUp').CaretUpIcon) },
+  'clipboard-check': { component: glyph(require('phosphor-react-native/src/icons/ClipboardText').ClipboardTextIcon) },
+  copy: { component: glyph(require('phosphor-react-native/src/icons/Copy').CopyIcon) },
+  'credit-card': { component: glyph(require('phosphor-react-native/src/icons/CreditCard').CreditCardIcon) },
+  'direction-up-right': { component: glyph(require('phosphor-react-native/src/icons/ArrowUpRight').ArrowUpRightIcon) },
+  droplet: { component: glyph(require('phosphor-react-native/src/icons/Drop').DropIcon) },
+  'edit-pen': { component: glyph(require('phosphor-react-native/src/icons/PencilSimple').PencilSimpleIcon) },
+  filter: { component: glyph(require('phosphor-react-native/src/icons/FunnelSimple').FunnelSimpleIcon) },
+  'grip-vertical': { component: glyph(require('phosphor-react-native/src/icons/DotsSixVertical').DotsSixVerticalIcon) },
+  mic: { component: glyph(require('phosphor-react-native/src/icons/Microphone').MicrophoneIcon) },
+  minus: { component: glyph(require('phosphor-react-native/src/icons/Minus').MinusIcon) },
+  'more-vertical': { component: glyph(require('phosphor-react-native/src/icons/DotsThreeVertical').DotsThreeVerticalIcon) },
+  multiply: { component: glyph(require('phosphor-react-native/src/icons/X').XIcon) },
+  'note-with-text': { component: glyph(require('phosphor-react-native/src/icons/Note').NoteIcon) },
+  play: { component: glyph(require('phosphor-react-native/src/icons/Play').PlayIcon), weight: 'fill' },
+  plus: { component: glyph(require('phosphor-react-native/src/icons/Plus').PlusIcon) },
+  repeat: { component: glyph(require('phosphor-react-native/src/icons/Repeat').RepeatIcon) },
+  search: { component: glyph(require('phosphor-react-native/src/icons/MagnifyingGlass').MagnifyingGlassIcon) },
+  shop: { component: glyph(require('phosphor-react-native/src/icons/Storefront').StorefrontIcon) },
+  square: { component: glyph(require('phosphor-react-native/src/icons/Stop').StopIcon), weight: 'fill' },
+  tag: { component: glyph(require('phosphor-react-native/src/icons/Tag').TagIcon) },
+  'trash-2': { component: glyph(require('phosphor-react-native/src/icons/Trash').TrashIcon) },
+  user: { component: glyph(require('phosphor-react-native/src/icons/User').UserIcon) },
+}

@@ -18,12 +18,6 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  titleCol: {
-    gap: 8,
-  },
-  title: {
-    ...textStyles.screenTitle,
-  },
   tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -42,18 +36,6 @@ export const styles = StyleSheet.create({
     // contentWithFloatingAction doesn't reach it - the clearance under the
     // "Nova aplicação" pill is paid for here instead.
     paddingBottom: FLOATING_ACTION_CLEARANCE,
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  sectionTitle: {
-    ...textStyles.sectionTitle,
-  },
-  historyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
   },
   layoutToggle: {
     flexDirection: 'row',

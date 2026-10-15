@@ -13,11 +13,12 @@ import type { Application, Attachment } from '@/features/application/shared/appl
 import { ApiError } from '@/lib/api/fetcher'
 import { isRestEnabled } from '@/lib/backend-flags'
 import { enqueueOp, useOutbox } from '@/lib/offline-queue'
+import { onScopeGone } from '@/lib/offline-queue/drain-log'
 import { useSessionStore } from '@/lib/session/session.store'
 import { api } from '../../../convex/_generated/api'
 import { presignAttachmentUpload, uploadAttachmentFile } from '../api/uploads'
 import { convexClient } from '../convex/client'
-import { deleteLocalUpload, rebaseLocalUri } from '../convex/photo-picker'
+import { deleteLocalUpload, MissingLocalFileError, rebaseLocalUri } from '../convex/photo-picker'
 import { uploadImage } from '../convex/file-storage'
 
 export interface UploadJob {
@@ -34,6 +35,8 @@ interface UploadState {
   queue: UploadJob[]
   /** Failed this session; skipped until the next recovery pass re-arms them. */
   blocked: Record<string, true>
+  /** Why each attachment's last upload attempt failed, this session — read by the outbox debugger. */
+  errors: Record<string, string>
   enqueue: (job: UploadJob) => void
   cancel: (attachmentId: string) => void
   resumePending: () => Promise<void>
@@ -50,6 +53,22 @@ const markedFailed = new Set<string>()
 
 const wait = (milliseconds: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, milliseconds))
+
+/**
+ * `markedFailed` only lives as long as the JS module — a relaunch (or a Fast
+ * Refresh in dev) forgets it, and every recovery pass then queued another
+ * identical "failed" op for the same photo. The outbox itself is the durable
+ * answer to "already reported".
+ */
+function hasPendingFailedStatusOp(attachmentId: string): boolean {
+  return useOutbox
+    .getState()
+    .items.some(
+      (item) =>
+        item.type === 'applications.setAttachmentUploadStatus' &&
+        (item.args as { attachmentId?: string }).attachmentId === attachmentId,
+    )
+}
 
 function hasPendingUploadedOp(attachmentId: string): boolean {
   return useOutbox
@@ -116,6 +135,17 @@ function dropFromQueue(attachmentId: string) {
   }))
 }
 
+function isAbandoned(attachmentId: string): boolean {
+  return Boolean(useUploadStore.getState().abandoned[attachmentId])
+}
+
+function clearAbandoned(attachmentId: string) {
+  useUploadStore.setState((state) => {
+    const { [attachmentId]: _abandoned, ...abandoned } = state.abandoned
+    return { abandoned }
+  })
+}
+
 async function processJob(job: UploadJob) {
   const attachmentId = job.attachment.id
   useUploadStore.setState((state) => ({
@@ -156,11 +186,23 @@ async function processJob(job: UploadJob) {
         break
       } catch (error) {
         lastError = error
+        const reason =
+          error instanceof ApiError ? `${error.status} ${error.message}` : error instanceof Error ? error.message : String(error)
+        useUploadStore.setState((state) => ({
+          errors: { ...state.errors, [attachmentId]: `attempt ${attempt + 1}: ${reason}` },
+        }))
         // `presign` answers 404 for an attachment the server has no row for:
         // its `addAttachment` was lost (or went to the old Convex backend, or
         // was dropped by an earlier build). Retrying can't help — re-create
         // the row through the outbox instead. The job stays queued and
         // `rearmJobsWithRows` releases it once that op drains.
+        //
+        // Never for an abandoned job: there the 404 is the user's own delete
+        // (the photo, or the note that took it along) having landed, and
+        // re-creating the row would bring the photo back as an orphan.
+        if (isAbandoned(attachmentId)) break
+        // No file, nothing to retry — fall through to the failure path below.
+        if (error instanceof MissingLocalFileError) break
         if (
           error instanceof ApiError &&
           error.status === 404 &&
@@ -179,28 +221,24 @@ async function processJob(job: UploadJob) {
         if (attempt < MAX_ATTEMPTS - 1) await wait(2 ** attempt * 1000)
       }
     }
-    if (!storageKey) throw lastError ?? new Error('Não foi possível enviar a foto')
-
-    if (useUploadStore.getState().abandoned[attachmentId]) {
+    if (isAbandoned(attachmentId)) {
       // On Convex, an abandoned upload leaves an orphaned blob only this
       // client knows about — worth an explicit cleanup call. On REST, the
       // attachment row (and whatever storage it points to) is deleted by the
       // `deleteAttachment` op the undo-toast's `onCommit` already enqueued,
       // so there is nothing left to clean up here.
-      if (!isRestEnabled('application')) {
+      if (storageKey && !isRestEnabled('application')) {
         try {
           await convexClient.mutation(api.files.remove, { storageId: storageKey })
         } catch {
           // já removido
         }
       }
-      useUploadStore.setState((state) => {
-        const { [attachmentId]: _abandoned, ...abandoned } = state.abandoned
-        return { abandoned }
-      })
+      clearAbandoned(attachmentId)
       dropFromQueue(attachmentId)
       return
     }
+    if (!storageKey) throw lastError ?? new Error('Não foi possível enviar a foto')
 
     // Through the outbox: the blob is already in storage at this point, and
     // losing this write would leave the app re-uploading a photo the server
@@ -214,11 +252,19 @@ async function processJob(job: UploadJob) {
 
     dropFromQueue(attachmentId)
     await deleteLocalUpload(job.attachment.localUri)
-  } catch {
+  } catch (error) {
+    const missingFile = error instanceof MissingLocalFileError
+    // Cancelled while it was failing: nobody wants this file any more, so
+    // there is no status to report and nothing to retry.
+    if (isAbandoned(attachmentId)) {
+      clearAbandoned(attachmentId)
+      dropFromQueue(attachmentId)
+      return
+    }
     // The job stays in the persisted queue — the next recovery pass (or the
     // next launch) picks it up. `blocked` only keeps the drain loop from
     // retrying it immediately, in a tight loop, within this session.
-    if (!markedFailed.has(attachmentId)) {
+    if (!markedFailed.has(attachmentId) && !hasPendingFailedStatusOp(attachmentId)) {
       markedFailed.add(attachmentId)
       enqueueOp(setAttachmentUploadStatus, {
         applicationId: job.applicationId,
@@ -230,6 +276,9 @@ async function processJob(job: UploadJob) {
     useUploadStore.setState((state) => ({
       blocked: { ...state.blocked, [attachmentId]: true },
     }))
+    // A missing file never comes back: keeping the job would only fail it
+    // again on every launch. The row stays marked `failed` on the server.
+    if (missingFile) dropFromQueue(attachmentId)
   } finally {
     useUploadStore.setState((state) => {
       const { [attachmentId]: _progress, ...progress } = state.progress
@@ -260,6 +309,16 @@ function drainQueue() {
   }
 }
 
+/** Session-only worker state that lives outside the store, for the outbox debugger. */
+export function getUploadWorkerDebug() {
+  return {
+    activeWorkers,
+    recoveryStarted,
+    healedRows: [...healedRows],
+    markedFailed: [...markedFailed],
+  }
+}
+
 /**
  * Photo uploads, durable across a process kill.
  *
@@ -278,6 +337,7 @@ export const useUploadStore = create<UploadState>()(
       abandoned: {},
       queue: [],
       blocked: {},
+      errors: {},
       enqueue: (job) => {
         const state = get()
         if (
@@ -352,6 +412,17 @@ export const useUploadStore = create<UploadState>()(
     },
   ),
 )
+
+// The drain dropped every write for a Visita the server no longer has. Its
+// uploads go too: each would only 404 at presign and re-create its row.
+onScopeGone((applicationId) => {
+  const { queue, cancel } = useUploadStore.getState()
+  for (const job of queue) {
+    if (job.applicationId !== applicationId) continue
+    cancel(job.attachment.id)
+    void deleteLocalUpload(job.attachment.localUri)
+  }
+})
 
 export function startUploadRecovery() {
   if (recoveryStarted) return
